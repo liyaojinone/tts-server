@@ -31,6 +31,68 @@ flowchart LR
 | IndexTTS2 | 5104 | 参考音频驱动，支持 emotion control |
 | VoxCPM2 | 5105 | 文本指令驱动，无需参考音频即可合成 |
 
+## 环境初始化
+
+克隆本仓库后，需要手动下载各 TTS 引擎的代码和模型权重到 `models/` 目录。
+
+### 目录结构
+
+```
+models/
+├── index-tts/
+│   ├── repo/           IndexTTS2 源码（git clone）
+│   ├── checkpoints/    模型权重（从 HuggingFace 下载）
+│   └── outputs/        合成输出临时目录
+└── voxcpm/
+    ├── repo/           VoxCPM 源码（git clone）
+    ├── checkpoints/    模型权重（从 HuggingFace 下载）
+    └── outputs/        合成输出临时目录
+```
+
+### 下载引擎源码
+
+```powershell
+# IndexTTS2
+git clone https://github.com/IndexTeam/IndexTTS.git models/index-tts/repo
+
+# VoxCPM
+git clone https://github.com/OpenBMB/VoxCPM.git models/voxcpm/repo
+```
+
+### 下载模型权重
+
+IndexTTS2 模型权重仓库为 `IndexTeam/IndexTTS`，VoxCPM 为 `OpenBMB/VoxCPM`。
+
+推荐使用 huggingface-cli 下载：
+
+```powershell
+pip install huggingface_hub
+
+# IndexTTS2 权重
+huggingface-cli download IndexTeam/IndexTTS --local-dir models/index-tts/checkpoints
+
+# VoxCPM 权重
+huggingface-cli download OpenBMB/VoxCPM --local-dir models/voxcpm/checkpoints
+```
+
+国内网络可设置镜像：
+
+```powershell
+$env:HF_ENDPOINT = "https://hf-mirror.com"
+```
+
+### 配置虚拟环境（如有需要）
+
+IndexTTS 的 start.ps1 引用 `models/index-tts/repo/.venv/`，如果引擎自带 venv 不存在则需要自行创建并安装依赖：
+
+```powershell
+cd models/index-tts/repo
+python -m venv .venv
+.venv\Scripts\pip install -e .
+```
+
+> VoxCPM 服务的 venv 放在 `services/voxcpm-service/.venv/`，start.ps1 已引用。
+
 ## 快速开始
 
 ### 1. 启动某个引擎服务
