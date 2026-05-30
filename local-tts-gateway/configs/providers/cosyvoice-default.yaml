@@ -1,0 +1,33 @@
+provider_id: cosyvoice-default
+provider_type: cosyvoice
+display_name: CosyVoice Default
+enabled: true
+runtime:
+  root_dir: E:\AiModel\tts\CosyVoice2\CosyVoice
+  cwd: E:\AiModel\tts\CosyVoice2\CosyVoice
+  command:
+    - E:\AiModel\tts\CosyVoice2\CosyVoice\py311\python.exe
+    - api2.py
+  env:
+    COSYVOICE_PORT: "5101"
+  startup_timeout_ms: 120000
+  request_timeout_ms: 180000
+  idle_shutdown_seconds: 0
+network:
+  host: 127.0.0.1
+  port: 5101
+  base_url: http://127.0.0.1:5101
+  healthcheck_path: /health
+capabilities:
+  voices: true
+  synthesize: true
+  clone: false
+  stream: false
+voices:
+  - voice_id: 中文女
+    name: 中文女
+    language: [zh]
+    gender: female
+    description: CosyVoice 预置音色
+    tags: [preset]
+    metadata: {}

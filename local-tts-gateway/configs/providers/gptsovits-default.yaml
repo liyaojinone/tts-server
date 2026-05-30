@@ -1,0 +1,35 @@
+provider_id: gptsovits-default
+provider_type: gptsovits
+display_name: GPT-SoVITS Default
+enabled: true
+runtime:
+  root_dir: E:\AiModel\tts\GPT-SoVITS-v2-240821
+  cwd: E:\AiModel\tts\GPT-SoVITS-v2-240821
+  command:
+    - E:\AiModel\tts\GPT-SoVITS-v2-240821\runtime\python.exe
+    - api_v2.py
+    - -a
+    - 127.0.0.1
+    - -p
+    - "5103"
+  env: {}
+  startup_timeout_ms: 120000
+  request_timeout_ms: 180000
+  idle_shutdown_seconds: 0
+network:
+  host: 127.0.0.1
+  port: 5103
+  base_url: http://127.0.0.1:5103
+  healthcheck_path: /health
+capabilities:
+  voices: true
+  synthesize: true
+  clone: false
+  stream: false
+voices:
+  - voice_id: default
+    name: GPT-SoVITS Default
+    language: [zh, en, ja]
+    description: GPT-SoVITS reference-driven synthesis mode
+    tags: [reference, default]
+    metadata: {}

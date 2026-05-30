@@ -1,0 +1,33 @@
+provider_id: f5tts-default
+provider_type: f5-tts
+display_name: F5-TTS Default
+enabled: true
+runtime:
+  root_dir: E:\AiModel\tts\F5-TTS
+  cwd: E:\AiModel\tts\F5-TTS
+  command:
+    - E:\AiModel\tts\F5-TTS\python\py310\python.exe
+    - api.py
+  env:
+    TTS_HOST: "127.0.0.1"
+    TTS_PORT: "5102"
+  startup_timeout_ms: 120000
+  request_timeout_ms: 180000
+  idle_shutdown_seconds: 0
+network:
+  host: 127.0.0.1
+  port: 5102
+  base_url: http://127.0.0.1:5102
+  healthcheck_path: /health
+capabilities:
+  voices: true
+  synthesize: true
+  clone: false
+  stream: false
+voices:
+  - voice_id: f5-default
+    name: F5 Default
+    language: [zh, en]
+    description: F5 reference-driven synthesis mode
+    tags: [reference, default]
+    metadata: {}
