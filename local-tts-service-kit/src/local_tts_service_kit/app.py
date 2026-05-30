@@ -47,6 +47,7 @@ def create_service_app(service_name: str, handler, api_key: Optional[str] = None
 
     @app.exception_handler(ProtocolError)
     async def protocol_error_handler(request: Request, exc: ProtocolError):
+        traceback.print_exc()
         return build_error_response(exc)
 
     @app.exception_handler(RequestValidationError)
@@ -94,6 +95,7 @@ def create_service_app(service_name: str, handler, api_key: Optional[str] = None
                 reference_text=reference_text,
             )
         except Exception as exc:
+            traceback.print_exc()
             raise map_exception(exc)
         return Response(
             content=result["content"],
