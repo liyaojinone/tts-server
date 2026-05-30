@@ -40,6 +40,7 @@ export INDEXTTS_USE_DEEPSPEED="false"
 export INDEXTTS_USE_ACCEL="false"
 export INDEXTTS_USE_TORCH_COMPILE="false"
 export INDEXTTS_PRELOAD_ON_STARTUP="true"
+export HF_ENDPOINT="${HF_ENDPOINT:-https://hf-mirror.com}"
 
 echo "Using Python: $PYTHON_EXE"
 echo "REPO:         $INDEXTTS_REPO_DIR"
