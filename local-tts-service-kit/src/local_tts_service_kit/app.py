@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from local_tts_protocol.models import CloneRequest, DesignRequest, ErrorResponse, SynthesizeRequest
 from local_tts_service_kit.errors import ProtocolError, map_exception
+from local_tts_service_kit.reference_audio import resolve_reference_audio
 
 
 def create_service_app(service_name: str, handler, api_key: Optional[str] = None) -> FastAPI:
@@ -74,6 +75,7 @@ def create_service_app(service_name: str, handler, api_key: Optional[str] = None
         await ensure_authorized(http_request)
         reference_audio = None
         reference_text = None
+        _cleanups: list = []
         content_type = http_request.headers.get("content-type", "")
         if content_type.startswith("multipart/form-data"):
             form = await http_request.form()
@@ -88,6 +90,20 @@ def create_service_app(service_name: str, handler, api_key: Optional[str] = None
                 synth_request.parameters.extra["_emotion_reference_audio_upload"] = emotion_reference_audio
         else:
             synth_request = SynthesizeRequest.model_validate(await http_request.json())
+            # 解析 base64 data URI 为临时文件
+            resolved, cleanup = await resolve_reference_audio(synth_request.parameters.reference_audio)
+            if resolved:
+                synth_request.parameters.reference_audio = resolved
+            if cleanup:
+                _cleanups.append(cleanup)
+            # 同样处理 extra 中的 emotion_reference_audio
+            emo = synth_request.parameters.extra.get("emotion_reference_audio")
+            if isinstance(emo, str):
+                emo_resolved, emo_cleanup = await resolve_reference_audio(emo)
+                if emo_resolved:
+                    synth_request.parameters.extra["emotion_reference_audio"] = emo_resolved
+                if emo_cleanup:
+                    _cleanups.append(emo_cleanup)
         try:
             result = await handler.synthesize(
                 synth_request,
@@ -97,6 +113,10 @@ def create_service_app(service_name: str, handler, api_key: Optional[str] = None
         except Exception as exc:
             traceback.print_exc()
             raise map_exception(exc)
+        finally:
+            for p in _cleanups:
+                if p.exists():
+                    p.unlink(missing_ok=True)
         return Response(
             content=result["content"],
             media_type=result["content_type"],

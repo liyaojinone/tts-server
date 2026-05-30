@@ -38,6 +38,8 @@ class BaseProviderAdapter:
 
     async def synthesize(self, provider, request: UnifiedSynthesizeRequest, files=None) -> AudioResult:
         mapped = self.build_request(request)
+        if files:
+            mapped.files = files
         timeout = provider.runtime.request_timeout_ms / 1000
         async with httpx.AsyncClient(base_url=provider.network.base_url, timeout=timeout, trust_env=False) as client:
             response = await client.request(mapped.method, mapped.path, json=mapped.json, files=mapped.files)
@@ -53,3 +55,11 @@ class BaseProviderAdapter:
         async with httpx.AsyncClient(timeout=5.0, trust_env=False) as client:
             response = await client.get(f"{provider.network.base_url}{provider.network.healthcheck_path}")
             return response.status_code == 200
+
+    async def clone(self, provider, audio, text="", name="", language="zh", emotion=""):
+        async with httpx.AsyncClient(base_url=provider.network.base_url, timeout=30.0, trust_env=False) as client:
+            files = {"audio": (audio.filename, await audio.read(), audio.content_type or "audio/wav")}
+            data = {"text": text, "name": name, "language": language, "emotion": emotion}
+            response = await client.post("/v1/clone", files=files, data=data)
+            response.raise_for_status()
+        return response.json()

@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.routers.clone import router as clone_router
 from app.routers.health import router as health_router
 from app.routers.internal import router as internal_router
 from app.routers.providers import router as providers_router
@@ -14,6 +15,7 @@ def create_app() -> FastAPI:
     app.state.provider_registry = registry
     app.state.process_manager = ProcessManager(registry.provider_map)
 
+    app.include_router(clone_router)
     app.include_router(health_router)
     app.include_router(providers_router)
     app.include_router(synthesize_router)
