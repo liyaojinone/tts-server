@@ -31,112 +31,133 @@ flowchart LR
 | IndexTTS2 | 5104 | 参考音频驱动，支持 emotion control |
 | VoxCPM2 | 5105 | 文本指令驱动，无需参考音频即可合成 |
 
-## 环境初始化
+## 运行模型 — IndexTTS2 完整步骤
 
-克隆本仓库后，运行交互式初始化脚本：
+以 IndexTTS2 为例，其他引擎流程类似。
 
-```powershell
-.\setup.ps1
+### 1. 克隆项目
+
+```bash
+git clone https://github.com/liyaojinone/tts-server.git
+cd tts-server
 ```
 
-脚本会按需引导你选择模型，自动完成 git clone、权重下载、venv 创建等步骤。
+### 2. 克隆引擎源码
 
-如果希望手动操作，各引擎依赖如下：
-
-### 目录结构
-
-```
-models/
-├── index-tts/
-│   ├── repo/           IndexTTS2 源码（git clone）
-│   ├── checkpoints/    模型权重（从 HuggingFace 下载）
-│   └── outputs/        合成输出临时目录
-└── voxcpm/
-    ├── repo/           VoxCPM 源码（git clone）
-    ├── checkpoints/    模型权重（从 HuggingFace 下载）
-    └── outputs/        合成输出临时目录
-```
-
-### 下载引擎源码
-
-```powershell
-# IndexTTS2
+```bash
 git clone https://github.com/index-tts/index-tts.git models/index-tts/repo
-
-# VoxCPM
-git clone https://github.com/OpenBMB/VoxCPM.git models/voxcpm/repo
 ```
 
-### 下载模型权重
+### 3. 下载模型权重
 
-IndexTTS2 模型权重仓库为 `IndexTeam/IndexTTS`，VoxCPM 为 `OpenBMB/VoxCPM`。
-
-推荐使用 huggingface-cli 下载：
-
-```powershell
-pip install huggingface_hub
-
-# IndexTTS2 权重
-huggingface-cli download IndexTeam/IndexTTS --local-dir models/index-tts/checkpoints
-
-# VoxCPM 权重
-huggingface-cli download OpenBMB/VoxCPM --local-dir models/voxcpm/checkpoints
+```bash
+pip install modelscope
+modelscope download --model IndexTeam/IndexTTS-2 --local_dir models/index-tts/checkpoints
 ```
 
-国内网络可设置镜像：
+> Windows / 国外网络也可以直接：
+> ```bash
+> pip install huggingface_hub
+> huggingface-cli download IndexTeam/IndexTTS --local-dir models/index-tts/checkpoints
+> ```
 
-```powershell
-$env:HF_ENDPOINT = "https://hf-mirror.com"
-```
+### 3-2. 无外网服务器（从本地上传）
 
-### 配置虚拟环境（如有需要）
+服务器无外网时，在本地将已下好的权重打包上传：
 
-IndexTTS 的 start.ps1 引用 `models/index-tts/repo/.venv/`，如果引擎自带 venv 不存在则需要自行创建并安装依赖：
-
-```powershell
+```bash
+# 本地打包
 cd models/index-tts/repo
-python -m venv .venv
-.venv\Scripts\pip install -e .
+tar -czf checkpoints.tar.gz checkpoints/hf_cache/
+
+# 上传到服务器后解压
+tar -xzf checkpoints.tar.gz -C /root/tts-server/models/index-tts/repo/
 ```
 
-> VoxCPM 服务的 venv 放在 `services/voxcpm-service/.venv/`，start.ps1 已引用。
+### 4. 创建虚拟环境并安装依赖
 
-## 快速开始
+```bash
+# 安装 uv 包管理器
+pip install uv
 
-### 1. 启动某个引擎服务
+# 进入引擎仓库，一键安装所有依赖
+cd models/index-tts/repo
+uv sync --default-index https://mirrors.aliyun.com/pypi/simple
 
-```powershell
-cd services/voxcpm-service
-.\start.ps1
+# 追加服务层依赖
+uv pip install uvicorn fastapi httpx pydantic pyyaml
+cd ../..
 ```
 
-### 2. 或启动 Gateway 统一入口
+### 5. 设置 HF 镜像（国内服务器必须）
 
-```powershell
+```bash
+export HF_ENDPOINT=https://hf-mirror.com
+```
+
+### 6. 启动服务
+
+```bash
+bash services/index-tts-service/start.sh
+```
+
+### 7. 验证运行
+
+```bash
+curl http://127.0.0.1:5104/v1/health
+# 返回: {"status":"ok","model":"IndexTTS2","version":"local","ready":true}
+
+curl http://127.0.0.1:5104/v1/voices
+# 返回音色列表
+```
+
+### 8. 合成测试
+
+```bash
+curl -sS \
+  -H "Content-Type: application/json" \
+  -o output.wav \
+  -X POST http://127.0.0.1:5104/v1/synthesize \
+  -d '{
+    "text": "你好，这是一个测试。",
+    "voice_id": "index-default",
+    "language": "zh",
+    "parameters": {
+        "reference_audio": "/root/ref.wav",
+        "extra": {}
+    },
+    "output": {"format": "wav"}
+  }'
+```
+
+## 运行 VoxCPM2
+
+```bash
+git clone https://github.com/OpenBMB/VoxCPM.git models/voxcpm/repo
+pip install modelscope
+modelscope download --model OpenBMB/VoxCPM --local_dir models/voxcpm/checkpoints
+
+pip install uv
+cd models/voxcpm/repo
+uv sync
+uv pip install uvicorn fastapi httpx pydantic pyyaml
+cd ../..
+
+bash services/voxcpm-service/start.sh
+curl http://127.0.0.1:5105/v1/health
+```
+
+## 运行 Gateway（统一入口）
+
+Gateway 依赖 Python 3.10+，需要本地 pip 安装依赖：
+
+```bash
 cd local-tts-gateway
+pip install fastapi httpx pydantic pyyaml uvicorn
 python -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8090
 ```
 
-Gateway 会自动从 `configs/providers/*.yaml` 加载 provider 配置，首次请求时懒启动对应子进程。
-
-### 3. 调用合成
-
-```powershell
-$body = @{
-    provider_id = "voxcpm-default"
-    text = "你好，欢迎使用语音合成。"
-    voice_id = "voxcpm2-default"
-    parameters = @{
-        instruction = "用温柔、知性的女声说"
-        extra = @{}
-    }
-    output = @{ format = "wav" }
-} | ConvertTo-Json -Depth 6
-
-curl.exe -sS -H "Content-Type: application/json" `
-  -o output.wav `
-  -X POST http://127.0.0.1:8090/v1/synthesize -d $body
-```
+Gateway 从 `configs/providers/*.yaml` 加载配置，首次请求时自动启动对应子进程。
 
 ## API 端点
 
@@ -171,7 +192,7 @@ curl.exe -sS -H "Content-Type: application/json" `
 
 设置环境变量 `LOCAL_TTS_API_KEY` 后，所有请求需带 `Authorization: Bearer <key>` 头。
 
-## 合成请求结构
+### 合成请求结构
 
 ```json
 {
@@ -215,20 +236,23 @@ tts-server/
 │   ├── index-tts-service/
 │   └── voxcpm-service/
 ├── docs/                      设计文档
-└── models/                    引擎原始代码 & 模型权重（不纳入版本控制）
+└── models/                    引擎源码 & 模型权重（不纳入版本控制）
 ```
 
-## 测试
+## 常见问题
 
-各子模块独立运行：
+### 启动时卡死在模型下载
 
-```bash
-cd local-tts-gateway && python -m pytest tests -v
-cd services/index-tts-service && python -m pytest tests -v
-```
+IndexTTS2 首次启动会从 HuggingFace 下载额外依赖模型（`w2v-bert-2.0` ~2.3GB、`MaskGCT` ~300MB、`campplus` ~28MB）。解决方法：
 
-## 配置
+1. 设置 HF 镜像：`export HF_ENDPOINT=https://hf-mirror.com`
+2. 首次下载后缓存到 `models/index-tts/repo/checkpoints/hf_cache/`，后续启动不再触网
+3. 无外网服务器需从本地打包上传已缓存好的 `hf_cache/` 目录
 
-- `configs/providers/*.yaml` — 每个 provider 的启动命令、端口、capabilities、预定义 voices
-- `configs/gateway.yaml` — Gateway 自身监听地址
-- `LOCAL_TTS_API_KEY` — 可选，API 认证密钥
+### CUDA Kernel 加载失败
+
+`Failed to load custom CUDA kernel for BigVGAN` — 缺 ninja，不影响功能，引擎会自动回退 torch 实现。想消除警告可 `pip install ninja`。
+
+### 其他引擎（CosyVoice / F5-TTS / GPT-SoVITS）
+
+这三个引擎引用项目外路径（如 `E:\AiModel\tts\GPT-SoVITS-v2-240821`），需单独安装对应引擎的项目到项目根目录后参照 start.ps1 / start.sh 启动。
