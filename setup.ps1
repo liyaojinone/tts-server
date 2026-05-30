@@ -12,7 +12,7 @@ $models = [ordered]@{
         WeightsSource  = "IndexTeam/IndexTTS-2"
         WeightsDir     = "models/index-tts/checkpoints"
         VenvDir        = "models/index-tts/repo/.venv"
-        ServiceDeps    = @("uvicorn", "fastapi", "httpx", "pydantic", "pyyaml")
+        ServiceDeps    = @("uvicorn", "fastapi", "httpx", "pydantic", "pyyaml", "python-multipart")
         Pip            = "models/index-tts/repo/.venv/Scripts/pip.exe"
     }
     "voxcpm" = @{
@@ -23,7 +23,7 @@ $models = [ordered]@{
         WeightsSource  = "OpenBMB/VoxCPM"
         WeightsDir     = "models/voxcpm/checkpoints"
         VenvDir        = "services/voxcpm-service/.venv"
-        ServiceDeps    = @("uvicorn", "fastapi", "httpx", "pydantic", "pyyaml")
+        ServiceDeps    = @("uvicorn", "fastapi", "httpx", "pydantic", "pyyaml", "python-multipart")
         Pip            = "services/voxcpm-service/.venv/Scripts/pip.exe"
     }
 }

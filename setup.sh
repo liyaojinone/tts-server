@@ -71,7 +71,7 @@ for model in $models; do
             WEIGHTS_HF="IndexTeam/IndexTTS"
             WEIGHTS_DIR="models/index-tts/checkpoints"
             VENV_DIR="$REPO_DIR/.venv"
-            SERVICE_DEPS="uvicorn fastapi httpx pydantic pyyaml"
+            SERVICE_DEPS="uvicorn fastapi httpx pydantic pyyaml python-multipart"
             ;;
         voxcpm)
             NAME="VoxCPM2"
@@ -81,7 +81,7 @@ for model in $models; do
             WEIGHTS_HF="OpenBMB/VoxCPM"
             WEIGHTS_DIR="models/voxcpm/checkpoints"
             VENV_DIR="services/voxcpm-service/.venv"
-            SERVICE_DEPS="uvicorn fastapi httpx pydantic pyyaml"
+            SERVICE_DEPS="uvicorn fastapi httpx pydantic pyyaml python-multipart"
             ;;
     esac
 
