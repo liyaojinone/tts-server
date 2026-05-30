@@ -11,32 +11,7 @@ MODEL_DIR="${WORKSPACE_ROOT}/models/voxcpm/checkpoints"
 PROFILE_DIR="${SERVICE_ROOT}/data/profiles"
 OUTPUT_DIR="${WORKSPACE_ROOT}/models/voxcpm/outputs"
 REPO_SRC="${REPO_DIR}/src"
-PIP_INDEX="${PIP_INDEX:-https://mirrors.aliyun.com/pypi/simple}"
-
-# --- 环境自检 & 自动修复 ---
-ensure_venv() {
-    if ! command -v uv &>/dev/null; then
-        echo "[setup] 安装 uv..."
-        pip install uv -q -i "$PIP_INDEX" || true
-    fi
-    if [ ! -f "$PYTHON_EXE" ]; then
-        echo "[setup] venv 不存在，自动创建..."
-        mkdir -p "$(dirname "$PYTHON_EXE")"
-        cd "$REPO_DIR"
-        uv sync --default-index "$PIP_INDEX" || true
-        cd "$SERVICE_ROOT"
-    fi
-    local missing=""
-    for pkg in uvicorn fastapi httpx pydantic yaml soundfile safetensors omegaconf; do
-        "$PYTHON_EXE" -c "import $pkg" 2>/dev/null || missing="$missing $pkg"
-    done
-    if [ -n "$missing" ]; then
-        echo "[setup] 缺失依赖:$missing，自动安装..."
-        cd "$REPO_DIR"
-        uv pip install $missing uvicorn fastapi httpx pydantic pyyaml python-multipart --default-index "$PIP_INDEX" || true
-        cd "$SERVICE_ROOT"
-    fi
-}
+PIP_INDEX="https://mirrors.aliyun.com/pypi/simple"
 
 if [ ! -d "$REPO_DIR" ]; then
     echo "ERROR: VoxCPM repo not found at $REPO_DIR"
@@ -49,7 +24,17 @@ if [ ! -d "$MODEL_DIR" ]; then
     exit 1
 fi
 
-ensure_venv
+# venv 不存在则用 uv sync 一键创建
+if [ ! -f "$PYTHON_EXE" ]; then
+    echo "[setup] venv 不存在，自动创建..."
+    if ! command -v uv &>/dev/null; then
+        pip install uv -q -i "$PIP_INDEX"
+    fi
+    cd "$REPO_DIR"
+    uv sync --default-index "$PIP_INDEX"
+    uv pip install uvicorn fastapi httpx pydantic pyyaml python-multipart --default-index "$PIP_INDEX"
+    cd "$SERVICE_ROOT"
+fi
 
 mkdir -p "${PROFILE_DIR}/clones" "${PROFILE_DIR}/designs" "$OUTPUT_DIR"
 
