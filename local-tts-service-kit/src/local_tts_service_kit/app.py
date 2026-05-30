@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import os
+import traceback
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
@@ -54,6 +55,7 @@ def create_service_app(service_name: str, handler, api_key: Optional[str] = None
 
     @app.exception_handler(Exception)
     async def unexpected_error_handler(request: Request, exc: Exception):
+        traceback.print_exc()
         return build_error_response(map_exception(exc))
 
     @app.get("/v1/health")
