@@ -122,21 +122,15 @@ for model in $models; do
 
     # ---- 3. 虚拟环境（uv sync，遵循引擎官方 pyproject.toml） ----
     step "3/3 Python 虚拟环境"
-    if [ -f "$VENV_DIR/bin/python" ]; then
-        ok "venv 已存在: $VENV_DIR"
-    else
-        echo "   cd $REPO_DIR && uv sync --default-index $PIP_INDEX"
-        mkdir -p "$(dirname "$VENV_DIR")"
-        ( cd "$REPO_DIR" && uv sync --default-index "$PIP_INDEX" )
-        ok "venv 创建完成（uv sync）"
-    fi
+    echo "   cd $REPO_DIR && uv sync --default-index $PIP_INDEX"
+    mkdir -p "$(dirname "$VENV_DIR")"
+    ( cd "$REPO_DIR" && uv sync --default-index "$PIP_INDEX" )
+    ok "venv 就绪（uv sync）"
 
     # 追加服务层依赖
-    if [ -n "$SERVICE_DEPS" ]; then
-        echo "   uv pip install $SERVICE_DEPS"
-        ( cd "$REPO_DIR" && uv pip install $SERVICE_DEPS --default-index "$PIP_INDEX" )
-        ok "服务层依赖就绪"
-    fi
+    echo "   uv pip install $SERVICE_DEPS"
+    ( cd "$REPO_DIR" && uv pip install $SERVICE_DEPS --default-index "$PIP_INDEX" )
+    ok "服务层依赖就绪"
 done
 
 # ---------- 外部引擎检查 ----------

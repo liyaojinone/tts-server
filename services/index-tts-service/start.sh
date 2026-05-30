@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# start.sh — IndexTTS2 Service 启动脚本（Linux / AutoDL）
+# start.sh — IndexTTS2 Service 启动脚本
 set -euo pipefail
 
 SERVICE_ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -10,33 +10,13 @@ REPO_DIR="${WORKSPACE_ROOT}/models/index-tts/repo"
 MODEL_DIR="${WORKSPACE_ROOT}/models/index-tts/checkpoints"
 PROFILE_DIR="${SERVICE_ROOT}/data/profiles"
 OUTPUT_DIR="${WORKSPACE_ROOT}/models/index-tts/outputs"
-PIP_INDEX="https://mirrors.aliyun.com/pypi/simple"
 
-if [ ! -d "$REPO_DIR" ]; then
-    echo "ERROR: IndexTTS repo not found at $REPO_DIR"
-    echo "Run: git clone https://github.com/index-tts/index-tts.git $REPO_DIR"
-    exit 1
-fi
-if [ ! -d "$MODEL_DIR" ]; then
-    echo "ERROR: Model checkpoints not found at $MODEL_DIR"
-    echo "Run: modelscope download --model IndexTeam/IndexTTS-2 --local-dir $MODEL_DIR"
-    exit 1
-fi
-
-# venv 不存在则用 uv sync 一键创建
 if [ ! -f "$PYTHON_EXE" ]; then
-    echo "[setup] venv 不存在，自动创建..."
-    if ! command -v uv &>/dev/null; then
-        pip install uv -q -i "$PIP_INDEX"
-    fi
-    cd "$REPO_DIR"
-    uv sync --default-index "$PIP_INDEX"
-    uv pip install uvicorn fastapi httpx pydantic pyyaml python-multipart --default-index "$PIP_INDEX"
-    cd "$SERVICE_ROOT"
+    echo "ERROR: venv 不存在，请先运行: bash setup.sh"
+    exit 1
 fi
 
 mkdir -p "$PROFILE_DIR" "$OUTPUT_DIR"
-
 cd "$SERVICE_ROOT"
 
 export PYTHONPATH="${SERVICE_ROOT}:${WORKSPACE_ROOT}/local-tts-protocol/src:${WORKSPACE_ROOT}/local-tts-service-kit/src:${REPO_DIR}"
@@ -54,7 +34,6 @@ export INDEXTTS_PRELOAD_ON_STARTUP="true"
 echo "Using Python: $PYTHON_EXE"
 echo "REPO:         $INDEXTTS_REPO_DIR"
 echo "MODEL:        $INDEXTTS_MODEL_DIR"
-echo "Preloading:   $INDEXTTS_PRELOAD_ON_STARTUP"
 echo "Starting index-tts-service on http://0.0.0.0:5104"
 
 exec "$PYTHON_EXE" -m uvicorn app.main:create_app --factory --host 0.0.0.0 --port 5104
