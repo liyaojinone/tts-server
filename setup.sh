@@ -69,7 +69,7 @@ for model in $models; do
             WEIGHTS_REPO="IndexTeam/IndexTTS"
             WEIGHTS_DIR="models/index-tts/checkpoints"
             VENV_DIR="models/index-tts/repo/.venv"
-            PIP_DEPS="huggingface_hub soundfile librosa torch torchaudio transformers modelscope safetensors omegaconf"
+            PIP_DEPS="huggingface_hub soundfile librosa modelscope safetensors omegaconf"
             ;;
         voxcpm)
             NAME="VoxCPM2"
@@ -78,7 +78,7 @@ for model in $models; do
             WEIGHTS_REPO="OpenBMB/VoxCPM"
             WEIGHTS_DIR="models/voxcpm/checkpoints"
             VENV_DIR="services/voxcpm-service/.venv"
-            PIP_DEPS="huggingface_hub soundfile torch torchaudio transformers safetensors omegaconf hydra-core"
+            PIP_DEPS="huggingface_hub soundfile transformers safetensors omegaconf hydra-core"
             ;;
     esac
 
@@ -122,12 +122,12 @@ for model in $models; do
     if [ -f "$VENV_DIR/bin/python" ]; then
         ok "venv 已存在: $VENV_DIR"
     else
-        echo "   python3 -m venv $VENV_DIR"
-        python3 -m venv "$VENV_DIR"
-        ok "venv 创建完成"
+        echo "   python3 -m venv --system-site-packages $VENV_DIR"
+        python3 -m venv --system-site-packages "$VENV_DIR"
+        ok "venv 创建完成（继承系统 PyTorch）"
     fi
 
-    # 安装依赖
+    # 安装依赖（不含 torch，由系统 site-packages 提供）
     if [ -f "$VENV_DIR/bin/pip" ] && [ -n "$PIP_DEPS" ]; then
         read -rp "   是否安装/更新 pip 依赖？（y/n，默认 n）" idp
         if [ "$idp" = "y" ]; then
