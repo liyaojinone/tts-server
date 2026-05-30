@@ -61,7 +61,7 @@ models/
 
 ```powershell
 # IndexTTS2
-git clone https://github.com/IndexTeam/IndexTTS.git models/index-tts/repo
+git clone https://github.com/index-tts/index-tts.git models/index-tts/repo
 
 # VoxCPM
 git clone https://github.com/OpenBMB/VoxCPM.git models/voxcpm/repo

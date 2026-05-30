@@ -64,7 +64,7 @@ for model in $models; do
     case $model in
         indextts)
             NAME="IndexTTS2"
-            REPO_URL="https://github.com/IndexTeam/IndexTTS.git"
+            REPO_URL="https://github.com/index-tts/index-tts.git"
             REPO_DIR="models/index-tts/repo"
             WEIGHTS_REPO="IndexTeam/IndexTTS"
             WEIGHTS_DIR="models/index-tts/checkpoints"
