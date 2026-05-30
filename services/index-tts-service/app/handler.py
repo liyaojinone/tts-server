@@ -128,6 +128,12 @@ class IndexTTSHandler:
         if self.test_mode:
             return None
         if self.tts is None:
+            # 强制离线，避免从 HF 重新下载
+            if not os.environ.get("HF_HUB_OFFLINE"):
+                os.environ["HF_HUB_OFFLINE"] = "1"
+            if not os.environ.get("TRANSFORMERS_OFFLINE"):
+                os.environ["TRANSFORMERS_OFFLINE"] = "1"
+
             from indextts.infer_v2 import IndexTTS2
 
             with pushd(INDEXTTS_REPO_DIR):
