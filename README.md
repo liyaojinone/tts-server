@@ -241,13 +241,15 @@ tts-server/
 
 ## 常见问题
 
-### 启动时卡死在模型下载
+### AutoDL / 云服务器网络加速
 
-IndexTTS2 首次启动会从 HuggingFace 下载额外依赖模型（`w2v-bert-2.0` ~2.3GB、`MaskGCT` ~300MB、`campplus` ~28MB）。解决方法：
+AutoDL 内置学术加速，启动服务前执行：
 
-1. 设置 HF 镜像：`export HF_ENDPOINT=https://hf-mirror.com`
-2. 首次下载后缓存到 `models/index-tts/repo/checkpoints/hf_cache/`，后续启动不再触网
-3. 无外网服务器需从本地打包上传已缓存好的 `hf_cache/` 目录
+```bash
+source /etc/network_turbo
+```
+
+这会加速 github.com 和 huggingface.co 的访问，首次启动下载模型依赖时全速。
 
 ### CUDA Kernel 加载失败
 
