@@ -20,6 +20,14 @@ if ! command -v git &>/dev/null; then echo "请先安装 git"; exit 1; fi
 if ! command -v python3 &>/dev/null; then echo "请先安装 python3"; exit 1; fi
 ok "git & python3 就绪"
 
+# 系统依赖
+if ! python3 -c "import soundfile" 2>/dev/null || ! python3 -c "import soundfile; soundfile.SoundFile('/dev/null')" 2>/dev/null; then
+    echo "   安装系统音频库..."
+    apt-get update -qq && apt-get install -y -qq libsndfile1 2>/dev/null || true
+    conda install -y -c conda-forge libsndfile 2>/dev/null || true
+fi
+ok "系统依赖就绪"
+
 # 确保 uv 已安装
 if ! command -v uv &>/dev/null; then
     echo "   安装 uv..."
