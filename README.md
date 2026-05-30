@@ -35,99 +35,49 @@ flowchart LR
 
 以 IndexTTS2 为例，其他引擎流程类似。
 
-### 1. 克隆项目
+### 1. 一键初始化
 
 ```bash
-git clone https://github.com/liyaojinone/tts-server.git
-cd tts-server
+# AutoDL / 国内云服务器
+source /etc/network_turbo    # AutoDL 网络加速
+bash setup.sh                # 交互式选择模型，自动完成以下全部
 ```
 
-### 2. 克隆引擎源码
+`setup.sh` 自动执行三步：
 
-```bash
-git clone https://github.com/index-tts/index-tts.git models/index-tts/repo
-```
+| 步骤 | 做什么 | 方式 |
+|------|--------|------|
+| 1. 源码仓库 | `git clone` 引擎代码到 `models/index-tts/repo/` | GitHub |
+| 2. 模型权重 | 下载主权重到 `models/index-tts/checkpoints/` | ModelScope（国内快） |
+| 3. 虚拟环境 | 安装所有 Python 依赖 + 系统库 | `uv sync` + `apt install libsndfile1` |
 
-### 3. 下载模型权重
-
-```bash
-pip install modelscope
-modelscope download --model IndexTeam/IndexTTS-2 --local_dir models/index-tts/checkpoints
-```
-
-> Windows / 国外网络也可以直接：
-> ```bash
-> pip install huggingface_hub
-> huggingface-cli download IndexTeam/IndexTTS --local-dir models/index-tts/checkpoints
-> ```
-
-### 3-2. 无外网服务器（从本地上传）
-
-服务器无外网时，在本地将已下好的权重打包上传：
-
-```bash
-# 本地打包
-cd models/index-tts/repo
-tar -czf checkpoints.tar.gz checkpoints/hf_cache/
-
-# 上传到服务器后解压
-tar -xzf checkpoints.tar.gz -C /root/tts-server/models/index-tts/repo/
-```
-
-### 4. 创建虚拟环境并安装依赖
-
-```bash
-# 安装 uv 包管理器
-pip install uv
-
-# 进入引擎仓库，一键安装所有依赖
-cd models/index-tts/repo
-uv sync --default-index https://mirrors.aliyun.com/pypi/simple
-
-# 追加服务层依赖
-uv pip install uvicorn fastapi httpx pydantic pyyaml
-cd ../..
-```
-
-### 5. 设置 HF 镜像（国内服务器必须）
-
-```bash
-export HF_ENDPOINT=https://hf-mirror.com
-```
-
-### 6. 启动服务
+### 2. 启动服务
 
 ```bash
 bash services/index-tts-service/start.sh
 ```
 
-### 7. 验证运行
+首次启动引擎会从 HuggingFace 自动下载引用的第三方模型（`facebook/w2v-bert-2.0` ~2.3G、`amphion/MaskGCT` ~300M、`funasr/campplus` ~28M、`nvidia/bigvgan`），缓存到 `models/index-tts/repo/checkpoints/hf_cache/`。后续启动不再触网。
+
+> 模型有两批：第一批是你从 ModelScope 下的**主权重**（`gpt.pth` 等，IndexTTS 团队的）；第二批是引擎启动时自动从 HF 拉的**第三方零件**（w2v-bert、MaskGCT 等，其他团队训的）。这是引擎官方代码的行为，不是本项目的额外操作。
+
+### 3. 验证运行
 
 ```bash
 curl http://127.0.0.1:5104/v1/health
-# 返回: {"status":"ok","model":"IndexTTS2","version":"local","ready":true}
-
-curl http://127.0.0.1:5104/v1/voices
-# 返回音色列表
+# {"status":"ok","model":"IndexTTS2","version":"local","ready":true}
 ```
 
-### 8. 合成测试
+### 4. 合成测试
+
+引擎 examples 目录下的 wav 文件是 Git LFS 指针（ASCII 文本），需生成标准测试文件：
 
 ```bash
-curl -sS \
-  -H "Content-Type: application/json" \
-  -o output.wav \
+python3 -c 'import soundfile as sf, numpy as np; sf.write("/tmp/test.wav", np.zeros(16000), 16000)'
+
+curl -sS -H "Content-Type: application/json" -o /tmp/output.wav \
   -X POST http://127.0.0.1:5104/v1/synthesize \
-  -d '{
-    "text": "你好，这是一个测试。",
-    "voice_id": "index-default",
-    "language": "zh",
-    "parameters": {
-        "reference_audio": "/root/ref.wav",
-        "extra": {}
-    },
-    "output": {"format": "wav"}
-  }'
+  -d '{"text":"你好，测试成功。","voice_id":"index-default","language":"zh","parameters":{"reference_audio":"/tmp/test.wav","extra":{}},"output":{"format":"wav"}}'
 ```
 
 ## 运行 VoxCPM2
@@ -238,6 +188,51 @@ tts-server/
 ├── docs/                      设计文档
 └── models/                    引擎源码 & 模型权重（不纳入版本控制）
 ```
+
+## 常见问题
+
+### AutoDL 网络加速
+
+```bash
+source /etc/network_turbo
+```
+
+### soundfile / librosa: "Format not recognised" 或 NoBackendError
+
+缺少系统音频库，已集成到 `setup.sh`。手动安装：
+
+```bash
+apt-get install -y libsndfile1
+```
+
+### 示例 wav 文件无法读取
+
+引擎 examples 下的 wav 可能是 Git LFS 指针文件（`file xxx.wav` 显示 "ASCII text"）。生成标准测试文件：
+
+```bash
+python3 -c 'import soundfile as sf, numpy as np; sf.write("/tmp/test.wav", np.zeros(16000), 16000)'
+```
+
+### 首次启动下载第三方模型
+
+首次启动时引擎会从 HuggingFace 自动下载引用的模型（`w2v-bert-2.0` ~2.3G、`MaskGCT` ~300M、`campplus` ~28M），缓存到 `repo/checkpoints/hf_cache/`。确保执行了 `source /etc/network_turbo`，下载后不再触网。
+
+### CUDA Kernel: "Ninja is required"
+
+不影响功能，引擎自动回退 torch 实现。消除警告：`uv pip install ninja`。
+
+### GPU 未使用 / CPU 模式
+
+`uv sync` 安装的 torch CUDA 版本与系统驱动不匹配时，覆盖安装：
+
+```bash
+cd models/index-tts/repo
+uv pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
+```
+
+### 其他引擎（CosyVoice / F5-TTS / GPT-SoVITS）
+
+这三个引擎引用项目外路径，需单独安装到项目根目录后参照对应 start 脚本启动。
 
 ## 常见问题
 
