@@ -128,10 +128,8 @@ class IndexTTSHandler:
         if self.test_mode:
             return None
         if self.tts is None:
-            # HF 下载加速设置
             if not os.environ.get("HF_ENDPOINT"):
                 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
-            os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 
             from indextts.infer_v2 import IndexTTS2
 
