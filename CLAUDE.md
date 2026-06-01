@@ -52,7 +52,7 @@ python -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port 5103
 - **路由层**：
   - `/v1/providers` 系列（providers.py）：列举、查询 provider 及其 voices
   - `/v1/providers/{id}/synthesize`、`/v1/synthesize`（synthesize.py）：合成请求，自动启动 provider 子进程
-  - `/internal/` 系列（internal.py）：provider 运行状态查询与控制（start/stop/restart）
+  - `/v1/` 系列：provider 运行状态查询与控制（start/stop/restart/status/logs）
   - `/v1/health`（health.py）：gateway 自身健康检查
 
 ### Service 模式（`services/*`）

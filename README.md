@@ -118,8 +118,8 @@ Gateway 自动加载对应平台的 provider 配置：
 Gateway 首次请求时自动启动引擎子进程，也可通过 API 手动控制：
 
 ```bash
-curl -X POST http://127.0.0.1:6006/internal/providers/local_index_tts/start
-curl http://127.0.0.1:6006/internal/providers/status
+curl -X POST http://127.0.0.1:6006/v1/providers/local_index_tts/start
+curl http://127.0.0.1:6006/v1/providers/status
 ```
 
 ## API 端点
@@ -280,8 +280,8 @@ tail -f local-tts-gateway/logs/gateway.log
 tail -f local-tts-gateway/logs/local_index_tts/stderr.log
 
 # 或通过 API
-curl http://127.0.0.1:6006/internal/logs?lines=50
-curl "http://127.0.0.1:6006/internal/providers/local_index_tts/logs?stream=stderr&lines=50"
+curl "http://127.0.0.1:6006/v1/logs?lines=50"
+curl "http://127.0.0.1:6006/v1/providers/local_index_tts/logs?stream=stderr&lines=50"
 ```
 
 ## 项目结构

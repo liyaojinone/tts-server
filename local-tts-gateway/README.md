@@ -22,10 +22,10 @@ It loads provider definitions from `configs/providers`, starts model services la
 - `POST /v1/providers/{provider_id}/synthesize`
 - `GET /v1/voices?provider_id=...`
 - `POST /v1/synthesize`
-- `GET /internal/providers/status`
-- `POST /internal/providers/{provider_id}/start`
-- `POST /internal/providers/{provider_id}/stop`
-- `POST /internal/providers/{provider_id}/restart`
+- `GET /v1/providers/status`
+- `POST /v1/providers/{provider_id}/start`
+- `POST /v1/providers/{provider_id}/stop`
+- `POST /v1/providers/{provider_id}/restart`
 
 ## Provider config
 
