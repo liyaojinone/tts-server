@@ -26,6 +26,7 @@ runtime:
     INDEXTTS_USE_DEEPSPEED: "false"
     INDEXTTS_USE_ACCEL: "false"
     INDEXTTS_USE_TORCH_COMPILE: "false"
+    INDEXTTS_PRELOAD_ON_STARTUP: "true"
   startup_timeout_ms: 180000
   request_timeout_ms: 600000
   idle_shutdown_seconds: 0
