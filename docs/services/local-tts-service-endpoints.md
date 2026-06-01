@@ -142,51 +142,55 @@ curl -sS -H "Content-Type: application/json" -o out.wav \
 
 ## 管理 API（`/v1/*`）
 
-### `GET /v1/health` — Gateway 自身健康
+### 健康 & 日志
 
 ```bash
 curl http://127.0.0.1:6006/v1/health
 # {"status":"ok"}
+
+curl "http://127.0.0.1:6006/v1/logs?lines=100"
 ```
 
-### `GET /v1/providers` — 列出所有 provider
+### Provider 列表
 
 ```bash
 curl http://127.0.0.1:6006/v1/providers
-```
-
-### `GET /v1/providers/{id}` — 查看 provider
-
-```bash
 curl http://127.0.0.1:6006/v1/providers/local_index_tts
 ```
 
----
+### 运行时状态
 
-## 运维 API（`/internal/*`）
+```bash
+curl http://127.0.0.1:6006/v1/providers/status
+```
+
+```json
+{
+  "providers": [{
+    "provider_id": "local_index_tts",
+    "status": "healthy",
+    "pid": 12345,
+    "port": 5104,
+    "started_at": "2026-06-01T08:30:00",
+    "last_used_at": "2026-06-01T08:35:00",
+    "startup_attempts": 1,
+    "last_error": null
+  }]
+}
+```
 
 ### 引擎生命周期
 
 ```bash
-curl -X POST http://127.0.0.1:6006/internal/providers/local_index_tts/start
-curl -X POST http://127.0.0.1:6006/internal/providers/local_index_tts/stop
-curl -X POST http://127.0.0.1:6006/internal/providers/local_index_tts/restart
-```
-
-### 状态查询
-
-```bash
-curl http://127.0.0.1:6006/internal/providers/status
+curl -X POST http://127.0.0.1:6006/v1/providers/local_index_tts/start
+curl -X POST http://127.0.0.1:6006/v1/providers/local_index_tts/stop
+curl -X POST http://127.0.0.1:6006/v1/providers/local_index_tts/restart
 ```
 
 ### 日志
 
 ```bash
-# Gateway 日志
-curl "http://127.0.0.1:6006/internal/logs?lines=100"
-
-# 引擎日志
-curl "http://127.0.0.1:6006/internal/providers/local_index_tts/logs?stream=stderr&lines=50"
+curl "http://127.0.0.1:6006/v1/providers/local_index_tts/logs?stream=stderr&lines=50"
 ```
 
 ---

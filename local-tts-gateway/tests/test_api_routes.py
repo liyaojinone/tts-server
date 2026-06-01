@@ -9,7 +9,7 @@ def test_health_and_provider_routes():
 
     health_response = client.get("/v1/health")
     providers_response = client.get("/v1/providers")
-    status_response = client.get("/internal/providers/status")
+    status_response = client.get("/v1/providers/status")
 
     assert health_response.status_code == 200
     assert health_response.json()["status"] == "ok"

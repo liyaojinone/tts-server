@@ -13,7 +13,7 @@ async def health():
     return {"status": "ok"}
 
 
-@router.get("/internal/logs")
+@router.get("/v1/logs")
 async def gateway_logs(lines: int = Query(default=100, ge=1, le=2000)):
     if not LOG_FILE.exists():
         return {"content": ""}

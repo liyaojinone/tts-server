@@ -152,19 +152,14 @@ curl http://127.0.0.1:6006/internal/providers/status
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/v1/health` | Gateway 健康检查 |
+| GET | `/v1/logs` | Gateway 日志 |
 | GET | `/v1/providers` | 列出所有 provider |
 | GET | `/v1/providers/{id}` | 查看 provider 详情 |
-
-**运维 API**（`/internal/*`）：
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/internal/providers/status` | 所有 provider 运行时详情 |
-| POST | `/internal/providers/{id}/start` | 启动 provider |
-| POST | `/internal/providers/{id}/stop` | 停止 provider |
-| POST | `/internal/providers/{id}/restart` | 重启 provider |
-| GET | `/internal/providers/{id}/logs` | 查看 provider 日志 |
-| GET | `/internal/logs` | 查看 Gateway 日志 |
+| GET | `/v1/providers/status` | 所有 provider 运行时状态 |
+| POST | `/v1/providers/{id}/start` | 启动 provider |
+| POST | `/v1/providers/{id}/stop` | 停止 provider |
+| POST | `/v1/providers/{id}/restart` | 重启 provider |
+| GET | `/v1/providers/{id}/logs` | 查看 provider 日志 |
 
 ### 响应头
 
