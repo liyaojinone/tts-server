@@ -1,4 +1,4 @@
-provider_id: indextts-default
+provider_id: local_index_tts
 provider_type: indextts
 display_name: IndexTTS Default
 enabled: true

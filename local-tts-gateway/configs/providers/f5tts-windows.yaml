@@ -1,4 +1,4 @@
-provider_id: f5tts-default
+provider_id: local_f5_tts
 provider_type: f5-tts
 display_name: F5-TTS Default
 enabled: true

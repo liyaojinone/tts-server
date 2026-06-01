@@ -1,4 +1,4 @@
-provider_id: cosyvoice-default
+provider_id: local_cosyvoice2
 provider_type: cosyvoice
 display_name: CosyVoice Default
 enabled: true

@@ -1,4 +1,4 @@
-provider_id: gptsovits-default
+provider_id: local_gpt_sovits
 provider_type: gptsovits
 display_name: GPT-SoVITS Default
 enabled: true

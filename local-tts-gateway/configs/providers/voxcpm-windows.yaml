@@ -1,4 +1,4 @@
-provider_id: voxcpm-default
+provider_id: local_voxcpm
 provider_type: voxcpm
 display_name: VoxCPM2 Default
 enabled: true

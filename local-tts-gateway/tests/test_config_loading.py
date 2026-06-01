@@ -12,10 +12,10 @@ def test_load_provider_configs():
     provider_types = {provider.provider_type for provider in providers}
 
     assert provider_ids == {
-        "cosyvoice-default",
-        "f5tts-default",
-        "gptsovits-default",
-        "indextts-default",
-        "voxcpm-default",
+        "local_cosyvoice2",
+        "local_f5_tts",
+        "local_gpt_sovits",
+        "local_index_tts",
+        "local_voxcpm",
     }
     assert provider_types == {"cosyvoice", "f5-tts", "gptsovits", "indextts", "voxcpm"}
