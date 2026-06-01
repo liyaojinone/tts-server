@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import json as _json
 
 import httpx
 
@@ -38,11 +39,14 @@ class BaseProviderAdapter:
 
     async def synthesize(self, provider, request: UnifiedSynthesizeRequest, files=None) -> AudioResult:
         mapped = self.build_request(request)
-        if files:
-            mapped.files = files
         timeout = provider.runtime.request_timeout_ms / 1000
         async with httpx.AsyncClient(base_url=provider.network.base_url, timeout=timeout, trust_env=False) as client:
-            response = await client.request(mapped.method, mapped.path, json=mapped.json, files=mapped.files)
+            if files:
+                # multipart: 包装 JSON 为 "request" 表单字段，加上文件字段
+                data = {"request": _json.dumps(mapped.json)}
+                response = await client.request(mapped.method, mapped.path, data=data, files=files)
+            else:
+                response = await client.request(mapped.method, mapped.path, json=mapped.json)
             response.raise_for_status()
         return AudioResult(
             content=response.content,
