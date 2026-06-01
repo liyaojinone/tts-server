@@ -10,10 +10,8 @@ PORT="${1:-6006}"
 cd "$GATEWAY_DIR"
 
 # 自动安装依赖
-if ! python3 -c "import fastapi, httpx, pydantic, yaml, uvicorn" 2>/dev/null; then
-    echo "[setup] 安装 Gateway 依赖..."
-    pip install fastapi httpx pydantic pyyaml uvicorn python-multipart -q -i "$PIP_INDEX"
-fi
+echo "[setup] 检查并安装 Gateway 依赖..."
+pip install fastapi httpx pydantic pyyaml uvicorn python-multipart -q -i "$PIP_INDEX"
 
 echo "Starting Local TTS Gateway on http://0.0.0.0:$PORT"
 echo "Providers loaded from configs/providers/"
