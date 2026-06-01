@@ -1,297 +1,296 @@
-# Local TTS Service Endpoints
+# Local TTS API Reference
 
-> 日期：2026-04-10  
-> 适用服务：`cosyvoice-service` / `f5tts-service` / `gptsovits-service` / `voxcpm-service`
+> 更新时间：2026-06-01
+> 入口：Gateway `:6006`（推荐），也可直连各引擎服务 `:5101` ~ `:5105`
 
-## Service Base URLs
+## Provider ID
 
-| Service | Base URL | Default Port |
-|---|---|---|
-| CosyVoice | `http://127.0.0.1:5101` | `5101` |
-| F5-TTS | `http://127.0.0.1:5102` | `5102` |
-| GPT-SoVITS | `http://127.0.0.1:5103` | `5103` |
-| VoxCPM2 | `http://127.0.0.1:5105` | `5105` |
-
-## Supported Protocol Endpoints
-
-All services expose the same protocol-shaped HTTP surface:
-
-| Method | Path | Status |
-|---|---|---|
-| `GET` | `/v1/health` | Implemented |
-| `GET` | `/v1/voices` | Implemented |
-| `POST` | `/v1/synthesize` | Implemented |
-| `POST` | `/v1/clone` | Implemented |
-| `GET` | `/v1/clone/{task_id}/status` | Implemented |
-| `POST` | `/v1/synthesize/stream` | Reserved, currently returns `404 ENDPOINT_NOT_AVAILABLE` |
-| `POST` | `/v1/design` | Implemented by `voxcpm-service`, reserved on the others |
+| Provider ID | 引擎 | 端口 |
+|-------------|------|------|
+| `local_index_tts` | IndexTTS2 | 5104 |
+| `local_voxcpm` | VoxCPM2 | 5105 |
+| `local_gpt_sovits` | GPT-SoVITS | 5103 |
+| `local_f5_tts` | F5-TTS | 5102 |
+| `local_cosyvoice2` | CosyVoice2 | 5101 |
 
 ## Authentication
 
-If environment variable `LOCAL_TTS_API_KEY` is configured, every request must include:
+若设置环境变量 `LOCAL_TTS_API_KEY`，所有请求需带：
 
 ```http
 Authorization: Bearer <apiKey>
 ```
 
-If `LOCAL_TTS_API_KEY` is not configured, the services accept unauthenticated local requests.
+未设置则无需认证。
 
-## Health Check
+---
 
-Example:
+## Gateway Endpoints（:6006）
 
-```powershell
-curl.exe http://127.0.0.1:5101/v1/health
-curl.exe http://127.0.0.1:5102/v1/health
-curl.exe http://127.0.0.1:5103/v1/health
-curl.exe http://127.0.0.1:5105/v1/health
+### 健康 & 状态
+
+**`GET /v1/health`**
+
+```bash
+curl http://127.0.0.1:6006/v1/health
+# {"status":"ok"}
 ```
 
-Typical response:
+**`GET /v1/providers`**
+
+```bash
+curl http://127.0.0.1:6006/v1/providers
+# {"providers":[{"provider_id":"local_index_tts","provider_type":"indextts","display_name":"IndexTTS Default","enabled":true}]}
+```
+
+**`GET /v1/providers/{id}`**
+
+```bash
+curl http://127.0.0.1:6006/v1/providers/local_index_tts
+```
+
+**`GET /v1/providers/{id}/health`**
+
+```bash
+curl http://127.0.0.1:6006/v1/providers/local_index_tts/health
+# {"provider_id":"local_index_tts","status":"healthy"}
+```
+
+### 音色
+
+**`GET /v1/providers/{id}/voices`** 或 **`GET /v1/voices?provider_id=xxx`**
+
+```bash
+curl http://127.0.0.1:6006/v1/providers/local_index_tts/voices
+curl "http://127.0.0.1:6006/v1/voices?provider_id=local_index_tts"
+```
+
+Response:
 
 ```json
 {
-  "status": "ok",
-  "model": "GPT-SoVITS",
-  "version": "local"
-}
-```
-
-`GPT-SoVITS` and `VoxCPM2` currently also return `ready: true/false`.
-
-## Voices
-
-Example:
-
-```powershell
-curl.exe http://127.0.0.1:5101/v1/voices
-curl.exe http://127.0.0.1:5102/v1/voices
-curl.exe http://127.0.0.1:5103/v1/voices
-curl.exe http://127.0.0.1:5105/v1/voices
-```
-
-The response shape is:
-
-```json
-{
-  "voices": [
-    {
-      "voice_id": "default",
-      "name": "Default",
-      "language": ["zh"],
-      "gender": "female",
-      "description": "voice description",
-      "tags": ["clone"],
-      "metadata": {}
-    }
-  ],
+  "voices": [{
+    "voice_id": "index-default",
+    "name": "IndexTTS Default",
+    "language": ["zh", "en"],
+    "gender": null,
+    "description": "IndexTTS2 reference-driven synthesis mode",
+    "tags": ["reference", "default"],
+    "metadata": {}
+  }],
   "total": 1,
   "page": 1,
   "page_size": 100
 }
 ```
 
-## Synthesize
+### 合成 `POST /v1/synthesize`
 
-Request:
+三种传参方式，`reference_audio` 和 `emotion_reference_audio` 均支持。
 
-```json
-{
-  "text": "你好，这是一次协议调用测试。",
-  "voice_id": "default",
-  "language": "zh",
-  "parameters": {
-    "speed": 1.0,
-    "emotion": "calm",
-    "emotion_intensity": 0.8,
-    "instruction": "用温柔语气说",
-    "reference_audio": null,
-    "reference_text": null,
-    "extra": {}
-  },
-  "output": {
-    "format": "wav",
-    "sample_rate": 24000
-  }
-}
+#### 方式一：JSON（文件路径 或 base64）
+
+```bash
+curl -sS -H "Content-Type: application/json" -o out.wav \
+  -X POST http://127.0.0.1:6006/v1/synthesize \
+  -d '{
+    "provider_id": "local_index_tts",
+    "text": "你好，测试。",
+    "voice_id": "index-default",
+    "language": "zh",
+    "parameters": {
+      "speed": 1.0,
+      "pitch": 0.0,
+      "volume": 1.0,
+      "emotion": null,
+      "emotion_intensity": null,
+      "instruction": null,
+      "reference_audio": "/home/test.wav",
+      "reference_text": null,
+      "extra": {
+        "emotion_reference_audio": null,
+        "emo_text": null,
+        "emo_alpha": 1.0,
+        "cfg_value": 2.0,
+        "inference_timesteps": 10
+      }
+    },
+    "output": {"format": "wav", "sample_rate": null}
+  }'
 ```
 
-Example:
+reference_audio 支持三种值：
 
-```powershell
-$payload = @{
-  text = "你好，这是一次协议调用测试。"
-  voice_id = "default"
-  language = "zh"
-  parameters = @{
-    speed = 1.0
-    extra = @{}
-  }
-  output = @{
-    format = "wav"
-  }
-} | ConvertTo-Json -Depth 6
+| 格式 | 示例 |
+|------|------|
+| 文件路径 | `"/home/test.wav"` |
+| base64 | `"data:audio/wav;base64,UklGRiQAAABXQVZF..."` |
+| null | 不传（需通过 clone 注册的 voice_id 代替） |
 
-$payload | Set-Content -Path "$env:TEMP\local-tts-request.json" -Encoding UTF8
+#### 方式二：multipart（直接上传文件）
 
-curl.exe -sS ^
-  -H "Content-Type: application/json" ^
-  -o synth.wav ^
-  -X POST http://127.0.0.1:5103/v1/synthesize ^
-  --data-binary "@$env:TEMP\local-tts-request.json"
+```bash
+curl -sS -o out.wav \
+  -X POST http://127.0.0.1:6006/v1/synthesize \
+  -F 'request={"provider_id":"local_index_tts","text":"你好","voice_id":"index-default"}' \
+  -F "reference_audio=@speaker.wav" \
+  -F "emotion_reference_audio=@emo.wav"
 ```
 
-Success response headers typically include:
+#### 方式三：指定 provider 路径
 
-- `Content-Type: audio/wav`
-- `X-Sample-Rate: ...`
-- `X-Audio-Duration: ...` when available
+```bash
+curl -sS -H "Content-Type: application/json" -o out.wav \
+  -X POST http://127.0.0.1:6006/v1/providers/local_index_tts/synthesize \
+  -d '{"text":"你好","voice_id":"index-default","parameters":{"reference_audio":"/home/test.wav"}}'
+```
 
-## Clone
+### 克隆 `POST /v1/providers/{id}/clone`
 
-`/v1/clone` creates a reusable voice profile from one reference audio file.
+上传参考音频注册音色，得到 voice_id 后合成时无需再传 reference_audio。
 
-Example:
-
-```powershell
-curl.exe -sS ^
-  -X POST http://127.0.0.1:5103/v1/clone ^
-  -F "audio=@E:/AiModel/tts/GPT-SoVITS-v2-240821/pangbai.wav" ^
-  -F "name=pangbai" ^
-  -F "text=庞白参考文本" ^
-  -F "language=zh" ^
+```bash
+curl -sS -X POST http://127.0.0.1:6006/v1/providers/local_index_tts/clone \
+  -F "audio=@speaker.wav" \
+  -F "name=我的音色" \
+  -F "text=参考文本内容" \
+  -F "language=zh" \
   -F "emotion=calm"
 ```
 
-Typical response:
+Response:
 
 ```json
 {
-  "voice_id": "pangbai",
+  "voice_id": "wo-de-yin-se",
   "status": "ready",
-  "name": "pangbai",
+  "name": "我的音色",
   "metadata": {
     "language": "zh",
-    "reference_audio": "E:\\AiModel\\tts\\services\\gptsovits-service\\data\\profiles\\pangbai\\reference.wav",
-    "reference_text": "庞白参考文本",
+    "reference_audio": "/home/tts-server/services/index-tts-service/data/profiles/wo-de-yin-se/reference.wav",
+    "reference_text": "参考文本内容",
     "emotion": "calm"
   }
 }
 ```
 
-## Clone Status
+之后合成只需 voice_id：
 
-All current clone-capable services implement synchronous clone, so status queries typically return `ready` immediately.
-
-Example:
-
-```powershell
-curl.exe http://127.0.0.1:5103/v1/clone/pangbai/status
+```bash
+curl -sS -H "Content-Type: application/json" -o out.wav \
+  -X POST http://127.0.0.1:6006/v1/synthesize \
+  -d '{"provider_id":"local_index_tts","text":"你好","voice_id":"wo-de-yin-se"}'
 ```
 
-Typical response:
+### 引擎生命周期 `POST /internal/providers/{id}/start|stop|restart`
+
+```bash
+# 启动
+curl -X POST http://127.0.0.1:6006/internal/providers/local_index_tts/start
+# {"provider_id":"local_index_tts","status":"healthy"}
+
+# 停止
+curl -X POST http://127.0.0.1:6006/internal/providers/local_index_tts/stop
+# {"provider_id":"local_index_tts","status":"stopped"}
+
+# 重启
+curl -X POST http://127.0.0.1:6006/internal/providers/local_index_tts/restart
+```
+
+### 状态查询 `GET /internal/providers/status`
+
+```bash
+curl http://127.0.0.1:6006/internal/providers/status
+```
 
 ```json
 {
-  "task_id": "pangbai",
-  "status": "ready",
-  "voice_id": "pangbai",
-  "name": "pangbai",
-  "metadata": {}
+  "providers": [{
+    "provider_id": "local_index_tts",
+    "status": "healthy",
+    "pid": 12345,
+    "port": 5104,
+    "started_at": "2026-06-01T08:30:00",
+    "last_health_at": "2026-06-01T08:30:05",
+    "last_used_at": "2026-06-01T08:35:00",
+    "startup_attempts": 1,
+    "last_error": null
+  }]
 }
 ```
 
-## Design
+### 日志查询
 
-`/v1/design` creates a reusable instruction-based voice profile. This endpoint is currently implemented by `voxcpm-service`.
+```bash
+# Gateway 日志
+curl "http://127.0.0.1:6006/internal/logs?lines=100"
 
-Example:
-
-```powershell
-$payload = @{
-  name = "warm-host"
-  parameters = @{
-    instruction = "温柔、年轻、自然，适合播客旁白"
-    language = "zh"
-    emotion = "warm"
-  }
-} | ConvertTo-Json -Depth 6
-
-curl.exe -sS ^
-  -H "Content-Type: application/json" ^
-  -X POST http://127.0.0.1:5105/v1/design ^
-  --data-binary $payload
+# 引擎日志
+curl "http://127.0.0.1:6006/internal/providers/local_index_tts/logs?stream=stderr&lines=50"
 ```
 
-Typical response:
+---
+
+## 引擎服务端点（直连 :5101 ~ :5105）
+
+绕过 Gateway 直接调引擎时，接口一致，额外支持：
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/v1/clone/{task_id}/status` | 查询 clone 状态（当前均为同步，立即返回 ready） |
+| POST | `/v1/synthesize/stream` | 流式合成（暂未实现，返回 404） |
+| POST | `/v1/design` | 文本指令注册音色，仅 VoxCPM 支持 |
+
+### IndexTTS2 emotion control（`extra` 参数）
 
 ```json
 {
-  "voice_id": "warm-host",
-  "name": "warm-host",
-  "status": "ready",
-  "metadata": {
-    "instruction": "温柔、年轻、自然，适合播客旁白",
-    "language": "zh",
-    "emotion": "warm"
+  "extra": {
+    "emotion_reference_audio": "data:audio/wav;base64,...",
+    "emo_text": "悲伤",
+    "emo_alpha": 1.0,
+    "emo_vector": null,
+    "use_emo_text": false,
+    "use_random": false,
+    "interval_silence": 200,
+    "max_text_tokens_per_segment": 120,
+    "cfg_value": 2.0,
+    "inference_timesteps": 10
   }
 }
 ```
 
-## Service-Specific Notes
+---
 
-### CosyVoice
+## 响应头
 
-- Base URL: `http://127.0.0.1:5101`
-- Preset SFT voice example: `voice_id = "中文女"`
-- Zero-shot clone profiles are stored under:
-  `services/cosyvoice-service/data/profiles`
+| Header | 说明 |
+|--------|------|
+| `Content-Type` | `audio/wav` |
+| `X-Provider-Id` | 处理请求的 provider ID |
+| `X-Audio-Duration` | 音频时长（秒） |
+| `X-Sample-Rate` | 采样率（Hz） |
 
-### F5-TTS
+## 错误响应
 
-- Base URL: `http://127.0.0.1:5102`
-- Default reference-driven voice example: `voice_id = "f5-default"`
-- Clone profiles are stored under:
-  `services/f5tts-service/data/profiles`
+```json
+{
+  "error": {
+    "code": "INTERNAL_ERROR",
+    "message": "Internal server error",
+    "details": {}
+  }
+}
+```
 
-### GPT-SoVITS
+常见错误码：`VOICE_NOT_FOUND`、`INVALID_REQUEST`、`PROVIDER_NOT_FOUND`、`PROVIDER_DISABLED`、`ENDPOINT_NOT_AVAILABLE`。
 
-- Base URL: `http://127.0.0.1:5103`
-- Default reference-driven voice example: `voice_id = "default"`
-- Clone profiles are stored under:
-  `services/gptsovits-service/data/profiles`
+## 日志
 
-### VoxCPM2
-
-- Base URL: `http://127.0.0.1:5105`
-- Default instruction-first voice example: `voice_id = "voxcpm2-default"`
-- Clone profiles are stored under:
-  `services/voxcpm-service/data/profiles/clones`
-- Design profiles are stored under:
-  `services/voxcpm-service/data/profiles/designs`
-- `parameters.instruction` is the primary entry for voice design and controllable cloning
-
-## One-Click Scripts
-
-### CosyVoice
-
-- [start.ps1](E:\AiModel\tts\services\cosyvoice-service\start.ps1)
-- [healthcheck.ps1](E:\AiModel\tts\services\cosyvoice-service\healthcheck.ps1)
-- [clone-test.ps1](E:\AiModel\tts\services\cosyvoice-service\clone-test.ps1)
-
-### F5-TTS
-
-- [start.ps1](E:\AiModel\tts\services\f5tts-service\start.ps1)
-- [healthcheck.ps1](E:\AiModel\tts\services\f5tts-service\healthcheck.ps1)
-- [clone-test.ps1](E:\AiModel\tts\services\f5tts-service\clone-test.ps1)
-
-### GPT-SoVITS
-
-- [start.ps1](E:\AiModel\tts\services\gptsovits-service\start.ps1)
-- [healthcheck.ps1](E:\AiModel\tts\services\gptsovits-service\healthcheck.ps1)
-- [clone-test.ps1](E:\AiModel\tts\services\gptsovits-service\clone-test.ps1)
-
-### VoxCPM2
-
-- [start.ps1](E:\AiModel\tts-server\services\voxcpm-service\start.ps1)
-- [healthcheck.ps1](E:\AiModel\tts-server\services\voxcpm-service\healthcheck.ps1)
+```
+local-tts-gateway/logs/
+├── gateway.log
+└── local_index_tts/
+    ├── stdout.log
+    └── stderr.log
+```

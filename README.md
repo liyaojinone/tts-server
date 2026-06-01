@@ -124,6 +124,8 @@ curl http://127.0.0.1:6006/internal/providers/status
 
 ## API 端点
 
+> 完整接口文档见 [docs/services/local-tts-service-endpoints.md](docs/services/local-tts-service-endpoints.md)
+
 ### Provider ID 对照
 
 | Provider ID | 引擎 | 端口 |
