@@ -42,6 +42,12 @@ class ProcessManager:
             if state.status == "healthy":
                 state.last_used_at = datetime.now()
                 return state
+            # 先检查服务是否已被手动启动（如 Linux 上手动 start.sh）
+            if await self.healthcheck(provider_id):
+                state.status = "healthy"
+                state.last_health_at = datetime.now()
+                state.last_used_at = datetime.now()
+                return state
             return await self.start(provider_id)
 
     async def start(self, provider_id: str) -> ProviderRuntimeState:
