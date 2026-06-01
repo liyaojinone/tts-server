@@ -3,6 +3,7 @@ provider_type: indextts
 display_name: IndexTTS Default
 enabled: true
 runtime:
+  root_dir: /home/tts-server/services/index-tts-service
   cwd: /home/tts-server/services/index-tts-service
   command:
     - /home/tts-server/models/index-tts/repo/.venv/bin/python
