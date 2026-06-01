@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.dependencies import get_process_manager
 
@@ -41,3 +41,13 @@ async def stop_provider(provider_id: str, manager=Depends(get_process_manager)):
 async def restart_provider(provider_id: str, manager=Depends(get_process_manager)):
     state = await manager.restart(provider_id)
     return {"provider_id": provider_id, "status": state.status}
+
+
+@router.get("/internal/providers/{provider_id}/logs")
+async def provider_logs(
+    provider_id: str,
+    stream: str = Query(default="stderr", pattern="^(stdout|stderr)$"),
+    lines: int = Query(default=100, ge=1, le=2000),
+    manager=Depends(get_process_manager),
+):
+    return {"provider_id": provider_id, "stream": stream, "lines": lines, "content": manager.get_logs(provider_id, stream, lines)}
