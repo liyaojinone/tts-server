@@ -138,6 +138,8 @@ curl http://127.0.0.1:6006/v1/providers/status
 
 ### Gateway（:6006）
 
+客户端 `baseUrl` 配置为 `http://127.0.0.1:6006/local_index_tts`。
+
 **引擎 API**（`/{provider_id}/v1/*`）：
 
 | 方法 | 路径 | 说明 |
@@ -147,19 +149,19 @@ curl http://127.0.0.1:6006/v1/providers/status
 | POST | `/{provider_id}/v1/synthesize` | 合成（JSON / multipart / base64） |
 | POST | `/{provider_id}/v1/clone` | 上传参考音频注册音色 |
 
-**管理 API**（`/v1/*`）：
+**管理 API**（`/{provider_id}/v1/*` 或 `/v1/*`）：
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/v1/health` | Gateway 健康检查 |
-| GET | `/v1/logs` | Gateway 日志 |
-| GET | `/v1/providers` | 列出所有 provider |
-| GET | `/v1/providers/{id}` | 查看 provider 详情 |
-| GET | `/v1/providers/status` | 所有 provider 运行时状态 |
-| POST | `/v1/providers/{id}/start` | 启动 provider |
-| POST | `/v1/providers/{id}/stop` | 停止 provider |
-| POST | `/v1/providers/{id}/restart` | 重启 provider |
-| GET | `/v1/providers/{id}/logs` | 查看 provider 日志 |
+| GET | `/{provider_id}/v1/health` | Provider 运行状态 |
+| GET | `/{provider_id}/v1/providers` | 列出所有 provider |
+| GET | `/{provider_id}/v1/providers/{id}` | 查看 provider 详情 |
+| GET | `/{provider_id}/v1/providers/status` | 所有 provider 运行时状态 |
+| POST | `/{provider_id}/v1/providers/{id}/start` | 启动 provider |
+| POST | `/{provider_id}/v1/providers/{id}/stop` | 停止 provider |
+| POST | `/{provider_id}/v1/providers/{id}/restart` | 重启 provider |
+| GET | `/{provider_id}/v1/providers/{id}/logs` | 查看 provider 日志 |
+| GET | `/{provider_id}/v1/logs` | 查看 Gateway 日志 |
 
 ### 响应头
 
