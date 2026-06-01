@@ -147,7 +147,12 @@ class IndexTTSHandler:
 
     async def synthesize(self, request, reference_audio=None, reference_text=None):
         profile = None
-        if request.voice_id != "index-default":
+        has_ref = (request.parameters.reference_audio or
+                   reference_audio is not None)
+
+        if has_ref:
+            profile = None
+        elif request.voice_id != "index-default":
             profile = self.profile_store.load(request.voice_id)
             if profile is None:
                 raise ValueError("unknown voice_id")
