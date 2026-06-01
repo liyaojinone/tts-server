@@ -1,7 +1,7 @@
 # Local TTS API Reference
 
 > 更新时间：2026-06-01
-> 入口：Gateway `:6006`（推荐），也可直连各引擎服务 `:5101` ~ `:5105`
+> Gateway `:6006`
 
 ## Provider ID
 
@@ -12,6 +12,14 @@
 | `local_gpt_sovits` | GPT-SoVITS | 5103 |
 | `local_f5_tts` | F5-TTS | 5102 |
 | `local_cosyvoice2` | CosyVoice2 | 5101 |
+
+客户端配置 `baseUrl`：
+
+```
+http://127.0.0.1:6006/{provider_id}
+```
+
+例如 `http://127.0.0.1:6006/local_index_tts`，所有引擎 API 都在 `/{provider_id}/v1/*` 下。
 
 ## Authentication
 
@@ -25,47 +33,20 @@ Authorization: Bearer <apiKey>
 
 ---
 
-## Gateway Endpoints（:6006）
+## 引擎 API（`/{provider_id}/v1/*`）
 
-### 健康 & 状态
-
-**`GET /v1/health`**
+### 健康 `GET /{provider_id}/v1/health`
 
 ```bash
-curl http://127.0.0.1:6006/v1/health
-# {"status":"ok"}
-```
-
-**`GET /v1/providers`**
-
-```bash
-curl http://127.0.0.1:6006/v1/providers
-# {"providers":[{"provider_id":"local_index_tts","provider_type":"indextts","display_name":"IndexTTS Default","enabled":true}]}
-```
-
-**`GET /v1/providers/{id}`**
-
-```bash
-curl http://127.0.0.1:6006/v1/providers/local_index_tts
-```
-
-**`GET /v1/providers/{id}/health`**
-
-```bash
-curl http://127.0.0.1:6006/v1/providers/local_index_tts/health
+curl http://127.0.0.1:6006/local_index_tts/v1/health
 # {"provider_id":"local_index_tts","status":"healthy"}
 ```
 
-### 音色
-
-**`GET /v1/providers/{id}/voices`** 或 **`GET /v1/voices?provider_id=xxx`**
+### 音色 `GET /{provider_id}/v1/voices`
 
 ```bash
-curl http://127.0.0.1:6006/v1/providers/local_index_tts/voices
-curl "http://127.0.0.1:6006/v1/voices?provider_id=local_index_tts"
+curl http://127.0.0.1:6006/local_index_tts/v1/voices
 ```
-
-Response:
 
 ```json
 {
@@ -73,28 +54,23 @@ Response:
     "voice_id": "index-default",
     "name": "IndexTTS Default",
     "language": ["zh", "en"],
-    "gender": null,
-    "description": "IndexTTS2 reference-driven synthesis mode",
     "tags": ["reference", "default"],
     "metadata": {}
   }],
-  "total": 1,
-  "page": 1,
-  "page_size": 100
+  "total": 1
 }
 ```
 
-### 合成 `POST /v1/synthesize`
+### 合成 `POST /{provider_id}/v1/synthesize`
 
-三种传参方式，`reference_audio` 和 `emotion_reference_audio` 均支持。
+三种传参方式。
 
-#### 方式一：JSON（文件路径 或 base64）
+#### JSON（文件路径 或 base64）
 
 ```bash
 curl -sS -H "Content-Type: application/json" -o out.wav \
-  -X POST http://127.0.0.1:6006/v1/synthesize \
+  -X POST http://127.0.0.1:6006/local_index_tts/v1/synthesize \
   -d '{
-    "provider_id": "local_index_tts",
     "text": "你好，测试。",
     "voice_id": "index-default",
     "language": "zh",
@@ -119,38 +95,30 @@ curl -sS -H "Content-Type: application/json" -o out.wav \
   }'
 ```
 
-reference_audio 支持三种值：
+reference_audio 支持：
 
 | 格式 | 示例 |
 |------|------|
 | 文件路径 | `"/home/test.wav"` |
-| base64 | `"data:audio/wav;base64,UklGRiQAAABXQVZF..."` |
-| null | 不传（需通过 clone 注册的 voice_id 代替） |
+| base64 | `"data:audio/wav;base64,UklGRiQA..."` |
+| null | 不传（通过 clone 注册的 voice_id 代替） |
 
-#### 方式二：multipart（直接上传文件）
+#### multipart（直接上传文件）
 
 ```bash
 curl -sS -o out.wav \
-  -X POST http://127.0.0.1:6006/v1/synthesize \
-  -F 'request={"provider_id":"local_index_tts","text":"你好","voice_id":"index-default"}' \
+  -X POST http://127.0.0.1:6006/local_index_tts/v1/synthesize \
+  -F 'request={"text":"你好","voice_id":"index-default"}' \
   -F "reference_audio=@speaker.wav" \
   -F "emotion_reference_audio=@emo.wav"
 ```
 
-#### 方式三：指定 provider 路径
+### 克隆 `POST /{provider_id}/v1/clone`
+
+上传参考音频注册音色，得到 voice_id 后合成无需再传 reference_audio。
 
 ```bash
-curl -sS -H "Content-Type: application/json" -o out.wav \
-  -X POST http://127.0.0.1:6006/v1/providers/local_index_tts/synthesize \
-  -d '{"text":"你好","voice_id":"index-default","parameters":{"reference_audio":"/home/test.wav"}}'
-```
-
-### 克隆 `POST /v1/providers/{id}/clone`
-
-上传参考音频注册音色，得到 voice_id 后合成时无需再传 reference_audio。
-
-```bash
-curl -sS -X POST http://127.0.0.1:6006/v1/providers/local_index_tts/clone \
+curl -sS -X POST http://127.0.0.1:6006/local_index_tts/v1/clone \
   -F "audio=@speaker.wav" \
   -F "name=我的音色" \
   -F "text=参考文本内容" \
@@ -158,68 +126,60 @@ curl -sS -X POST http://127.0.0.1:6006/v1/providers/local_index_tts/clone \
   -F "emotion=calm"
 ```
 
-Response:
-
 ```json
-{
-  "voice_id": "wo-de-yin-se",
-  "status": "ready",
-  "name": "我的音色",
-  "metadata": {
-    "language": "zh",
-    "reference_audio": "/home/tts-server/services/index-tts-service/data/profiles/wo-de-yin-se/reference.wav",
-    "reference_text": "参考文本内容",
-    "emotion": "calm"
-  }
-}
+{"voice_id":"wo-de-yin-se","status":"ready","name":"我的音色",...}
 ```
 
 之后合成只需 voice_id：
 
 ```bash
 curl -sS -H "Content-Type: application/json" -o out.wav \
-  -X POST http://127.0.0.1:6006/v1/synthesize \
-  -d '{"provider_id":"local_index_tts","text":"你好","voice_id":"wo-de-yin-se"}'
+  -X POST http://127.0.0.1:6006/local_index_tts/v1/synthesize \
+  -d '{"text":"你好","voice_id":"wo-de-yin-se"}'
 ```
 
-### 引擎生命周期 `POST /internal/providers/{id}/start|stop|restart`
+---
+
+## 管理 API（`/v1/*`）
+
+### `GET /v1/health` — Gateway 自身健康
 
 ```bash
-# 启动
+curl http://127.0.0.1:6006/v1/health
+# {"status":"ok"}
+```
+
+### `GET /v1/providers` — 列出所有 provider
+
+```bash
+curl http://127.0.0.1:6006/v1/providers
+```
+
+### `GET /v1/providers/{id}` — 查看 provider
+
+```bash
+curl http://127.0.0.1:6006/v1/providers/local_index_tts
+```
+
+---
+
+## 运维 API（`/internal/*`）
+
+### 引擎生命周期
+
+```bash
 curl -X POST http://127.0.0.1:6006/internal/providers/local_index_tts/start
-# {"provider_id":"local_index_tts","status":"healthy"}
-
-# 停止
 curl -X POST http://127.0.0.1:6006/internal/providers/local_index_tts/stop
-# {"provider_id":"local_index_tts","status":"stopped"}
-
-# 重启
 curl -X POST http://127.0.0.1:6006/internal/providers/local_index_tts/restart
 ```
 
-### 状态查询 `GET /internal/providers/status`
+### 状态查询
 
 ```bash
 curl http://127.0.0.1:6006/internal/providers/status
 ```
 
-```json
-{
-  "providers": [{
-    "provider_id": "local_index_tts",
-    "status": "healthy",
-    "pid": 12345,
-    "port": 5104,
-    "started_at": "2026-06-01T08:30:00",
-    "last_health_at": "2026-06-01T08:30:05",
-    "last_used_at": "2026-06-01T08:35:00",
-    "startup_attempts": 1,
-    "last_error": null
-  }]
-}
-```
-
-### 日志查询
+### 日志
 
 ```bash
 # Gateway 日志
@@ -231,17 +191,7 @@ curl "http://127.0.0.1:6006/internal/providers/local_index_tts/logs?stream=stder
 
 ---
 
-## 引擎服务端点（直连 :5101 ~ :5105）
-
-绕过 Gateway 直接调引擎时，接口一致，额外支持：
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/v1/clone/{task_id}/status` | 查询 clone 状态（当前均为同步，立即返回 ready） |
-| POST | `/v1/synthesize/stream` | 流式合成（暂未实现，返回 404） |
-| POST | `/v1/design` | 文本指令注册音色，仅 VoxCPM 支持 |
-
-### IndexTTS2 emotion control（`extra` 参数）
+## IndexTTS2 emotion control（`extra` 参数）
 
 ```json
 {
@@ -249,7 +199,6 @@ curl "http://127.0.0.1:6006/internal/providers/local_index_tts/logs?stream=stder
     "emotion_reference_audio": "data:audio/wav;base64,...",
     "emo_text": "悲伤",
     "emo_alpha": 1.0,
-    "emo_vector": null,
     "use_emo_text": false,
     "use_random": false,
     "interval_silence": 200,
@@ -294,3 +243,7 @@ local-tts-gateway/logs/
     ├── stdout.log
     └── stderr.log
 ```
+
+## 直连引擎服务（绕过 Gateway）
+
+直连引擎时端口不同，路径一致：`/{provider_id}/v1/*` 变为 `http://127.0.0.1:5104/v1/*`，实际就是 service-kit 标准的 `/v1/synthesize`、`/v1/clone` 等路径。

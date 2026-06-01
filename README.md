@@ -138,23 +138,33 @@ curl http://127.0.0.1:6006/internal/providers/status
 
 ### Gateway（:6006）
 
+**引擎 API**（`/{provider_id}/v1/*`）：
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/{provider_id}/v1/health` | Provider 运行状态 |
+| GET | `/{provider_id}/v1/voices` | Provider 音色列表 |
+| POST | `/{provider_id}/v1/synthesize` | 合成（JSON / multipart / base64） |
+| POST | `/{provider_id}/v1/clone` | 上传参考音频注册音色 |
+
+**管理 API**（`/v1/*`）：
+
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/v1/health` | Gateway 健康检查 |
 | GET | `/v1/providers` | 列出所有 provider |
 | GET | `/v1/providers/{id}` | 查看 provider 详情 |
-| GET | `/v1/providers/{id}/health` | Provider 运行状态 |
-| GET | `/v1/providers/{id}/voices` | Provider 音色列表 |
-| GET | `/v1/voices?provider_id=xxx` | 音色列表别名 |
-| POST | `/v1/providers/{id}/synthesize` | 合成（JSON / multipart / base64） |
-| POST | `/v1/synthesize` | 合成别名（body 内指定 provider_id） |
-| POST | `/v1/providers/{id}/clone` | 上传参考音频注册音色（multipart） |
+
+**运维 API**（`/internal/*`）：
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
 | GET | `/internal/providers/status` | 所有 provider 运行时详情 |
-| POST | `/internal/providers/{id}/start` | 启动 provider 子进程 |
-| POST | `/internal/providers/{id}/stop` | 停止 provider 子进程 |
-| POST | `/internal/providers/{id}/restart` | 重启 provider 子进程 |
-| GET | `/internal/providers/{id}/logs?stream=stderr&lines=100` | 查看 provider 运行日志 |
-| GET | `/internal/logs?lines=100` | 查看 Gateway 自身日志 |
+| POST | `/internal/providers/{id}/start` | 启动 provider |
+| POST | `/internal/providers/{id}/stop` | 停止 provider |
+| POST | `/internal/providers/{id}/restart` | 重启 provider |
+| GET | `/internal/providers/{id}/logs` | 查看 provider 日志 |
+| GET | `/internal/logs` | 查看 Gateway 日志 |
 
 ### 响应头
 
@@ -180,7 +190,7 @@ curl http://127.0.0.1:6006/internal/providers/status
 
 ```bash
 # 1. 注册音色（上传参考音频，得到 voice_id）
-curl -sS -X POST http://127.0.0.1:8090/v1/providers/local_index_tts/clone \
+curl -sS -X POST http://127.0.0.1:6006/local_index_tts/v1/clone \
   -F "audio=@speaker.wav" \
   -F "name=我的音色" \
   -F "text=参考文本" \
@@ -190,16 +200,16 @@ curl -sS -X POST http://127.0.0.1:8090/v1/providers/local_index_tts/clone \
 
 # 2. 后续合成只需 voice_id，不需要 reference_audio
 curl -sS -H "Content-Type: application/json" -o out.wav \
-  -X POST http://127.0.0.1:6006/v1/synthesize \
-  -d '{"provider_id":"local_index_tts","text":"你好","voice_id":"wo-de-yin-se"}'
+  -X POST http://127.0.0.1:6006/local_index_tts/v1/synthesize \
+  -d '{"text":"你好","voice_id":"wo-de-yin-se"}'
 ```
 
 **一次性合成（multipart）**：直接上传音频，无需注册
 
 ```bash
 curl -sS -o out.wav \
-  -X POST http://127.0.0.1:6006/v1/synthesize \
-  -F 'request={"provider_id":"local_index_tts","text":"你好","voice_id":"index-default"}' \
+  -X POST http://127.0.0.1:6006/local_index_tts/v1/synthesize \
+  -F 'request={"text":"你好","voice_id":"index-default"}' \
   -F "reference_audio=@speaker.wav" \
   -F "emotion_reference_audio=@emo.wav"
 ```
@@ -209,8 +219,8 @@ curl -sS -o out.wav \
 ```bash
 REF_B64=$(base64 -w0 speaker.wav)
 curl -sS -H "Content-Type: application/json" -o out.wav \
-  -X POST http://127.0.0.1:6006/v1/synthesize \
-  -d "{\"provider_id\":\"local_index_tts\",\"text\":\"你好\",\"voice_id\":\"index-default\",\"parameters\":{\"reference_audio\":\"data:audio/wav;base64,$REF_B64\"}}"
+  -X POST http://127.0.0.1:6006/local_index_tts/v1/synthesize \
+  -d "{\"text\":\"你好\",\"voice_id\":\"index-default\",\"parameters\":{\"reference_audio\":\"data:audio/wav;base64,$REF_B64\"}}"
 ```
 
 ### 认证

@@ -6,7 +6,7 @@ from app.dependencies import get_process_manager, get_provider_registry
 router = APIRouter()
 
 
-@router.post("/v1/providers/{provider_id}/clone")
+@router.post("/{provider_id}/v1/clone")
 async def clone(
     provider_id: str,
     audio: UploadFile = File(...),
