@@ -266,3 +266,96 @@ local-tts-gateway/logs/
     ├── stdout.log
     └── stderr.log
 ```
+
+## MCP 协议
+
+MCP Server 内嵌在 Gateway 中，SSE 端点：
+
+```
+GET /local_index_tts/v1/mcp/sse
+POST /local_index_tts/v1/mcp/messages/
+```
+
+### 客户端配置
+
+**Claude Desktop**（`claude_desktop_config.json`）：
+
+```json
+{
+  "mcpServers": {
+    "local-tts": {
+      "url": "https://xxx:8443/local_index_tts/v1/mcp/sse"
+    }
+  }
+}
+```
+
+**Claude Code / Cursor**（项目 `.claude/settings.local.json` 或 `~/.claude/mcp.json`）：
+
+```json
+{
+  "mcpServers": {
+    "local-tts": {
+      "type": "sse",
+      "url": "https://xxx:8443/local_index_tts/v1/mcp/sse"
+    }
+  }
+}
+```
+
+### 工具列表
+
+#### tts_synthesize — 语音合成
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `text` | str | 必填 | 合成文本 |
+| `voice_id` | str | `"index-default"` | 音色 ID |
+| `provider_id` | str | `"local_index_tts"` | Provider ID |
+| `language` | str | `"zh"` | 语言 |
+| `speed` | float | `1.0` | 语速 |
+| `reference_audio` | str | null | 参考音频 base64 |
+| `emotion_reference_audio` | str | null | 情感参考音频 base64 |
+| `emo_alpha` | float | `1.0` | 情感强度 |
+
+返回 `audio_base64`（WAV）+ `duration_seconds` + `sample_rate`。
+
+#### tts_clone_voice — 注册音色
+
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `audio_base64` | str | 必填 | 参考音频 base64 |
+| `name` | str | 必填 | 音色名称 |
+| `text` | str | `""` | 参考文本 |
+| `language` | str | `"zh"` | 语言 |
+| `emotion` | str | `""` | 情绪标签 |
+| `provider_id` | str | `"local_index_tts"` | Provider ID |
+
+返回 `voice_id`。
+
+#### 查询 & 管理
+
+| 工具 | 说明 |
+|------|------|
+| `tts_list_voices` | 列出音色（含 clone/design profile） |
+| `tts_list_providers` | 列出所有引擎 |
+| `tts_provider_status` | 查看引擎运行状态 |
+| `tts_start_provider` | 启动引擎 |
+| `tts_stop_provider` | 停止引擎 |
+| `tts_restart_provider` | 重启引擎 |
+| `tts_provider_logs` | 查看引擎日志 |
+
+### Stdio 模式（本地）
+
+```json
+{
+  "mcpServers": {
+    "local-tts": {
+      "command": "python3",
+      "args": ["-m", "app.routers.mcp_stdio", "--gateway", "http://127.0.0.1:6006"]
+    }
+  }
+}
+```
+
+> Stdio 模式无需额外端口，MCP Server 作为子进程通过 stdin/stdout 通信。
