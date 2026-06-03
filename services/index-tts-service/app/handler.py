@@ -198,20 +198,27 @@ class IndexTTSHandler:
             output_path = temp_output.name
 
         try:
+            extra = dict(request.parameters.extra)
+            # 过滤内部字段，不传给引擎
+            for k in ("emotion_reference_audio", "_emotion_reference_audio_upload",
+                      "emotion_reference_audio_upload_name"):
+                extra.pop(k, None)
+
             with pushd(INDEXTTS_REPO_DIR):
                 tts.infer(
                     spk_audio_prompt=str(ref_audio_path),
                     text=request.text,
                     output_path=output_path,
                     emo_audio_prompt=str(emotion_audio_path) if emotion_audio_path else None,
-                    emo_text=request.parameters.extra.get("emo_text"),
-                    use_emo_text=bool(request.parameters.extra.get("use_emo_text", False)),
-                    emo_vector=request.parameters.extra.get("emo_vector"),
-                    emo_alpha=float(request.parameters.extra.get("emo_alpha", 1.0)),
-                    use_random=bool(request.parameters.extra.get("use_random", False)),
-                    interval_silence=int(request.parameters.extra.get("interval_silence", 200)),
-                    max_text_tokens_per_segment=int(request.parameters.extra.get("max_text_tokens_per_segment", 120)),
-                    verbose=bool(request.parameters.extra.get("verbose", False)),
+                    emo_alpha=float(extra.pop("emo_alpha", 1.0)),
+                    emo_vector=extra.pop("emo_vector", None),
+                    use_emo_text=bool(extra.pop("use_emo_text", False)),
+                    emo_text=extra.pop("emo_text", None),
+                    use_random=bool(extra.pop("use_random", False)),
+                    interval_silence=int(extra.pop("interval_silence", 200)),
+                    max_text_tokens_per_segment=int(extra.pop("max_text_tokens_per_segment", 120)),
+                    verbose=bool(extra.pop("verbose", False)),
+                    **extra,
                 )
             content = Path(output_path).read_bytes()
         finally:
