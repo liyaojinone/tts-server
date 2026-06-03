@@ -79,7 +79,7 @@ fi
 
 # ---- 启动 ----
 echo "[setup] 检查并安装 Gateway 依赖..."
-pip install fastapi httpx pydantic pyyaml uvicorn python-multipart -q -i "$PIP_INDEX"
+pip install fastapi httpx pydantic pyyaml uvicorn python-multipart mcp -q -i "$PIP_INDEX"
 
 mkdir -p logs
 GATEWAY_LOG="$GATEWAY_DIR/logs/gateway.log"
