@@ -1,12 +1,38 @@
 #!/usr/bin/env bash
 # start.sh — Local TTS Server 启动脚本
-#   bash start.sh             前台启动 Gateway
-#   bash start.sh -d           后台启动 Gateway
-#   bash start.sh -p 6007      指定端口
-#   bash start.sh --logs       查看日志
-#   bash start.sh --status     查看引擎状态
-#   bash start.sh --stop       停止所有服务
 set -euo pipefail
+
+usage() {
+    echo ""
+    echo "========================================="
+    echo "  Local TTS Server — 运维控制"
+    echo "========================================="
+    echo ""
+    echo "用法: bash start.sh [选项]"
+    echo ""
+    echo "启动:"
+    echo "  (无参数)           前台启动 Gateway（调试用）"
+    echo "  -d, --daemon       后台启动 Gateway（生产用）"
+    echo "  -p, --port PORT    指定端口，默认 6006"
+    echo ""
+    echo "运维:"
+    echo "  --status           查看所有引擎运行状态"
+    echo "  --logs             实时查看 Gateway 日志"
+    echo "  --stop             停止所有服务"
+    echo "  --help             显示此帮助"
+    echo ""
+    echo "典型流程:"
+    echo "  bash start.sh -d          # 后台启动 Gateway"
+    echo "  bash start.sh --status    # 查看引擎是否就绪"
+    echo "  bash start.sh --logs      # 查看运行日志"
+    echo "  bash start.sh --stop      # 停止服务"
+    echo ""
+    echo "引擎通过 API 管理："
+    echo "  curl http://127.0.0.1:6006/local_index_tts/v1/health"
+    echo "  curl -X POST http://127.0.0.1:6006/local_index_tts/v1/providers/local_index_tts/start"
+    echo ""
+    exit 0
+}
 
 GATEWAY_DIR="$(cd "$(dirname "$0")/local-tts-gateway" && pwd)"
 PIP_INDEX="https://mirrors.aliyun.com/pypi/simple"
@@ -17,12 +43,13 @@ ACTION="start"
 # 解析参数
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        -h|--help)    usage ;;
         -d|--daemon)  DAEMON=true; shift ;;
         -p|--port)    PORT="$2"; shift 2 ;;
         --logs|--log) ACTION="logs"; shift ;;
         --status)     ACTION="status"; shift ;;
         --stop)       ACTION="stop"; shift ;;
-        *)            PORT="$1"; shift ;;
+        *)            echo "未知参数: $1，使用 --help 查看帮助"; exit 1 ;;
     esac
 done
 
