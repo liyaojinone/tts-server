@@ -199,9 +199,10 @@ class IndexTTSHandler:
 
         try:
             extra = dict(request.parameters.extra)
-            # 过滤内部字段，不传给引擎
+            # 过滤内部/引擎不识别的字段，不传给 infer()
             for k in ("emotion_reference_audio", "_emotion_reference_audio_upload",
-                      "emotion_reference_audio_upload_name"):
+                      "emotion_reference_audio_upload_name",
+                      "text_split_method"):  # 引擎级配置，暂未在 infer 中使用
                 extra.pop(k, None)
 
             with pushd(INDEXTTS_REPO_DIR):
