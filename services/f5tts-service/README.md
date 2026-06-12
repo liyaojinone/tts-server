@@ -7,8 +7,8 @@ Protocol-compliant `F5-TTS` service built on top of the shared local TTS package
 Use the `F5-TTS` environment, then install the shared packages:
 
 ```bash
-pip install -e E:\AiModel\tts\local-tts-protocol
-pip install -e E:\AiModel\tts\local-tts-service-kit
+pip install -e ..\..\local-tts-protocol
+pip install -e ..\..\local-tts-service-kit
 ```
 
 ## Run
@@ -33,6 +33,8 @@ Or use the bundled scripts:
 .\clone-test.ps1
 ```
 
+By default `start.ps1` reads upstream source from `models\f5-tts\repo` and Python from `services\f5tts-service\.venv\Scripts\python.exe`. Override with `F5TTS_REPO_DIR` or `F5TTS_PYTHON` when needed.
+
 ## Current behavior
 
 - serves `/v1/health`
@@ -46,4 +48,4 @@ Or use the bundled scripts:
 - stores cloned voice profiles under `services/f5tts-service/data/profiles` by default
 
 Protocol endpoint overview:
-- [local-tts-service-endpoints.md](E:\AiModel\tts\docs\services\local-tts-service-endpoints.md)
+- [local-tts-service-endpoints.md](..\..\docs\services\local-tts-service-endpoints.md)

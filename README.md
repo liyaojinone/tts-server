@@ -31,6 +31,26 @@ flowchart LR
 | IndexTTS2 | 5104 | 参考音频驱动，支持 emotion control |
 | VoxCPM2 | 5105 | 文本指令驱动，无需参考音频即可合成 |
 
+## 三大目标引擎源码布局
+
+GPT-SoVITS、F5-TTS、CosyVoice 的官方源码放在仓库内 `models/` 下：
+
+```text
+models/gpt-sovits/repo/
+models/f5-tts/repo/
+models/cosyvoice/repo/
+```
+
+`models/` 不纳入版本控制，用于保存本机源码、权重、缓存和输出。本仓库的 `services/*-service/start.ps1` 会默认读取这些源码目录，也支持通过环境变量覆盖：
+
+| 引擎 | 源码环境变量 | Python 环境变量 |
+|------|--------------|-----------------|
+| CosyVoice | `COSYVOICE_REPO_DIR` | `COSYVOICE_PYTHON` |
+| F5-TTS | `F5TTS_REPO_DIR` | `F5TTS_PYTHON` |
+| GPT-SoVITS | `GPTSOVITS_REPO_DIR` | `GPTSOVITS_PYTHON` |
+
+当前仅要求源码存在；Python 依赖、模型权重和真实链路测试需要在磁盘空间充足后单独执行。
+
 ## 运行模型 — IndexTTS2 完整步骤
 
 以 IndexTTS2 为例，其他引擎流程类似。
@@ -351,7 +371,7 @@ uv pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu1
 
 ### 其他引擎（CosyVoice / F5-TTS / GPT-SoVITS）
 
-这三个引擎引用项目外路径，需单独安装到项目根目录后参照对应 start 脚本启动。
+这三个引擎默认读取仓库内 `models/<engine>/repo` 的官方源码。先准备对应 Python 环境和模型权重，再参照 `services/<engine>-service/start.ps1` 启动；不要把权重、缓存或参考音频提交到仓库。
 
 ## 常见问题
 
@@ -371,4 +391,4 @@ source /etc/network_turbo
 
 ### 其他引擎（CosyVoice / F5-TTS / GPT-SoVITS）
 
-这三个引擎引用项目外路径（如 `E:\AiModel\tts\GPT-SoVITS-v2-240821`），需单独安装对应引擎的项目到项目根目录后参照 start.ps1 / start.sh 启动。
+这三个引擎的官方源码默认位于 `models/cosyvoice/repo`、`models/f5-tts/repo`、`models/gpt-sovits/repo`。如果源码或 Python 环境放在其他位置，通过 `COSYVOICE_REPO_DIR`、`F5TTS_REPO_DIR`、`GPTSOVITS_REPO_DIR` 以及对应 `*_PYTHON` 环境变量覆盖。

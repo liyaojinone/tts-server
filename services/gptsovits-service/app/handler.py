@@ -10,9 +10,7 @@ from local_tts_protocol.models import CloneResponse, CloneStatusResponse, Health
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
-GPTSOVITS_ROOT = ROOT_DIR / "GPT-SoVITS-v2-240821"
-if not GPTSOVITS_ROOT.exists():
-    GPTSOVITS_ROOT = Path(r"E:\AiModel\tts\GPT-SoVITS-v2-240821")
+GPTSOVITS_ROOT = Path(os.environ.get("GPTSOVITS_REPO_DIR", ROOT_DIR / "models" / "gpt-sovits" / "repo"))
 
 if str(GPTSOVITS_ROOT) not in sys.path:
     sys.path.insert(0, str(GPTSOVITS_ROOT))

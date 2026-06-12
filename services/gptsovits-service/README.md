@@ -7,8 +7,8 @@ Protocol-compliant `GPT-SoVITS` service built on top of the shared local TTS pac
 Use the `GPT-SoVITS` environment, then install the shared packages:
 
 ```bash
-pip install -e E:\AiModel\tts\local-tts-protocol
-pip install -e E:\AiModel\tts\local-tts-service-kit
+pip install -e ..\..\local-tts-protocol
+pip install -e ..\..\local-tts-service-kit
 ```
 
 ## Run
@@ -30,6 +30,8 @@ Or just use the bundled script:
 ```powershell
 .\start.ps1
 ```
+
+By default `start.ps1` reads upstream source from `models\gpt-sovits\repo` and Python from `services\gptsovits-service\.venv\Scripts\python.exe`. Override with `GPTSOVITS_REPO_DIR` or `GPTSOVITS_PYTHON` when needed.
 
 Windows double-click:
 
@@ -62,7 +64,7 @@ Clone and synthesize smoke test:
 - stores cloned voice profiles under `services/gptsovits-service/data/profiles` by default
 
 Protocol endpoint overview:
-- [local-tts-service-endpoints.md](E:\AiModel\tts\docs\services\local-tts-service-endpoints.md)
+- [local-tts-service-endpoints.md](..\..\docs\services\local-tts-service-endpoints.md)
 
 ## Clone flow
 
@@ -77,7 +79,7 @@ Invoke-WebRequest `
   -Uri "http://127.0.0.1:5103/v1/clone" `
   -Method POST `
   -Form @{
-    audio = Get-Item "E:\AiModel\tts\GPT-SoVITS-v2-240821\pangbai.wav"
+    audio = Get-Item "E:\path\to\reference.wav"
     name = "pangbai"
     text = "庞白参考文本"
     language = "zh"

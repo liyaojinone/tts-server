@@ -1,5 +1,5 @@
 param(
-    [string]$ReferenceAudio = "E:\AiModel\tts\GPT-SoVITS-v2-240821\pangbai.wav",
+    [string]$ReferenceAudio = ".\reference.wav",
     [string]$Name = "gptso-demo",
     [string]$Text = "庞白参考文本",
     [string]$Language = "zh",

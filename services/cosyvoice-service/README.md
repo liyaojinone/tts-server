@@ -7,8 +7,8 @@ Protocol-compliant `CosyVoice` service built on top of the shared local TTS pack
 Use the `CosyVoice` environment, then install the shared packages:
 
 ```bash
-pip install -e E:\AiModel\tts\local-tts-protocol
-pip install -e E:\AiModel\tts\local-tts-service-kit
+pip install -e ..\..\local-tts-protocol
+pip install -e ..\..\local-tts-service-kit
 ```
 
 ## Run
@@ -33,6 +33,8 @@ Or use the bundled scripts:
 .\clone-test.ps1
 ```
 
+By default `start.ps1` reads upstream source from `models\cosyvoice\repo` and Python from `services\cosyvoice-service\.venv\Scripts\python.exe`. Override with `COSYVOICE_REPO_DIR` or `COSYVOICE_PYTHON` when needed.
+
 ## Current behavior
 
 - serves `/v1/health`
@@ -46,4 +48,4 @@ Or use the bundled scripts:
 - stores cloned voice profiles under `services/cosyvoice-service/data/profiles` by default
 
 Protocol endpoint overview:
-- [local-tts-service-endpoints.md](E:\AiModel\tts\docs\services\local-tts-service-endpoints.md)
+- [local-tts-service-endpoints.md](..\..\docs\services\local-tts-service-endpoints.md)

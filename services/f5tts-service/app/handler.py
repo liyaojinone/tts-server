@@ -9,9 +9,7 @@ from local_tts_service_kit.profiles import ProfileStore
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
-F5_ROOT = ROOT_DIR / "F5-TTS"
-if not F5_ROOT.exists():
-    F5_ROOT = Path(r"E:\AiModel\tts\F5-TTS")
+F5_ROOT = Path(os.environ.get("F5TTS_REPO_DIR", ROOT_DIR / "models" / "f5-tts" / "repo"))
 
 SCRIPT_DIR = str(F5_ROOT)
 HF_CACHE_DIR = str(F5_ROOT / "huggingface" / "hub")

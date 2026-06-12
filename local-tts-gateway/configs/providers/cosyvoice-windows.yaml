@@ -3,13 +3,14 @@ provider_type: cosyvoice
 display_name: CosyVoice Default
 enabled: true
 runtime:
-  root_dir: E:\AiModel\tts\CosyVoice2\CosyVoice
-  cwd: E:\AiModel\tts\CosyVoice2\CosyVoice
+  root_dir: E:\AiModel\projects\bobovox\tts-server\services\cosyvoice-service
+  cwd: E:\AiModel\projects\bobovox\tts-server\services\cosyvoice-service
   command:
-    - E:\AiModel\tts\CosyVoice2\CosyVoice\py311\python.exe
-    - api2.py
+    - powershell
+    - -File
+    - E:\AiModel\projects\bobovox\tts-server\services\cosyvoice-service\start.ps1
   env:
-    COSYVOICE_PORT: "5101"
+    COSYVOICE_REPO_DIR: "E:\\AiModel\\projects\\bobovox\\tts-server\\models\\cosyvoice\\repo"
   startup_timeout_ms: 120000
   request_timeout_ms: 180000
   idle_shutdown_seconds: 0
@@ -17,11 +18,11 @@ network:
   host: 127.0.0.1
   port: 5101
   base_url: http://127.0.0.1:5101
-  healthcheck_path: /health
+  healthcheck_path: /v1/health
 capabilities:
   voices: true
   synthesize: true
-  clone: false
+  clone: true
   stream: false
 voices:
   - voice_id: 中文女

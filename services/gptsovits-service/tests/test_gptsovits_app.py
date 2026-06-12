@@ -29,7 +29,7 @@ def test_gptsovits_synthesize_test_mode_returns_audio():
             "voice_id": "default",
             "language": "zh",
             "parameters": {
-                "reference_audio": r"E:/AiModel/tts/GPT-SoVITS-v2-240821/pangbai.wav",
+                "reference_audio": "E:/path/to/reference.wav",
                 "reference_text": "庞白参考文本",
                 "speed": 1.0,
             },

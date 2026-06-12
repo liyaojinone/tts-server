@@ -8,9 +8,7 @@ from local_tts_service_kit.profiles import ProfileStore
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
-COSYVOICE_ROOT = ROOT_DIR / "CosyVoice2" / "CosyVoice"
-if not COSYVOICE_ROOT.exists():
-    COSYVOICE_ROOT = Path(r"E:\AiModel\tts\CosyVoice2\CosyVoice")
+COSYVOICE_ROOT = Path(os.environ.get("COSYVOICE_REPO_DIR", ROOT_DIR / "models" / "cosyvoice" / "repo"))
 
 THIRD_PARTY_DIR = str(COSYVOICE_ROOT / "third_party" / "Matcha-TTS")
 if THIRD_PARTY_DIR not in sys.path:
