@@ -16,9 +16,10 @@ def test_load_provider_configs():
         "local_f5_tts",
         "local_gpt_sovits",
         "local_index_tts",
+        "stable_audio_3_small_sfx",
         "local_voxcpm",
     }
-    assert provider_types == {"cosyvoice", "f5-tts", "gptsovits", "indextts", "voxcpm"}
+    assert provider_types == {"cosyvoice", "f5-tts", "gptsovits", "indextts", "stableaudio3", "voxcpm"}
 
 
 def test_target_providers_launch_repository_local_services():
@@ -44,3 +45,23 @@ def test_target_providers_launch_repository_local_services():
         assert provider.runtime.env[repo_env].endswith(repo_suffix)
         assert provider.network.healthcheck_path == "/v1/health"
         assert provider.capabilities.clone is True
+
+
+def test_stable_audio3_provider_launches_repository_local_service():
+    from app.config import load_provider_configs
+
+    config_dir = Path(__file__).resolve().parents[1] / "configs" / "providers"
+    providers = {provider.provider_id: provider for provider in load_provider_configs(config_dir)}
+
+    provider = providers["stable_audio_3_small_sfx"]
+
+    assert provider.model_id == "stable-audio-3-small-sfx"
+    assert provider.provider_type == "stableaudio3"
+    assert provider.tasks == ["audio.generate"]
+    assert provider.runtime.root_dir.endswith(r"services\stable-audio3-service")
+    assert provider.runtime.cwd.endswith(r"services\stable-audio3-service")
+    assert provider.runtime.command[:2] == ["powershell", "-File"]
+    assert provider.runtime.command[2].endswith(r"services\stable-audio3-service\start.ps1")
+    assert provider.runtime.env["STABLE_AUDIO3_REPO_DIR"].endswith(r"models\stable-audio-3\repo")
+    assert provider.network.healthcheck_path == "/v1/health"
+    assert provider.capabilities.synthesize is False

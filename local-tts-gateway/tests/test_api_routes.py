@@ -15,7 +15,9 @@ def test_health_and_provider_routes():
     assert health_response.json()["status"] == "ok"
 
     assert providers_response.status_code == 200
-    assert len(providers_response.json()["providers"]) == 5
+    providers = providers_response.json()["providers"]
+    assert len(providers) == 6
+    assert any(provider["provider_id"] == "stable_audio_3_small_sfx" for provider in providers)
 
     assert status_response.status_code == 200
     assert "providers" in status_response.json()

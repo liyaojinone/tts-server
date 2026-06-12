@@ -9,6 +9,7 @@ This gateway exposes one HTTP interface for local TTS engines:
 - `CosyVoice`
 - `F5-TTS`
 - `GPT-SoVITS`
+- `Stable Audio 3 Small-SFX`
 
 It loads provider definitions from `configs/providers`, starts model services lazily, and forwards unified synthesize requests to provider-native APIs.
 
@@ -140,6 +141,27 @@ POST /v1/synthesize
   "output": {
     "format": "wav",
     "sample_rate": 24000
+  }
+}
+```
+
+Stable Audio 3 Small-SFX:
+
+```json
+POST /v1/generate
+{
+  "model": "stable-audio-3-small-sfx",
+  "task": "audio.generate",
+  "input": {
+    "prompt": "short cinematic whoosh impact"
+  },
+  "parameters": {
+    "duration": 7,
+    "seed": 1234
+  },
+  "output": {
+    "format": "wav",
+    "sample_rate": 44100
   }
 }
 ```

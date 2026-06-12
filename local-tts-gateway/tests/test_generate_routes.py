@@ -17,6 +17,11 @@ def test_models_endpoint_lists_tts_models_from_existing_providers():
     assert "audio/wav" in f5["outputs"]
     assert f5["enabled"] is True
 
+    stable_audio = next(model for model in models if model["id"] == "stable-audio-3-small-sfx")
+    assert stable_audio["provider_id"] == "stable_audio_3_small_sfx"
+    assert stable_audio["tasks"] == ["audio.generate"]
+    assert "audio/wav" in stable_audio["outputs"]
+
 
 def test_model_detail_includes_voices_and_generation_capabilities():
     from app.main import create_app
@@ -32,6 +37,22 @@ def test_model_detail_includes_voices_and_generation_capabilities():
     assert payload["tasks"] == ["tts.speech"]
     assert payload["voices"][0]["voice_id"] == "f5-default"
     assert payload["capabilities"]["reference_audio"] is True
+
+
+def test_stable_audio3_model_detail_describes_audio_generation():
+    from app.main import create_app
+
+    app = create_app()
+    client = TestClient(app)
+
+    response = client.get("/v1/models/stable-audio-3-small-sfx")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["id"] == "stable-audio-3-small-sfx"
+    assert payload["provider_id"] == "stable_audio_3_small_sfx"
+    assert payload["tasks"] == ["audio.generate"]
+    assert payload["voices"] == []
 
 
 def test_generate_tts_speech_json_calls_adapter_generate():

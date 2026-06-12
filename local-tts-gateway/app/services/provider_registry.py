@@ -4,6 +4,7 @@ from app.adapters.cosyvoice import CosyVoiceAdapter
 from app.adapters.f5tts import F5TTSAdapter
 from app.adapters.gptsovits import GPTSoVITSAdapter
 from app.adapters.indextts import IndexTTSAdapter
+from app.adapters.stableaudio3 import StableAudio3Adapter
 from app.adapters.voxcpm import VoxCPMAdapter
 from app.config import PROVIDER_DIR, load_provider_configs
 from app.core.exceptions import ModelNotFoundError, ProviderNotFoundError
@@ -32,6 +33,7 @@ class ProviderRegistry:
             "f5-tts": F5TTSAdapter,
             "gptsovits": GPTSoVITSAdapter,
             "indextts": IndexTTSAdapter,
+            "stableaudio3": StableAudio3Adapter,
             "voxcpm": VoxCPMAdapter,
         }
         return mapping[provider_type]()

@@ -30,6 +30,7 @@ flowchart LR
 | GPT-SoVITS | 5103 | 参考音频驱动，支持 clone |
 | IndexTTS2 | 5104 | 参考音频驱动，支持 emotion control |
 | VoxCPM2 | 5105 | 文本指令驱动，无需参考音频即可合成 |
+| Stable Audio 3 Small-SFX | 5106 | 文本生成音效，统一生成协议 `audio.generate` |
 
 ## 三大目标引擎源码布局
 
@@ -39,6 +40,7 @@ GPT-SoVITS、F5-TTS、CosyVoice 的官方源码放在仓库内 `models/` 下：
 models/gpt-sovits/repo/
 models/f5-tts/repo/
 models/cosyvoice/repo/
+models/stable-audio-3/repo/
 ```
 
 `models/` 不纳入版本控制，用于保存本机源码、权重、缓存和输出。本仓库的 `services/*-service/start.ps1` 会默认读取这些源码目录，也支持通过环境变量覆盖：
@@ -48,8 +50,11 @@ models/cosyvoice/repo/
 | CosyVoice | `COSYVOICE_REPO_DIR` | `COSYVOICE_PYTHON` |
 | F5-TTS | `F5TTS_REPO_DIR` | `F5TTS_PYTHON` |
 | GPT-SoVITS | `GPTSOVITS_REPO_DIR` | `GPTSOVITS_PYTHON` |
+| Stable Audio 3 | `STABLE_AUDIO3_REPO_DIR` | `STABLE_AUDIO3_PYTHON` |
 
 当前仅要求源码存在；Python 依赖、模型权重和真实链路测试需要在磁盘空间充足后单独执行。
+
+Stable Audio 3 使用官方仓库 [Stability-AI/stable-audio-3](https://github.com/Stability-AI/stable-audio-3)，当前接入 `stabilityai/stable-audio-3-small-sfx` 对应的 `small-sfx`。Hugging Face 权重需要登录并接受模型条款后才能下载；本仓库不会自动下载权重。
 
 ## 运行模型 — IndexTTS2 完整步骤
 
@@ -180,6 +185,20 @@ curl -sS -o out.wav \
   -F "ref_audio=@speaker.wav"
 ```
 
+Stable Audio 3 Small-SFX 音效生成使用 `task: "audio.generate"`：
+
+```bash
+curl -sS -H "Content-Type: application/json" -o sfx.wav \
+  -X POST http://127.0.0.1:6006/v1/generate \
+  -d '{
+    "model": "stable-audio-3-small-sfx",
+    "task": "audio.generate",
+    "input": {"prompt": "short cinematic whoosh impact"},
+    "parameters": {"duration": 7, "seed": 1234},
+    "output": {"format": "wav", "sample_rate": 44100}
+  }'
+```
+
 旧的 `/{provider_id}/v1/synthesize`、`/{provider_id}/v1/voices`、`/{provider_id}/v1/clone` 暂时保留，后续等新协议稳定后再逐步废弃。
 
 ### Provider ID 对照
@@ -191,6 +210,7 @@ curl -sS -o out.wav \
 | `local_gpt_sovits` | GPT-SoVITS | 5103 |
 | `local_f5_tts` | F5-TTS | 5102 |
 | `local_cosyvoice2` | CosyVoice2 | 5101 |
+| `stable_audio_3_small_sfx` | Stable Audio 3 Small-SFX | 5106 |
 
 ### Gateway（:6006）
 
@@ -359,6 +379,7 @@ tts-server/
 │   ├── f5tts-service/
 │   ├── gptsovits-service/
 │   ├── index-tts-service/
+│   ├── stable-audio3-service/
 │   └── voxcpm-service/
 ├── docs/                      设计文档
 └── models/                    引擎源码 & 模型权重（不纳入版本控制）

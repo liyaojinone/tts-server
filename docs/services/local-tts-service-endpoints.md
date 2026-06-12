@@ -26,6 +26,7 @@ http://127.0.0.1:6006/v1/generate
 | `local_gpt_sovits` | GPT-SoVITS | 5103 |
 | `local_f5_tts` | F5-TTS | 5102 |
 | `local_cosyvoice2` | CosyVoice2 | 5101 |
+| `stable_audio_3_small_sfx` | Stable Audio 3 Small-SFX | 5106 |
 
 ## Authentication
 
@@ -122,6 +123,38 @@ curl -sS -o out.wav \
 ```
 
 常见错误码：`MODEL_NOT_FOUND`、`UNSUPPORTED_TASK`、`INVALID_REQUEST`。
+
+### Stable Audio 3 Small-SFX
+
+Stable Audio 3 通过统一生成协议接入，模型 ID 为 `stable-audio-3-small-sfx`，任务为 `audio.generate`。
+
+```bash
+curl -sS -H "Content-Type: application/json" -o sfx.wav \
+  -X POST http://127.0.0.1:6006/v1/generate \
+  -d '{
+    "model": "stable-audio-3-small-sfx",
+    "task": "audio.generate",
+    "input": {
+      "prompt": "short cinematic whoosh impact"
+    },
+    "parameters": {
+      "duration": 7,
+      "seed": 1234
+    },
+    "output": {"format": "wav", "sample_rate": 44100}
+  }'
+```
+
+本地准备步骤：
+
+```bash
+git clone https://github.com/Stability-AI/stable-audio-3.git models/stable-audio-3/repo
+cd models/stable-audio-3/repo
+uv sync
+huggingface-cli login
+```
+
+需要先在 Hugging Face 接受 `stabilityai/stable-audio-3-small-sfx` 模型条款。服务启动脚本默认读取 `models/stable-audio-3/repo/.venv`；如需使用其他 Python，设置 `STABLE_AUDIO3_PYTHON`。
 
 ---
 
