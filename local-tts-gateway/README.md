@@ -15,6 +15,9 @@ It loads provider definitions from `configs/providers`, starts model services la
 ## Current endpoints
 
 - `GET /v1/health`
+- `GET /v1/models`
+- `GET /v1/models/{model_id}`
+- `POST /v1/generate`
 - `GET /v1/providers`
 - `GET /v1/providers/{provider_id}`
 - `GET /v1/providers/{provider_id}/health`
@@ -97,6 +100,31 @@ python -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8090
 Run the command inside `local-tts-gateway/`.
 
 ## Example request
+
+New generation API:
+
+```json
+POST /v1/generate
+{
+  "model": "local_f5_tts",
+  "task": "tts.speech",
+  "input": {
+    "text": "你好",
+    "voice": "f5-default",
+    "language": "zh"
+  },
+  "parameters": {
+    "reference_audio": {"kind": "path", "path": "E:/AiModel/tts/ref.wav"},
+    "reference_text": "你好"
+  },
+  "output": {
+    "format": "wav",
+    "sample_rate": 24000
+  }
+}
+```
+
+Legacy synthesize API remains available:
 
 ```json
 POST /v1/synthesize

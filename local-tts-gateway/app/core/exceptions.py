@@ -11,6 +11,10 @@ class ProviderNotFoundError(GatewayError):
     code = "PROVIDER_NOT_FOUND"
 
 
+class ModelNotFoundError(GatewayError):
+    code = "MODEL_NOT_FOUND"
+
+
 class ProviderDisabledError(GatewayError):
     code = "PROVIDER_DISABLED"
 

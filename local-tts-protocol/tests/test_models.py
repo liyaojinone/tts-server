@@ -61,3 +61,54 @@ def test_protocol_supports_design_and_clone_status_models():
     assert design_response.voice_id == "designed_001"
     assert clone_status.task_id == "clone_task_001"
     assert health.model == "GPT-SoVITS"
+
+
+def test_generate_request_supports_tts_speech_and_file_inputs():
+    from local_tts_protocol.models import GenerateRequest
+
+    request = GenerateRequest.model_validate(
+        {
+            "model": "local_f5_tts",
+            "task": "tts.speech",
+            "input": {
+                "text": "你好",
+                "voice": "f5-default",
+                "language": "zh",
+            },
+            "parameters": {
+                "reference_audio": {"kind": "upload", "field": "ref_audio"},
+                "emotion_reference_audio": {"kind": "data_uri", "data": "data:audio/wav;base64,UklGRg=="},
+                "speed": 1.1,
+            },
+            "output": {"format": "wav", "sample_rate": 24000},
+        }
+    )
+
+    assert request.model == "local_f5_tts"
+    assert request.task == "tts.speech"
+    assert request.input["voice"] == "f5-default"
+    assert request.parameters["reference_audio"].kind == "upload"
+    assert request.parameters["emotion_reference_audio"].kind == "data_uri"
+    assert request.output.sample_rate == 24000
+
+
+def test_model_info_describes_generation_capabilities():
+    from local_tts_protocol.models import ModelInfo
+
+    model = ModelInfo.model_validate(
+        {
+            "id": "local_f5_tts",
+            "name": "F5-TTS",
+            "provider_id": "local_f5_tts",
+            "tasks": ["tts.speech"],
+            "outputs": ["audio/wav"],
+            "enabled": True,
+            "voices": [{"voice_id": "f5-default", "name": "Default"}],
+            "capabilities": {"reference_audio": True},
+        }
+    )
+
+    assert model.id == "local_f5_tts"
+    assert model.tasks == ["tts.speech"]
+    assert model.outputs == ["audio/wav"]
+    assert model.voices[0].voice_id == "f5-default"

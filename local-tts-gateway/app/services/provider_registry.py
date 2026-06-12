@@ -6,13 +6,17 @@ from app.adapters.gptsovits import GPTSoVITSAdapter
 from app.adapters.indextts import IndexTTSAdapter
 from app.adapters.voxcpm import VoxCPMAdapter
 from app.config import PROVIDER_DIR, load_provider_configs
-from app.core.exceptions import ProviderNotFoundError
+from app.core.exceptions import ModelNotFoundError, ProviderNotFoundError
 
 
 class ProviderRegistry:
     def __init__(self, providers):
         self.providers = providers
         self.provider_map = {provider.provider_id: provider for provider in providers}
+        self.model_map = {
+            self.get_model_id(provider): provider
+            for provider in providers
+        }
         self._adapters = {
             provider.provider_id: self._create_adapter(provider.provider_type)
             for provider in providers
@@ -34,6 +38,28 @@ class ProviderRegistry:
 
     def list_providers(self):
         return self.providers
+
+    def get_model_id(self, provider):
+        return provider.model_id or provider.provider_id
+
+    def get_model_tasks(self, provider):
+        if provider.tasks:
+            return provider.tasks
+        if provider.capabilities.synthesize:
+            return ["tts.speech"]
+        return []
+
+    def list_models(self):
+        return [
+            (self.get_model_id(provider), provider, self.get_model_tasks(provider))
+            for provider in self.providers
+        ]
+
+    def get_provider_by_model(self, model_id: str):
+        provider = self.model_map.get(model_id)
+        if provider is None:
+            raise ModelNotFoundError(f"Model not found: {model_id}", {"model_id": model_id})
+        return provider
 
     def get_provider(self, provider_id: str):
         provider = self.provider_map.get(provider_id)

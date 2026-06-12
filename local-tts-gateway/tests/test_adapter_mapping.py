@@ -123,3 +123,34 @@ def test_voxcpm_mapping_keeps_instruction_and_reference_fields():
     assert mapped.json["parameters"]["reference_text"] == "这是参考文本"
     assert mapped.json["parameters"]["extra"]["cfg_value"] == 2.5
     assert mapped.json["parameters"]["extra"]["inference_timesteps"] == 12
+
+
+def test_generate_tts_mapping_preserves_extra_model_parameters():
+    from app.adapters.indextts import IndexTTSAdapter
+    from app.schemas.generate import GenerateRequest
+
+    adapter = IndexTTSAdapter()
+    generate_request = GenerateRequest(
+        model="local_index_tts",
+        task="tts.speech",
+        input={"text": "你好", "voice": "index-default", "language": "zh"},
+        parameters={
+            "reference_audio": "E:/AiModel/tts/speaker.wav",
+            "reference_text": "主参考文本",
+            "emotion_reference_audio": "E:/AiModel/tts/emotion.wav",
+            "emo_alpha": 1.2,
+            "extra": {"temperature": 0.8},
+        },
+        output={"format": "wav", "sample_rate": 22050},
+    )
+
+    synthesize_request = adapter.build_synthesize_request_from_generate(generate_request)
+    mapped = adapter.build_request(synthesize_request)
+
+    assert mapped.json["text"] == "你好"
+    assert mapped.json["voice_id"] == "index-default"
+    assert mapped.json["parameters"]["reference_audio"] == "E:/AiModel/tts/speaker.wav"
+    assert mapped.json["parameters"]["reference_text"] == "主参考文本"
+    assert mapped.json["parameters"]["extra"]["emotion_reference_audio"] == "E:/AiModel/tts/emotion.wav"
+    assert mapped.json["parameters"]["extra"]["emo_alpha"] == 1.2
+    assert mapped.json["parameters"]["extra"]["temperature"] == 0.8

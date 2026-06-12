@@ -37,9 +37,11 @@ class VoiceConfig(BaseModel):
 
 class ProviderConfig(BaseModel):
     provider_id: str
+    model_id: str | None = None
     provider_type: str
     display_name: str
     enabled: bool = True
+    tasks: list[str] = Field(default_factory=list)
     runtime: RuntimeConfig
     network: NetworkConfig
     capabilities: CapabilityConfig

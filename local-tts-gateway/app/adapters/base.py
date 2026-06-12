@@ -3,6 +3,7 @@ import json as _json
 
 import httpx
 
+from app.schemas.generate import GenerateRequest
 from app.schemas.synthesize import UnifiedSynthesizeRequest
 from app.schemas.voice import VoiceResponse, VoicesResponse
 from app.services.audio_service import AudioResult
@@ -21,6 +22,41 @@ class BaseProviderAdapter:
 
     def build_request(self, request: UnifiedSynthesizeRequest) -> MappedRequest:
         raise NotImplementedError
+
+    def build_synthesize_request_from_generate(self, request: GenerateRequest) -> UnifiedSynthesizeRequest:
+        if request.task != "tts.speech":
+            raise ValueError(f"Unsupported generation task: {request.task}")
+
+        parameters = dict(request.parameters)
+        extra = dict(parameters.pop("extra", {}) or {})
+        synthesize_fields = {
+            "speed",
+            "pitch",
+            "volume",
+            "emotion",
+            "emotion_intensity",
+            "instruction",
+            "reference_audio",
+            "reference_text",
+        }
+        synthesize_parameters = {
+            key: parameters.pop(key)
+            for key in list(parameters.keys())
+            if key in synthesize_fields
+        }
+        extra.update(parameters)
+        synthesize_parameters["extra"] = extra
+
+        return UnifiedSynthesizeRequest(
+            text=str(request.input.get("text", "")),
+            voice_id=str(request.input.get("voice") or request.input.get("voice_id") or ""),
+            language=request.input.get("language"),
+            parameters=synthesize_parameters,
+            output={
+                "format": request.output.format,
+                "sample_rate": request.output.sample_rate,
+            },
+        )
 
     async def list_voices(self, provider):
         voices = [
@@ -54,6 +90,10 @@ class BaseProviderAdapter:
             duration_seconds=float(response.headers["x-audio-duration"]) if "x-audio-duration" in response.headers else None,
             sample_rate=int(response.headers["x-sample-rate"]) if "x-sample-rate" in response.headers else None,
         )
+
+    async def generate(self, provider, request: GenerateRequest) -> AudioResult:
+        synthesize_request = self.build_synthesize_request_from_generate(request)
+        return await self.synthesize(provider, synthesize_request)
 
     async def healthcheck(self, provider) -> bool:
         async with httpx.AsyncClient(timeout=5.0, trust_env=False) as client:

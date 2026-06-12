@@ -90,11 +90,15 @@ def test_ensure_started_starts_stopped_provider():
         started.append(provider_config.provider_id)
         return 9999
 
-    async def fake_healthcheck(provider_id):
+    async def fake_initial_healthcheck(provider_id):
+        return False
+
+    async def fake_wait_until_healthy(provider_id):
         return True
 
     manager._launch_process = fake_launcher
-    manager._wait_until_healthy = fake_healthcheck
+    manager.healthcheck = fake_initial_healthcheck
+    manager._wait_until_healthy = fake_wait_until_healthy
 
     state = asyncio.run(manager.ensure_started(provider.provider_id))
 

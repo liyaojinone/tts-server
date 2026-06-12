@@ -11,6 +11,12 @@ http://127.0.0.1:6006/local_index_tts
 
 所有接口都在 `/{provider_id}/v1/*` 下，也可通过 `/v1/*` 直接访问（不限定 provider）。
 
+新一代统一生成协议直接使用 Gateway 根路径：
+
+```
+http://127.0.0.1:6006/v1/generate
+```
+
 ## Provider ID
 
 | Provider ID | 引擎 | 端口 |
@@ -24,6 +30,98 @@ http://127.0.0.1:6006/local_index_tts
 ## Authentication
 
 设置 `LOCAL_TTS_API_KEY` 后需带 `Authorization: Bearer <key>`。
+
+---
+
+## 统一生成 API
+
+旧 TTS 专用接口暂时保留；新接入优先使用统一生成协议。
+
+### 模型列表 `GET /v1/models`
+
+```bash
+curl http://127.0.0.1:6006/v1/models
+```
+
+响应：
+
+```json
+{
+  "models": [
+    {
+      "id": "local_f5_tts",
+      "name": "F5-TTS",
+      "provider_id": "local_f5_tts",
+      "tasks": ["tts.speech"],
+      "outputs": ["audio/wav"],
+      "enabled": true
+    }
+  ]
+}
+```
+
+### 模型详情 `GET /v1/models/{model_id}`
+
+返回模型任务、输出格式、默认音色和能力字段。当前 TTS provider 会从旧 provider 配置自动推导 `tts.speech`。
+
+### 生成 `POST /v1/generate`
+
+**JSON**：
+
+```bash
+curl -sS -H "Content-Type: application/json" -o out.wav \
+  -X POST http://127.0.0.1:6006/v1/generate \
+  -d '{
+    "model": "local_f5_tts",
+    "task": "tts.speech",
+    "input": {
+      "text": "你好。",
+      "voice": "f5-default",
+      "language": "zh"
+    },
+    "parameters": {
+      "reference_audio": {"kind": "path", "path": "/home/test.wav"},
+      "reference_text": "参考文本",
+      "speed": 1.0
+    },
+    "output": {"format": "wav", "sample_rate": 24000}
+  }'
+```
+
+**multipart**：
+
+```bash
+curl -sS -o out.wav \
+  -X POST http://127.0.0.1:6006/v1/generate \
+  -F 'request={"model":"local_f5_tts","task":"tts.speech","input":{"text":"你好","voice":"f5-default"},"parameters":{"reference_audio":{"kind":"upload","field":"ref_audio"}}}' \
+  -F "ref_audio=@speaker.wav"
+```
+
+`FileInput` 支持三种来源：
+
+| kind | 示例 | 说明 |
+|------|------|------|
+| `upload` | `{"kind":"upload","field":"ref_audio"}` | multipart 上传字段 |
+| `path` | `{"kind":"path","path":"/home/test.wav"}` | 服务器本地文件 |
+| `data_uri` | `{"kind":"data_uri","data":"data:audio/wav;base64,..."}` | JSON 内联 base64 |
+
+响应为二进制音频流，包含：
+
+| Header | 说明 |
+|--------|------|
+| `X-Provider-Id` | 实际处理请求的 provider ID |
+| `X-Model-Id` | 请求中的统一模型 ID |
+| `X-Task` | 请求任务类型 |
+| `X-Audio-Duration` | 音频时长（秒），下游提供时返回 |
+| `X-Sample-Rate` | 采样率（Hz），下游提供时返回 |
+
+错误：
+
+```json
+{"error": {"code": "MODEL_NOT_FOUND", "message": "...", "details": {}}}
+```
+
+常见错误码：`MODEL_NOT_FOUND`、`UNSUPPORTED_TASK`、`INVALID_REQUEST`。
 
 ---
 

@@ -146,6 +146,42 @@ curl http://127.0.0.1:6006/v1/providers/status
 
 > 完整接口文档见 [docs/services/local-tts-service-endpoints.md](docs/services/local-tts-service-endpoints.md)
 
+### 统一生成 API（新主协议）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/v1/models` | 列出可生成模型与任务能力 |
+| GET | `/v1/models/{model_id}` | 查看单个模型的输入、输出与音色能力 |
+| POST | `/v1/generate` | 同步生成音频，支持 JSON / multipart / base64 |
+
+TTS 合成使用 `task: "tts.speech"`：
+
+```bash
+curl -sS -H "Content-Type: application/json" -o out.wav \
+  -X POST http://127.0.0.1:6006/v1/generate \
+  -d '{
+    "model": "local_f5_tts",
+    "task": "tts.speech",
+    "input": {"text": "你好", "voice": "f5-default", "language": "zh"},
+    "parameters": {
+      "reference_audio": {"kind": "path", "path": "E:/audio/ref.wav"},
+      "reference_text": "参考文本"
+    },
+    "output": {"format": "wav", "sample_rate": 24000}
+  }'
+```
+
+multipart 上传使用 `request` 字段传 JSON，文件字段通过 `FileInput` 引用：
+
+```bash
+curl -sS -o out.wav \
+  -X POST http://127.0.0.1:6006/v1/generate \
+  -F 'request={"model":"local_f5_tts","task":"tts.speech","input":{"text":"你好","voice":"f5-default"},"parameters":{"reference_audio":{"kind":"upload","field":"ref_audio"}}}' \
+  -F "ref_audio=@speaker.wav"
+```
+
+旧的 `/{provider_id}/v1/synthesize`、`/{provider_id}/v1/voices`、`/{provider_id}/v1/clone` 暂时保留，后续等新协议稳定后再逐步废弃。
+
 ### Provider ID 对照
 
 | Provider ID | 引擎 | 端口 |
