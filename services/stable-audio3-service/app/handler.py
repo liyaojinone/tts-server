@@ -1,4 +1,5 @@
 from io import BytesIO
+import json
 import os
 from pathlib import Path
 import sys
@@ -10,6 +11,7 @@ from local_tts_protocol.models import GenerateRequest
 ROOT_DIR = Path(__file__).resolve().parents[3]
 DEFAULT_REPO_DIR = ROOT_DIR / "models" / "stable-audio-3" / "repo"
 MODEL_ID = "stable-audio-3-small-sfx"
+HF_REPO_ID = "stabilityai/stable-audio-3-small-sfx"
 UPSTREAM_MODEL_NAME = "small-sfx"
 DEFAULT_SAMPLE_RATE = 44100
 
@@ -124,16 +126,60 @@ class StableAudio3Handler:
         if str(self.repo_dir) not in sys.path:
             sys.path.insert(0, str(self.repo_dir))
         try:
-            from stable_audio_3 import StableAudioModel
+            import torch
+            from huggingface_hub import hf_hub_download
+            from stable_audio_3.loading_utils import load_diffusion_cond
+            from stable_audio_3.model import StableAudioModel
         except ImportError as exc:
             raise RuntimeError(
                 "stable_audio_3 dependencies are not installed. Run uv sync in models/stable-audio-3/repo first."
             ) from exc
-        self._model = StableAudioModel.from_pretrained(
-            self.model_name,
-            device=self.device,
-            model_half=self.model_half,
+
+        device = self.device
+        if device is None and torch.cuda.is_available():
+            device = "cuda"
+        elif device is None and torch.backends.mps.is_available():
+            device = "mps"
+        elif device is None:
+            device = "cpu"
+
+        model_half = self.model_half and torch.cuda.is_available()
+        config_path = hf_hub_download(repo_id=HF_REPO_ID, filename="model_config.json")
+        checkpoint_path = hf_hub_download(repo_id=HF_REPO_ID, filename="model.safetensors")
+        tokenizer_dir = Path(config_path).parent / "t5gemma-b-b-ul2"
+        if not tokenizer_dir.exists():
+            for filename in [
+                "t5gemma-b-b-ul2/config.json",
+                "t5gemma-b-b-ul2/generation_config.json",
+                "t5gemma-b-b-ul2/model.safetensors",
+                "t5gemma-b-b-ul2/special_tokens_map.json",
+                "t5gemma-b-b-ul2/tokenizer.json",
+                "t5gemma-b-b-ul2/tokenizer.model",
+                "t5gemma-b-b-ul2/tokenizer_config.json",
+            ]:
+                hf_hub_download(repo_id=HF_REPO_ID, filename=filename)
+
+        with open(config_path, encoding="utf-8") as file:
+            model_config = json.load(file)
+        conditioning_configs = []
+        conditioning_configs.extend(model_config.get("conditioning", {}).get("configs", []))
+        conditioning_configs.extend(model_config.get("model", {}).get("conditioning", {}).get("configs", []))
+        for conditioner in conditioning_configs:
+            if conditioner.get("type") == "t5gemma":
+                config = conditioner.setdefault("config", {})
+                config["model_path"] = str(tokenizer_dir)
+                config.pop("repo_id", None)
+                config.pop("subfolder", None)
+
+        model = load_diffusion_cond(
+            model_config,
+            checkpoint_path,
+            device=device,
+            model_half=model_half,
         )
+        model.use_lora = False
+        model.lora_names = []
+        self._model = StableAudioModel(model, model_config, device, model_half)
         return self._model
 
     def _audio_result(self, content: bytes, sample_rate: int, duration_seconds: float) -> dict:

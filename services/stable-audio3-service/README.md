@@ -25,6 +25,7 @@ When disk space is available:
 ```bash
 cd models/stable-audio-3/repo
 uv sync
+uv pip install fastapi uvicorn pydantic sentencepiece protobuf
 huggingface-cli login
 ```
 
