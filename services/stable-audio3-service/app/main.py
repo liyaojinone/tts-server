@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import ValidationError
 
 from app.handler import StableAudio3Handler
-from local_tts_protocol.models import GenerateRequest
+from bobogen_protocol.models import GenerateRequest
 
 
 def _error_response(status_code: int, code: str, message: str, details: dict | None = None) -> JSONResponse:
@@ -18,7 +18,7 @@ def _error_response(status_code: int, code: str, message: str, details: dict | N
 def create_app(test_mode: bool = False):
     app = FastAPI(title="stable-audio3-service", version="0.1.0")
     handler = StableAudio3Handler(test_mode=test_mode)
-    api_key = os.environ.get("LOCAL_TTS_API_KEY")
+    api_key = os.environ.get("BOBOGEN_API_KEY") or os.environ.get("LOCAL_TTS_API_KEY")
 
     async def ensure_authorized(request: Request):
         if not api_key:

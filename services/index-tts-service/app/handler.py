@@ -4,8 +4,8 @@ import os
 import sys
 import tempfile
 
-from local_tts_protocol.models import CloneResponse, CloneStatusResponse, HealthResponse, Voice, VoicesResponse
-from local_tts_service_kit.profiles import ProfileStore
+from bobogen_protocol.models import CloneResponse, CloneStatusResponse, HealthResponse, Voice, VoicesResponse
+from bobogen_service_kit.profiles import ProfileStore
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]

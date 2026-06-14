@@ -6,7 +6,7 @@ import sys
 import tempfile
 from typing import Optional
 
-from local_tts_protocol.models import CloneResponse, CloneStatusResponse, HealthResponse, Voice, VoicesResponse
+from bobogen_protocol.models import CloneResponse, CloneStatusResponse, HealthResponse, Voice, VoicesResponse
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]

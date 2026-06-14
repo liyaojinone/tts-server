@@ -57,7 +57,7 @@ def test_indextts_synthesize_test_mode_returns_audio():
             "voice_id": "index-default",
             "language": "zh",
             "parameters": {
-                "reference_audio": r"E:/AiModel/tts-server/models/index-tts/repo/examples/voice_01.wav",
+                "reference_audio": r"E:/AiModel/bobogen-server/models/index-tts/repo/examples/voice_01.wav",
                 "reference_text": "这是参考文本",
                 "speed": 1.0,
             },

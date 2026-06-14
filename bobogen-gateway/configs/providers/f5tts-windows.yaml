@@ -1,0 +1,33 @@
+provider_id: local_f5_tts
+provider_type: f5-tts
+display_name: F5-TTS Default
+enabled: true
+runtime:
+  root_dir: ${BOBOGEN_ROOT}\services\f5tts-service
+  cwd: ${BOBOGEN_ROOT}\services\f5tts-service
+  command:
+    - powershell
+    - -File
+    - ${BOBOGEN_ROOT}\services\f5tts-service\start.ps1
+  env:
+    F5TTS_REPO_DIR: "${BOBOGEN_ROOT}\\models\\f5-tts\\repo"
+  startup_timeout_ms: 120000
+  request_timeout_ms: 180000
+  idle_shutdown_seconds: 0
+network:
+  host: 127.0.0.1
+  port: 5102
+  base_url: http://127.0.0.1:5102
+  healthcheck_path: /v1/health
+capabilities:
+  voices: true
+  synthesize: true
+  clone: true
+  stream: false
+voices:
+  - voice_id: f5-default
+    name: F5 Default
+    language: [zh, en]
+    description: F5 reference-driven synthesis mode
+    tags: [reference, default]
+    metadata: {}

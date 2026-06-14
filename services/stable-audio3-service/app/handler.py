@@ -1,11 +1,14 @@
 from io import BytesIO
 import json
+import logging
+import math
 import os
 from pathlib import Path
+import struct
 import sys
 import wave
 
-from local_tts_protocol.models import GenerateRequest
+from bobogen_protocol.models import GenerateRequest
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
@@ -14,10 +17,125 @@ MODEL_ID = "stable-audio-3-small-sfx"
 HF_REPO_ID = "stabilityai/stable-audio-3-small-sfx"
 UPSTREAM_MODEL_NAME = "small-sfx"
 DEFAULT_SAMPLE_RATE = 44100
+logger = logging.getLogger("stable_audio3.generate")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    logger.addHandler(handler)
 
 
 def _truthy(value: str | None) -> bool:
     return str(value or "").lower() in {"1", "true", "yes", "on"}
+
+
+def _shorten(value: str, limit: int = 360) -> str | dict:
+    if value.startswith("data:"):
+        return {"kind": "data-uri", "length": len(value)}
+    if len(value) <= limit:
+        return value
+    return {"preview": value[:limit], "length": len(value)}
+
+
+def _sanitize(value, key: str = ""):
+    if isinstance(value, (bytes, bytearray)):
+        return {"kind": "bytes", "length": len(value)}
+    if isinstance(value, str):
+        if key.lower() in {"data", "audio", "content", "bytes", "blob"}:
+            return _shorten(value, limit=120)
+        return _shorten(value)
+    if isinstance(value, dict):
+        return {item_key: _sanitize(item_value, item_key) for item_key, item_value in value.items()}
+    if isinstance(value, list):
+        return [_sanitize(item) for item in value]
+    if hasattr(value, "model_dump"):
+        return _sanitize(value.model_dump(mode="json"))
+    return value
+
+
+def _describe_wav_bytes(content: bytes) -> dict:
+    summary = {"bytes": len(content)}
+    if not content.startswith(b"RIFF"):
+        return summary
+    try:
+        with wave.open(BytesIO(content), "rb") as wav:
+            channels = wav.getnchannels()
+            sample_width = wav.getsampwidth()
+            sample_rate = wav.getframerate()
+            frames = wav.getnframes()
+            frame_bytes = wav.readframes(frames)
+    except (EOFError, wave.Error) as exc:
+        summary["wavError"] = str(exc)
+        return summary
+
+    summary.update(
+        {
+            "format": "wav",
+            "channels": channels,
+            "sampleRate": sample_rate,
+            "sampleWidth": sample_width,
+            "frames": frames,
+            "durationSeconds": round(frames / sample_rate, 3) if sample_rate else None,
+        }
+    )
+
+    peak = 0.0
+    sum_squares = 0.0
+    sample_count = 0
+    if sample_width == 2:
+        for (sample,) in struct.iter_unpack("<h", frame_bytes[: len(frame_bytes) - (len(frame_bytes) % 2)]):
+            normalized = sample / 32768.0
+            peak = max(peak, abs(normalized))
+            sum_squares += normalized * normalized
+            sample_count += 1
+    elif sample_width == 4:
+        for (sample,) in struct.iter_unpack("<i", frame_bytes[: len(frame_bytes) - (len(frame_bytes) % 4)]):
+            normalized = sample / 2147483648.0
+            peak = max(peak, abs(normalized))
+            sum_squares += normalized * normalized
+            sample_count += 1
+    elif sample_width == 1:
+        for sample in frame_bytes:
+            normalized = (sample - 128) / 128.0
+            peak = max(peak, abs(normalized))
+            sum_squares += normalized * normalized
+            sample_count += 1
+
+    if sample_count:
+        summary["peak"] = round(peak, 6)
+        summary["rms"] = round(math.sqrt(sum_squares / sample_count), 6)
+        summary["silent"] = peak == 0
+    return summary
+
+
+def _describe_generated_audio(audio) -> dict:
+    try:
+        import numpy as np
+    except ImportError:
+        return {"error": "numpy unavailable"}
+
+    if hasattr(audio, "detach"):
+        audio = audio.detach().cpu()
+    if hasattr(audio, "numpy"):
+        audio = audio.numpy()
+    array = np.asarray(audio, dtype=np.float32)
+    finite = array[np.isfinite(array)]
+    if finite.size == 0:
+        return {"shape": list(array.shape), "dtype": str(array.dtype), "finiteSamples": 0}
+    peak = float(np.max(np.abs(finite)))
+    rms = float(np.sqrt(np.mean(np.square(finite))))
+    return {
+        "shape": list(array.shape),
+        "dtype": str(array.dtype),
+        "finiteSamples": int(finite.size),
+        "peak": round(peak, 6),
+        "rms": round(rms, 6),
+        "silent": peak == 0,
+    }
+
+
+def _log_event(event: str, payload: dict) -> None:
+    logger.info("%s %s", event, json.dumps(payload, ensure_ascii=False, sort_keys=True))
 
 
 def _silent_wav(duration_seconds: float, sample_rate: int) -> bytes:
@@ -49,6 +167,8 @@ def _encode_wav(audio, sample_rate: int) -> bytes:
         audio = audio.reshape(1, -1)
     if audio.ndim != 2:
         raise RuntimeError(f"Unsupported generated audio shape: {audio.shape}")
+    if not np.isfinite(audio).all():
+        raise RuntimeError("Stable Audio 3 generated non-finite audio samples")
 
     channels, samples = audio.shape
     audio = np.clip(audio, -1.0, 1.0)
@@ -78,6 +198,7 @@ class StableAudio3Handler:
             "model": MODEL_ID,
             "version": "local",
             "ready": self.test_mode or self._model is not None,
+            "testMode": self.test_mode,
         }
 
     def generate(self, request: GenerateRequest) -> dict:
@@ -98,9 +219,31 @@ class StableAudio3Handler:
             or 7
         )
         sample_rate = request.output.sample_rate or DEFAULT_SAMPLE_RATE
+        _log_event(
+            "stableAudio3.generate.request",
+            {
+                "model": request.model,
+                "task": request.task,
+                "testMode": self.test_mode,
+                "repoDir": str(self.repo_dir),
+                "repoExists": self.repo_dir.exists(),
+                "prompt": _sanitize(prompt),
+                "parameters": _sanitize(request.parameters),
+                "output": _sanitize(request.output),
+            },
+        )
 
         if self.test_mode:
             content = _silent_wav(duration, sample_rate)
+            _log_event(
+                "stableAudio3.generate.testMode",
+                {
+                    "testMode": True,
+                    "silent": True,
+                    "reason": "test mode returns a synthetic silent wav",
+                    "audio": _describe_wav_bytes(content),
+                },
+            )
             return self._audio_result(content, sample_rate, duration)
 
         model = self._load_model()
@@ -114,8 +257,18 @@ class StableAudio3Handler:
             batch_size=int(request.parameters.get("batch_size", 1)),
             truncate_output_to_duration=bool(request.parameters.get("truncate_output_to_duration", True)),
         )
+        _log_event("stableAudio3.generate.modelOutput", _describe_generated_audio(audio))
         model_sample_rate = int(getattr(model.model, "sample_rate", DEFAULT_SAMPLE_RATE))
         content = _encode_wav(audio, model_sample_rate)
+        _log_event(
+            "stableAudio3.generate.response",
+            {
+                "testMode": False,
+                "audio": _describe_wav_bytes(content),
+                "sampleRate": model_sample_rate,
+                "durationSeconds": duration,
+            },
+        )
         return self._audio_result(content, model_sample_rate, duration)
 
     def _load_model(self):

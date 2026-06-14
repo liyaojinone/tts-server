@@ -1,0 +1,33 @@
+provider_id: local_gpt_sovits
+provider_type: gptsovits
+display_name: GPT-SoVITS Default
+enabled: true
+runtime:
+  root_dir: ${BOBOGEN_ROOT}\services\gptsovits-service
+  cwd: ${BOBOGEN_ROOT}\services\gptsovits-service
+  command:
+    - powershell
+    - -File
+    - ${BOBOGEN_ROOT}\services\gptsovits-service\start.ps1
+  env:
+    GPTSOVITS_REPO_DIR: "${BOBOGEN_ROOT}\\models\\gpt-sovits\\repo"
+  startup_timeout_ms: 120000
+  request_timeout_ms: 180000
+  idle_shutdown_seconds: 0
+network:
+  host: 127.0.0.1
+  port: 5103
+  base_url: http://127.0.0.1:5103
+  healthcheck_path: /v1/health
+capabilities:
+  voices: true
+  synthesize: true
+  clone: true
+  stream: false
+voices:
+  - voice_id: default
+    name: GPT-SoVITS Default
+    language: [zh, en, ja]
+    description: GPT-SoVITS reference-driven synthesis mode
+    tags: [reference, default]
+    metadata: {}

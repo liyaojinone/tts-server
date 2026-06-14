@@ -5,8 +5,8 @@ $workspaceRoot = Split-Path -Parent (Split-Path -Parent $serviceRoot)
 $pythonExe = if ($env:COSYVOICE_PYTHON) { $env:COSYVOICE_PYTHON } else { Join-Path $serviceRoot ".venv\Scripts\python.exe" }
 $repoDir = if ($env:COSYVOICE_REPO_DIR) { $env:COSYVOICE_REPO_DIR } else { Join-Path $workspaceRoot "models\cosyvoice\repo" }
 $profileDir = if ($env:COSYVOICE_PROFILE_DIR) { $env:COSYVOICE_PROFILE_DIR } else { Join-Path $serviceRoot "data\profiles" }
-$sharedProtocolSrc = Join-Path $workspaceRoot "local-tts-protocol\src"
-$sharedKitSrc = Join-Path $workspaceRoot "local-tts-service-kit\src"
+$sharedProtocolSrc = Join-Path $workspaceRoot "bobogen-protocol\src"
+$sharedKitSrc = Join-Path $workspaceRoot "bobogen-service-kit\src"
 $thirdPartyDir = Join-Path $repoDir "third_party\Matcha-TTS"
 
 if (-not (Test-Path $pythonExe)) {

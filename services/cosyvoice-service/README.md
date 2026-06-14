@@ -7,8 +7,8 @@ Protocol-compliant `CosyVoice` service built on top of the shared local TTS pack
 Use the `CosyVoice` environment, then install the shared packages:
 
 ```bash
-pip install -e ..\..\local-tts-protocol
-pip install -e ..\..\local-tts-service-kit
+pip install -e ..\..\bobogen-protocol
+pip install -e ..\..\bobogen-service-kit
 ```
 
 ## Run
@@ -48,4 +48,4 @@ By default `start.ps1` reads upstream source from `models\cosyvoice\repo` and Py
 - stores cloned voice profiles under `services/cosyvoice-service/data/profiles` by default
 
 Protocol endpoint overview:
-- [local-tts-service-endpoints.md](..\..\docs\services\local-tts-service-endpoints.md)
+- [bobogen-api-reference.md](..\..\docs\services\bobogen-api-reference.md)

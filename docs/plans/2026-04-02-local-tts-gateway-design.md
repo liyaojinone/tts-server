@@ -66,7 +66,7 @@
 └────────────────────┬───────────────────────┘
                      │
 ┌────────────────────▼───────────────────────┐
-│             Local TTS Gateway              │
+│             BoboGen Gateway              │
 │                                            │
 │  - OpenAPI / 路由层                         │
 │  - 请求校验                                 │
@@ -147,7 +147,7 @@
 ```text
 E:\AiModel\tts\
   docs\
-  local-tts-gateway\
+  bobogen-gateway\
     app\
       main.py
       config.py
@@ -573,8 +573,8 @@ network:
 
 最终建议是：
 
-1. 保留现有 [docs\2026-04-02-local-tts-protocol-design.md](E:\AiModel\tts\docs\2026-04-02-local-tts-protocol-design.md) 作为协议规范
-2. 新增独立 `local-tts-gateway` 工程作为统一入口
+1. 保留现有 [docs\2026-04-02-bobogen-protocol-design.md](E:\AiModel\tts\docs\2026-04-02-bobogen-protocol-design.md) 作为协议规范
+2. 新增独立 `bobogen-gateway` 工程作为统一入口
 3. 第一阶段不改造模型核心，只包一层 adapter + process manager
 4. 统一通过 `provider_id` 路由到具体模型实例
 5. 未来新增模型时，优先新增配置和 adapter，而不是修改协议
@@ -587,7 +587,7 @@ network:
 
 建议实现顺序如下：
 
-1. 搭建 `local-tts-gateway` 空工程
+1. 搭建 `bobogen-gateway` 空工程
 2. 定义 provider 配置格式
 3. 实现进程管理器
 4. 实现 `CosyVoice` adapter
@@ -605,7 +605,7 @@ network:
 建议新增独立工程目录：
 
 ```text
-local-tts-gateway\
+bobogen-gateway\
   app\
     main.py
     config.py

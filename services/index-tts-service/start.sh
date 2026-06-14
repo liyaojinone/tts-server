@@ -19,7 +19,7 @@ fi
 mkdir -p "$PROFILE_DIR" "$OUTPUT_DIR"
 cd "$SERVICE_ROOT"
 
-export PYTHONPATH="${SERVICE_ROOT}:${WORKSPACE_ROOT}/local-tts-protocol/src:${WORKSPACE_ROOT}/local-tts-service-kit/src:${REPO_DIR}"
+export PYTHONPATH="${SERVICE_ROOT}:${WORKSPACE_ROOT}/bobogen-protocol/src:${WORKSPACE_ROOT}/bobogen-service-kit/src:${REPO_DIR}"
 export INDEXTTS_REPO_DIR="${REPO_DIR}"
 export INDEXTTS_MODEL_DIR="${MODEL_DIR}"
 export INDEXTTS_PROFILE_DIR="${PROFILE_DIR}"

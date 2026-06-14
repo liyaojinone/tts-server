@@ -7,8 +7,8 @@ $repoDir = Join-Path $workspaceRoot "models\voxcpm\repo"
 $modelDir = Join-Path $workspaceRoot "models\voxcpm\checkpoints"
 $profileDir = Join-Path $serviceRoot "data\profiles"
 $outputDir = Join-Path $workspaceRoot "models\voxcpm\outputs"
-$sharedProtocolSrc = Join-Path $workspaceRoot "local-tts-protocol\src"
-$sharedKitSrc = Join-Path $workspaceRoot "local-tts-service-kit\src"
+$sharedProtocolSrc = Join-Path $workspaceRoot "bobogen-protocol\src"
+$sharedKitSrc = Join-Path $workspaceRoot "bobogen-service-kit\src"
 $repoSrc = Join-Path $repoDir "src"
 
 New-Item -ItemType Directory -Force -Path $profileDir | Out-Null

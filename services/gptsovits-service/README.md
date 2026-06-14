@@ -7,8 +7,8 @@ Protocol-compliant `GPT-SoVITS` service built on top of the shared local TTS pac
 Use the `GPT-SoVITS` environment, then install the shared packages:
 
 ```bash
-pip install -e ..\..\local-tts-protocol
-pip install -e ..\..\local-tts-service-kit
+pip install -e ..\..\bobogen-protocol
+pip install -e ..\..\bobogen-service-kit
 ```
 
 ## Run
@@ -64,7 +64,7 @@ Clone and synthesize smoke test:
 - stores cloned voice profiles under `services/gptsovits-service/data/profiles` by default
 
 Protocol endpoint overview:
-- [local-tts-service-endpoints.md](..\..\docs\services\local-tts-service-endpoints.md)
+- [bobogen-api-reference.md](..\..\docs\services\bobogen-api-reference.md)
 
 ## Clone flow
 

@@ -7,7 +7,7 @@ ROOT = SERVICE_ROOT.parents[1]
 
 for path in [
     SERVICE_ROOT,
-    ROOT / "local-tts-protocol" / "src",
+    ROOT / "bobogen-protocol" / "src",
 ]:
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))

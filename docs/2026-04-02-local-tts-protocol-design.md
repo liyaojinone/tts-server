@@ -898,7 +898,7 @@ export type TTSEngineType =
 
 ## 9. OpenAPI 规范文件
 
-完整的 OpenAPI 3.0 规范将输出为 `docs/specs/local-tts-protocol.openapi.yaml`，
+完整的 OpenAPI 3.0 规范将输出为 `docs/specs/bobogen-protocol.openapi.yaml`，
 作为独立文件供本地模型开发者参考和实现。
 
 ---
@@ -941,8 +941,8 @@ export type TTSEngineType =
 
 | 文件 | 操作 | 说明 |
 |---|---|---|
-| `docs/specs/local-tts-protocol.openapi.yaml` | 新增 | OpenAPI 规范 |
-| `src/shared/types/local-tts-protocol.ts` | 新增 | 协议类型定义 |
+| `docs/specs/bobogen-protocol.openapi.yaml` | 新增 | OpenAPI 规范 |
+| `src/shared/types/bobogen-protocol.ts` | 新增 | 协议类型定义 |
 | `src/shared/types/local-tts-provider-config.ts` | 新增 | 应用侧配置类型 |
 | `src/main/services/voice/adapters/LocalTTSAdapter.ts` | 新增 | 通用本地模型适配器 |
 | `src/main/services/voice/adapters/ttsEngineAdapter.ts` | 修改 | 扩展 clone/design 可选方法 |

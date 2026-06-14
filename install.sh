@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — Local TTS Server 一键安装（Linux / Git Bash）
+# install.sh — BoboGen Server 一键安装（Linux / Git Bash）
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -10,7 +10,7 @@ warn() { echo -e "   ${YELLOW}WARN${NC} — $1"; }
 
 echo ""
 echo "========================================"
-echo "  Local TTS Server — 环境安装"
+echo "  BoboGen Server — 环境安装"
 echo "========================================"
 echo ""
 
@@ -46,19 +46,21 @@ echo -e "${YELLOW}请选择要安装的模型：${NC}"
 echo ""
 echo "  1. IndexTTS2  — 参考音频驱动 + emotion control"
 echo "  2. VoxCPM2    — 文本指令驱动，无需参考音频"
+echo "  3. Stable Audio 3 Small-SFX — 文本生成音效（Hugging Face gated 权重）"
 echo "  a. 全部"
 echo "  q. 跳过（仅安装 Gateway 依赖）"
 echo ""
-read -rp "输入序号（多选用空格分隔，如 1 2）：" choice
+read -rp "输入序号（多选用空格分隔，如 1 2 3）：" choice
 
 case "$choice" in
     q|Q) models="" ;;
-    a|A) models="indextts voxcpm" ;;
+    a|A) models="indextts voxcpm stableaudio3" ;;
     *)  models=""
         for c in $choice; do
             case $c in
                 1) models="$models indextts" ;;
                 2) models="$models voxcpm" ;;
+                3) models="$models stableaudio3" ;;
             esac
         done ;;
 esac
@@ -89,6 +91,15 @@ for model in $models; do
             VENV_DIR="services/voxcpm-service/.venv"
             SERVICE_DEPS="uvicorn fastapi httpx pydantic pyyaml python-multipart"
             ;;
+        stableaudio3)
+            NAME="Stable Audio 3 Small-SFX"
+            REPO_URL="https://github.com/Stability-AI/stable-audio-3.git"
+            REPO_DIR="models/stable-audio-3/repo"
+            WEIGHTS_MODELSCOPE=""
+            WEIGHTS_DIR=""
+            VENV_DIR="$REPO_DIR/.venv"
+            SERVICE_DEPS="uvicorn fastapi pydantic sentencepiece protobuf"
+            ;;
     esac
 
     echo ""
@@ -107,11 +118,23 @@ for model in $models; do
         ok "克隆完成"
     fi
 
-    # 2. 下载模型权重
-    step "2/3 模型权重"
-    if [ -d "$WEIGHTS_DIR" ] && [ "$(find "$WEIGHTS_DIR" -type f \( -name '*.pth' -o -name '*.safetensors' -o -name '*.pt' \) 2>/dev/null | wc -l)" -gt 0 ]; then
+    # 2. 下载或检查模型权重
+    if [ "$model" = "stableaudio3" ]; then
+        step "2/3 Hugging Face 权重授权"
+        warn "Stable Audio 3 权重受 Hugging Face 条款限制，本脚本不会自动下载 gated 权重"
+        echo "   请先在 Hugging Face 接受 stabilityai/stable-audio-3-small-sfx 条款"
+        if [ -n "${HF_TOKEN:-}" ]; then
+            ok "检测到 HF_TOKEN，首次生成时会下载到 models/stable-audio-3/hf-home"
+        elif command -v huggingface-cli &>/dev/null && huggingface-cli whoami &>/dev/null; then
+            ok "huggingface-cli 已登录，首次生成时会下载到 models/stable-audio-3/hf-home"
+        else
+            warn "未检测到 Hugging Face 登录；真实推理前请运行: huggingface-cli login"
+        fi
+    elif [ -d "$WEIGHTS_DIR" ] && [ "$(find "$WEIGHTS_DIR" -type f \( -name '*.pth' -o -name '*.safetensors' -o -name '*.pt' \) 2>/dev/null | wc -l)" -gt 0 ]; then
+        step "2/3 模型权重"
         ok "权重已存在: $WEIGHTS_DIR ($(find "$WEIGHTS_DIR" -type f | wc -l) 个文件)"
     else
+        step "2/3 模型权重"
         mkdir -p "$WEIGHTS_DIR"
         if ! python3 -c "import modelscope" 2>/dev/null; then
             pip install modelscope -q -i "$PIP_INDEX"
