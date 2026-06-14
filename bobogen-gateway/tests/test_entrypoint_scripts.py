@@ -21,3 +21,12 @@ def test_start_script_supports_native_and_docker_operations_without_provider_sco
     assert "docker compose --profile stable-audio3 up -d stable-audio3" in start_script
     assert "/v1/providers/status" in start_script
     assert "local_index_tts/v1/providers/status" not in start_script
+
+
+def test_windows_start_script_uses_distinct_daemon_log_files():
+    start_script = (ROOT / "start.ps1").read_text(encoding="utf-8")
+
+    assert "gateway.out.log" in start_script
+    assert "gateway.err.log" in start_script
+    assert "-RedirectStandardOutput $outLogPath -RedirectStandardError $errLogPath" in start_script
+    assert "-RedirectStandardOutput $logPath -RedirectStandardError $logPath" not in start_script

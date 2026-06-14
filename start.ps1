@@ -46,7 +46,15 @@ function Invoke-DockerMode {
 function Invoke-NativeMode {
     Set-Location $gatewayDir
     if ($Logs) {
-        Get-Content -Path (Join-Path $gatewayDir "logs\gateway.log") -Wait
+        $logPaths = @(
+            (Join-Path $gatewayDir "logs\gateway.out.log"),
+            (Join-Path $gatewayDir "logs\gateway.err.log")
+        ) | Where-Object { Test-Path $_ }
+        if (-not $logPaths) {
+            Write-Host "暂无 Gateway 日志"
+            return
+        }
+        Get-Content -Path $logPaths -Wait
         return
     }
     if ($Stop) {
@@ -67,10 +75,14 @@ function Invoke-NativeMode {
     New-Item -ItemType Directory -Force -Path (Join-Path $gatewayDir "logs") | Out-Null
 
     if ($Daemon) {
-        $logPath = Join-Path $gatewayDir "logs\gateway.log"
+        $outLogPath = Join-Path $gatewayDir "logs\gateway.out.log"
+        $errLogPath = Join-Path $gatewayDir "logs\gateway.err.log"
+        New-Item -ItemType File -Force -Path $outLogPath, $errLogPath | Out-Null
         $args = "-m uvicorn app.main:create_app --factory --host 0.0.0.0 --port $Port"
-        Start-Process python -ArgumentList $args -WorkingDirectory $gatewayDir -RedirectStandardOutput $logPath -RedirectStandardError $logPath -WindowStyle Hidden
+        Start-Process python -ArgumentList $args -WorkingDirectory $gatewayDir -RedirectStandardOutput $outLogPath -RedirectStandardError $errLogPath -WindowStyle Hidden
         Write-Host "Gateway 后台启动: http://127.0.0.1:$Port"
+        Write-Host "日志: $outLogPath"
+        Write-Host "错误: $errLogPath"
         return
     }
 
