@@ -1,14 +1,14 @@
-# Local TTS Server
+# BoboGen Server
 
-通用本地 TTS 协议服务集合。在多个开源 TTS 引擎外面包一层统一 HTTP API，通过 Gateway 统一代理。
+面向本地和云端模型的统一生成服务。BoboGen 在 TTS、音效、音乐等模型外面包一层稳定 HTTP API，通过 Gateway 统一代理，便于客户端按同一协议接入新模型。
 
 ## 架构
 
 ```
-local-tts-protocol/      共享 Pydantic 协议模型
-local-tts-service-kit/   FastAPI 服务装配 + 异常映射 + ProfileStore
-local-tts-gateway/       统一网关（子进程管理、adapter 路由）
-services/                各 TTS 引擎的协议适配服务
+bobogen-protocol/      共享 Pydantic 协议模型
+bobogen-service-kit/   FastAPI 服务装配 + 异常映射 + ProfileStore
+bobogen-gateway/       统一网关（子进程管理、adapter 路由）
+services/                各模型的协议适配服务
 ```
 
 ```mermaid
@@ -19,9 +19,10 @@ flowchart LR
     B --> E[GPT-SoVITS :5103]
     B --> F[IndexTTS2 :5104]
     B --> G[VoxCPM2 :5105]
+    B --> H[Stable Audio 3 :5106]
 ```
 
-## 支持的引擎
+## 支持的模型
 
 | Provider | 默认端口 | 特点 |
 |----------|----------|------|
@@ -30,6 +31,7 @@ flowchart LR
 | GPT-SoVITS | 5103 | 参考音频驱动，支持 clone |
 | IndexTTS2 | 5104 | 参考音频驱动，支持 emotion control |
 | VoxCPM2 | 5105 | 文本指令驱动，无需参考音频即可合成 |
+| Stable Audio 3 Small-SFX | 5106 | 文本生成音效，统一生成协议 `audio.generate` |
 
 ## 三大目标引擎源码布局
 
@@ -39,6 +41,7 @@ GPT-SoVITS、F5-TTS、CosyVoice 的官方源码放在仓库内 `models/` 下：
 models/gpt-sovits/repo/
 models/f5-tts/repo/
 models/cosyvoice/repo/
+models/stable-audio-3/repo/
 ```
 
 `models/` 不纳入版本控制，用于保存本机源码、权重、缓存和输出。本仓库的 `services/*-service/start.ps1` 会默认读取这些源码目录，也支持通过环境变量覆盖：
@@ -48,8 +51,11 @@ models/cosyvoice/repo/
 | CosyVoice | `COSYVOICE_REPO_DIR` | `COSYVOICE_PYTHON` |
 | F5-TTS | `F5TTS_REPO_DIR` | `F5TTS_PYTHON` |
 | GPT-SoVITS | `GPTSOVITS_REPO_DIR` | `GPTSOVITS_PYTHON` |
+| Stable Audio 3 | `STABLE_AUDIO3_REPO_DIR` | `STABLE_AUDIO3_PYTHON` |
 
 当前仅要求源码存在；Python 依赖、模型权重和真实链路测试需要在磁盘空间充足后单独执行。
+
+Stable Audio 3 使用官方仓库 [Stability-AI/stable-audio-3](https://github.com/Stability-AI/stable-audio-3)，当前接入 `stabilityai/stable-audio-3-small-sfx` 对应的 `small-sfx`。Hugging Face 权重需要登录并接受模型条款后才能下载；本仓库不会自动下载权重。
 
 ## 运行模型 — IndexTTS2 完整步骤
 
@@ -60,10 +66,10 @@ models/cosyvoice/repo/
 ```bash
 # AutoDL / 国内云服务器
 source /etc/network_turbo    # AutoDL 网络加速
-bash setup.sh                # 交互式选择模型，自动完成以下全部
+bash install.sh              # 交互式选择模型，自动完成以下全部
 ```
 
-`setup.sh` 自动执行三步：
+`install.sh` 自动执行三步：
 
 | 步骤 | 做什么 | 方式 |
 |------|--------|------|
@@ -121,19 +127,20 @@ curl http://127.0.0.1:5105/v1/health
 
 ```bash
 # 前台（调试）
-bash start-gateway.sh 6006
+bash start.sh -p 6006
 
 # 后台（生产，关了终端也不停）
-bash start-gateway.sh -d 6006
+bash start.sh -d -p 6006
 
 # 查看 Gateway 日志
-bash start-gateway.sh --logs
+bash start.sh --logs
 ```
 
 Gateway 自动加载对应平台的 provider 配置：
 
-- **Linux**：加载 `indextts-linux.yaml`，跳过 `*-windows.yaml`
-- **Windows**：加载 `*-windows.yaml`，跳过 `*-linux.yaml`
+- **Linux**：加载 `*-linux.yaml` 和通用配置，跳过 `*-windows.yaml` / `*-docker.yaml`
+- **Windows**：加载 `*-windows.yaml` 和通用配置，跳过 `*-linux.yaml` / `*-docker.yaml`
+- **Docker**：设置 `BOBOGEN_DEPLOYMENT=docker` 后只加载 `*-docker.yaml`
 
 Gateway 首次请求时自动启动引擎子进程，也可通过 API 手动控制：
 
@@ -142,9 +149,93 @@ curl -X POST http://127.0.0.1:6006/v1/providers/local_index_tts/start
 curl http://127.0.0.1:6006/v1/providers/status
 ```
 
+## Docker Compose 部署
+
+Docker 是标准部署路径之一。Compose 默认只启动 Gateway；模型服务放在 profile 中，按需启动，不会在 Gateway 启动时占用显存。
+
+```bash
+# 只启动 Gateway
+bash start.sh --docker -d
+
+# 按需启动 Stable Audio 3 容器
+bash start.sh --docker --model stable-audio3
+
+# 查看容器状态和 provider 状态
+bash start.sh --docker --status
+
+# 停止 Docker 部署
+bash start.sh --docker --stop
+```
+
+等价的原生命令：
+
+```bash
+docker compose up -d gateway
+docker compose --profile stable-audio3 up -d stable-audio3
+docker compose --profile stable-audio3 down
+```
+
+Linux CUDA 服务器需要先安装 NVIDIA Driver 和 NVIDIA Container Toolkit；Docker Compose 会把 GPU 暴露给 `stable-audio3` 服务。Stable Audio 3 权重是 Hugging Face gated 模型，需先接受 `stabilityai/stable-audio-3-small-sfx` 条款，并提供 `HF_TOKEN` 或在容器/宿主环境完成 `huggingface-cli login`。权重和缓存通过 volume 保存在 `models/stable-audio-3/`，不会进入镜像。
+
+Docker 模式下 Gateway 不挂载 Docker socket，也不在容器内拉起其他容器。若直接调用 `/v1/providers/stable_audio_3_small_sfx/start` 且模型容器尚未启动，Gateway 会返回提示，要求执行：
+
+```bash
+bash start.sh --docker --model stable-audio3
+```
+
 ## API 端点
 
-> 完整接口文档见 [docs/services/local-tts-service-endpoints.md](docs/services/local-tts-service-endpoints.md)
+> 完整接口文档见 [docs/services/bobogen-api-reference.md](docs/services/bobogen-api-reference.md)
+
+### 统一生成 API（新主协议）
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/v1/models` | 列出可生成模型与任务能力 |
+| GET | `/v1/models/{model_id}` | 查看单个模型的输入、输出与音色能力 |
+| POST | `/v1/generate` | 同步生成音频，支持 JSON / multipart / base64 |
+
+TTS 合成使用 `task: "tts.speech"`：
+
+```bash
+curl -sS -H "Content-Type: application/json" -o out.wav \
+  -X POST http://127.0.0.1:6006/v1/generate \
+  -d '{
+    "model": "local_f5_tts",
+    "task": "tts.speech",
+    "input": {"text": "你好", "voice": "f5-default", "language": "zh"},
+    "parameters": {
+      "reference_audio": {"kind": "path", "path": "E:/audio/ref.wav"},
+      "reference_text": "参考文本"
+    },
+    "output": {"format": "wav", "sample_rate": 24000}
+  }'
+```
+
+multipart 上传使用 `request` 字段传 JSON，文件字段通过 `FileInput` 引用：
+
+```bash
+curl -sS -o out.wav \
+  -X POST http://127.0.0.1:6006/v1/generate \
+  -F 'request={"model":"local_f5_tts","task":"tts.speech","input":{"text":"你好","voice":"f5-default"},"parameters":{"reference_audio":{"kind":"upload","field":"ref_audio"}}}' \
+  -F "ref_audio=@speaker.wav"
+```
+
+Stable Audio 3 Small-SFX 音效生成使用 `task: "audio.generate"`：
+
+```bash
+curl -sS -H "Content-Type: application/json" -o sfx.wav \
+  -X POST http://127.0.0.1:6006/v1/generate \
+  -d '{
+    "model": "stable-audio-3-small-sfx",
+    "task": "audio.generate",
+    "input": {"prompt": "short cinematic whoosh impact"},
+    "parameters": {"duration": 7, "seed": 1234},
+    "output": {"format": "wav", "sample_rate": 44100}
+  }'
+```
+
+旧的 `/{provider_id}/v1/synthesize`、`/{provider_id}/v1/voices`、`/{provider_id}/v1/clone` 暂时保留，后续等新协议稳定后再逐步废弃。
 
 ### Provider ID 对照
 
@@ -155,6 +246,7 @@ curl http://127.0.0.1:6006/v1/providers/status
 | `local_gpt_sovits` | GPT-SoVITS | 5103 |
 | `local_f5_tts` | F5-TTS | 5102 |
 | `local_cosyvoice2` | CosyVoice2 | 5101 |
+| `stable_audio_3_small_sfx` | Stable Audio 3 Small-SFX | 5106 |
 
 ### Gateway（:6006）
 
@@ -242,7 +334,7 @@ curl -sS -H "Content-Type: application/json" -o out.wav \
 
 ### 认证
 
-设置环境变量 `LOCAL_TTS_API_KEY` 后，所有请求需带 `Authorization: Bearer <key>` 头。
+设置环境变量 `BOBOGEN_API_KEY` 后，所有请求需带 `Authorization: Bearer <key>` 头。
 
 ### 合成请求结构
 
@@ -285,7 +377,7 @@ curl -sS -H "Content-Type: application/json" -o out.wav \
 
 ## 日志
 
-Gateway 和引擎的日志统一输出到 `local-tts-gateway/logs/`：
+Gateway 和引擎的日志统一输出到 `bobogen-gateway/logs/`：
 
 ```
 logs/
@@ -298,8 +390,8 @@ logs/
 
 ```bash
 # 实时查看
-tail -f local-tts-gateway/logs/gateway.log
-tail -f local-tts-gateway/logs/local_index_tts/stderr.log
+tail -f bobogen-gateway/logs/gateway.log
+tail -f bobogen-gateway/logs/local_index_tts/stderr.log
 
 # 或通过 API
 curl "http://127.0.0.1:6006/v1/logs?lines=50"
@@ -309,10 +401,10 @@ curl "http://127.0.0.1:6006/v1/providers/local_index_tts/logs?stream=stderr&line
 ## 项目结构
 
 ```
-tts-server/
-├── local-tts-protocol/        共享协议模型
-├── local-tts-service-kit/     服务装配框架
-├── local-tts-gateway/         统一网关
+bobogen-server/
+├── bobogen-protocol/        共享协议模型
+├── bobogen-service-kit/     服务装配框架
+├── bobogen-gateway/         统一网关
 │   ├── app/adapters/          各引擎请求适配
 │   ├── app/routers/           HTTP 路由
 │   ├── app/services/          进程管理 & 注册中心
@@ -323,6 +415,7 @@ tts-server/
 │   ├── f5tts-service/
 │   ├── gptsovits-service/
 │   ├── index-tts-service/
+│   ├── stable-audio3-service/
 │   └── voxcpm-service/
 ├── docs/                      设计文档
 └── models/                    引擎源码 & 模型权重（不纳入版本控制）
@@ -338,7 +431,7 @@ source /etc/network_turbo
 
 ### soundfile / librosa: "Format not recognised" 或 NoBackendError
 
-缺少系统音频库，已集成到 `setup.sh`。手动安装：
+缺少系统音频库，已集成到 `install.sh`。手动安装：
 
 ```bash
 apt-get install -y libsndfile1

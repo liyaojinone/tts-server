@@ -7,8 +7,8 @@ $repoDir = Join-Path $workspaceRoot "models\index-tts\repo"
 $modelDir = Join-Path $workspaceRoot "models\index-tts\checkpoints"
 $profileDir = Join-Path $serviceRoot "data\profiles"
 $outputDir = Join-Path $workspaceRoot "models\index-tts\outputs"
-$sharedProtocolSrc = Join-Path $workspaceRoot "local-tts-protocol\src"
-$sharedKitSrc = Join-Path $workspaceRoot "local-tts-service-kit\src"
+$sharedProtocolSrc = Join-Path $workspaceRoot "bobogen-protocol\src"
+$sharedKitSrc = Join-Path $workspaceRoot "bobogen-service-kit\src"
 
 if (-not (Test-Path $pythonExe)) {
     throw "Python executable not found: $pythonExe"

@@ -7,8 +7,8 @@ SERVICE_ROOT = ROOT / "services" / "index-tts-service"
 
 for path in [
     SERVICE_ROOT,
-    ROOT / "local-tts-protocol" / "src",
-    ROOT / "local-tts-service-kit" / "src",
+    ROOT / "bobogen-protocol" / "src",
+    ROOT / "bobogen-service-kit" / "src",
 ]:
     path_str = str(path)
     if path_str not in sys.path:

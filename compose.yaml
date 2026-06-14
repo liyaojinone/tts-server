@@ -1,0 +1,43 @@
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: docker/gateway.Dockerfile
+    image: bobogen/gateway:local
+    ports:
+      - "${BOBOGEN_GATEWAY_PORT:-6006}:6006"
+    environment:
+      BOBOGEN_DEPLOYMENT: docker
+      BOBOGEN_API_KEY: "${BOBOGEN_API_KEY:-}"
+    volumes:
+      - ./bobogen-gateway/logs:/app/bobogen-gateway/logs
+    restart: unless-stopped
+
+  stable-audio3:
+    profiles: ["stable-audio3"]
+    build:
+      context: .
+      dockerfile: docker/stable-audio3.Dockerfile
+    image: bobogen/stable-audio3:local
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    ports:
+      - "${STABLE_AUDIO3_PORT:-5106}:5106"
+    environment:
+      BOBOGEN_API_KEY: "${BOBOGEN_API_KEY:-}"
+      HF_TOKEN: "${HF_TOKEN:-}"
+      STABLE_AUDIO3_MODEL_NAME: "${STABLE_AUDIO3_MODEL_NAME:-small-sfx}"
+      STABLE_AUDIO3_TEST_MODE: "${STABLE_AUDIO3_TEST_MODE:-}"
+      HF_HOME: /models/stable-audio-3/hf-home
+      HUGGINGFACE_HUB_CACHE: /models/stable-audio-3/hf-home/hub
+      TORCH_HOME: /models/stable-audio-3/torch-cache
+    volumes:
+      - ./models/stable-audio-3/hf-home:/models/stable-audio-3/hf-home
+      - ./models/stable-audio-3/torch-cache:/models/stable-audio-3/torch-cache
+      - ./models/stable-audio-3/outputs:/models/stable-audio-3/outputs
+    restart: unless-stopped

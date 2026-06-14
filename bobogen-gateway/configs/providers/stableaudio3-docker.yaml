@@ -1,0 +1,27 @@
+provider_id: stable_audio_3_small_sfx
+model_id: stable-audio-3-small-sfx
+provider_type: stableaudio3
+display_name: Stable Audio 3 Small-SFX
+enabled: true
+tasks:
+  - audio.generate
+runtime:
+  root_dir: /app/services/stable-audio3-service
+  cwd: /app/services/stable-audio3-service
+  command: []
+  launch_mode: external
+  env: {}
+  startup_timeout_ms: 300000
+  request_timeout_ms: 600000
+  idle_shutdown_seconds: 0
+network:
+  host: stable-audio3
+  port: 5106
+  base_url: http://stable-audio3:5106
+  healthcheck_path: /v1/health
+capabilities:
+  voices: false
+  synthesize: false
+  clone: false
+  stream: false
+voices: []

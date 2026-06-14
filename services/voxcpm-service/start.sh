@@ -40,7 +40,7 @@ mkdir -p "${PROFILE_DIR}/clones" "${PROFILE_DIR}/designs" "$OUTPUT_DIR"
 
 cd "$SERVICE_ROOT"
 
-export PYTHONPATH="${SERVICE_ROOT}:${WORKSPACE_ROOT}/local-tts-protocol/src:${WORKSPACE_ROOT}/local-tts-service-kit/src:${REPO_SRC}"
+export PYTHONPATH="${SERVICE_ROOT}:${WORKSPACE_ROOT}/bobogen-protocol/src:${WORKSPACE_ROOT}/bobogen-service-kit/src:${REPO_SRC}"
 export VOXCPM_REPO_DIR="${REPO_DIR}"
 export VOXCPM_MODEL_DIR="${MODEL_DIR}"
 export VOXCPM_PROFILE_DIR="${PROFILE_DIR}"

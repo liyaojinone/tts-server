@@ -1,0 +1,31 @@
+provider_id: stable_audio_3_small_sfx
+model_id: stable-audio-3-small-sfx
+provider_type: stableaudio3
+display_name: Stable Audio 3 Small-SFX
+enabled: true
+tasks:
+  - audio.generate
+runtime:
+  root_dir: ${BOBOGEN_ROOT}\services\stable-audio3-service
+  cwd: ${BOBOGEN_ROOT}\services\stable-audio3-service
+  command:
+    - powershell
+    - -File
+    - ${BOBOGEN_ROOT}\services\stable-audio3-service\start.ps1
+  env:
+    STABLE_AUDIO3_REPO_DIR: "${BOBOGEN_ROOT}\\models\\stable-audio-3\\repo"
+    STABLE_AUDIO3_MODEL_NAME: small-sfx
+  startup_timeout_ms: 120000
+  request_timeout_ms: 180000
+  idle_shutdown_seconds: 0
+network:
+  host: 127.0.0.1
+  port: 5106
+  base_url: http://127.0.0.1:5106
+  healthcheck_path: /v1/health
+capabilities:
+  voices: false
+  synthesize: false
+  clone: false
+  stream: false
+voices: []

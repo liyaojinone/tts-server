@@ -5,8 +5,8 @@ $workspaceRoot = Split-Path -Parent (Split-Path -Parent $serviceRoot)
 $pythonExe = if ($env:F5TTS_PYTHON) { $env:F5TTS_PYTHON } else { Join-Path $serviceRoot ".venv\Scripts\python.exe" }
 $repoDir = if ($env:F5TTS_REPO_DIR) { $env:F5TTS_REPO_DIR } else { Join-Path $workspaceRoot "models\f5-tts\repo" }
 $profileDir = if ($env:F5TTS_PROFILE_DIR) { $env:F5TTS_PROFILE_DIR } else { Join-Path $serviceRoot "data\profiles" }
-$sharedProtocolSrc = Join-Path $workspaceRoot "local-tts-protocol\src"
-$sharedKitSrc = Join-Path $workspaceRoot "local-tts-service-kit\src"
+$sharedProtocolSrc = Join-Path $workspaceRoot "bobogen-protocol\src"
+$sharedKitSrc = Join-Path $workspaceRoot "bobogen-service-kit\src"
 $repoSrc = Join-Path $repoDir "src"
 
 if (-not (Test-Path $pythonExe)) {

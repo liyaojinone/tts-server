@@ -5,8 +5,8 @@ $workspaceRoot = Split-Path -Parent (Split-Path -Parent $serviceRoot)
 $pythonExe = if ($env:GPTSOVITS_PYTHON) { $env:GPTSOVITS_PYTHON } else { Join-Path $serviceRoot ".venv\Scripts\python.exe" }
 $repoDir = if ($env:GPTSOVITS_REPO_DIR) { $env:GPTSOVITS_REPO_DIR } else { Join-Path $workspaceRoot "models\gpt-sovits\repo" }
 $profileDir = if ($env:GPTSOVITS_PROFILE_DIR) { $env:GPTSOVITS_PROFILE_DIR } else { Join-Path $serviceRoot "data\profiles" }
-$sharedProtocolSrc = Join-Path $workspaceRoot "local-tts-protocol\src"
-$sharedKitSrc = Join-Path $workspaceRoot "local-tts-service-kit\src"
+$sharedProtocolSrc = Join-Path $workspaceRoot "bobogen-protocol\src"
+$sharedKitSrc = Join-Path $workspaceRoot "bobogen-service-kit\src"
 $gptPackageDir = Join-Path $repoDir "GPT_SoVITS"
 
 if (-not (Test-Path $pythonExe)) {
