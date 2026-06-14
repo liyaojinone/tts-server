@@ -187,6 +187,16 @@ bash start.sh --docker --model stable-audio3
 
 > 完整接口文档见 [docs/services/bobogen-api-reference.md](docs/services/bobogen-api-reference.md)
 
+Gateway 会自动暴露 OpenAPI 协议文档：
+
+```text
+http://127.0.0.1:6006/openapi.json
+http://127.0.0.1:6006/docs
+http://127.0.0.1:6006/redoc
+```
+
+Postman 或 Apifox 直接导入 `http://127.0.0.1:6006/openapi.json` 即可看到新统一接口、Provider 管理接口和旧兼容接口分类。`/v1/generate` 的 `input` / `parameters` 是按模型变化的动态 dict，调参前优先请求 `/v1/models/{model_id}` 查看该模型的 `input_schema`、`parameters_schema` 和示例。生成接口返回 WAV 二进制；在 Postman 中请使用 **Send and Download** 或保存响应到文件后试听。
+
 ### 统一生成 API（新主协议）
 
 | 方法 | 路径 | 说明 |

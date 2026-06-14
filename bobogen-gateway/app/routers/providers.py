@@ -27,7 +27,7 @@ def _gateway_error_status(exc: GatewayError) -> int:
 
 # ---- 管理：列表 & 状态（/v1/ 直接访问） ----
 
-@router.get("/v1/providers")
+@router.get("/v1/providers", tags=["03 Provider 管理"], summary="列出 Provider")
 async def list_providers(registry=Depends(get_provider_registry)):
     providers = [
         {
@@ -41,7 +41,7 @@ async def list_providers(registry=Depends(get_provider_registry)):
     return {"providers": providers}
 
 
-@router.get("/v1/providers/status")
+@router.get("/v1/providers/status", tags=["03 Provider 管理"], summary="查看所有 Provider 运行状态")
 async def all_providers_status(manager=Depends(get_process_manager)):
     providers = [
         {
@@ -59,7 +59,7 @@ async def all_providers_status(manager=Depends(get_process_manager)):
     return {"providers": providers}
 
 
-@router.get("/v1/providers/{provider_id}")
+@router.get("/v1/providers/{provider_id}", tags=["03 Provider 管理"], summary="查看 Provider 配置摘要")
 async def get_provider(provider_id: str, registry=Depends(get_provider_registry)):
     provider = registry.get_provider(provider_id)
     return {
@@ -72,7 +72,7 @@ async def get_provider(provider_id: str, registry=Depends(get_provider_registry)
 
 # ---- 管理：列表 & 状态（/{provider_id}/v1/ 客户端前缀） ----
 
-@router.get("/{scope_id}/v1/providers")
+@router.get("/{scope_id}/v1/providers", tags=["03 Provider 管理"], summary="列出 Provider（旧 scope 路径）")
 async def list_providers_scoped(registry=Depends(get_provider_registry)):
     providers = [
         {
@@ -86,7 +86,7 @@ async def list_providers_scoped(registry=Depends(get_provider_registry)):
     return {"providers": providers}
 
 
-@router.get("/{scope_id}/v1/providers/status")
+@router.get("/{scope_id}/v1/providers/status", tags=["03 Provider 管理"], summary="查看所有 Provider 运行状态（旧 scope 路径）")
 async def all_providers_status_scoped(manager=Depends(get_process_manager)):
     providers = [
         {
@@ -104,7 +104,7 @@ async def all_providers_status_scoped(manager=Depends(get_process_manager)):
     return {"providers": providers}
 
 
-@router.get("/{scope_id}/v1/providers/{provider_id}")
+@router.get("/{scope_id}/v1/providers/{provider_id}", tags=["03 Provider 管理"], summary="查看 Provider 配置摘要（旧 scope 路径）")
 async def get_provider_scoped(scope_id: str, provider_id: str, registry=Depends(get_provider_registry)):
     provider = registry.get_provider(provider_id)
     return {
@@ -117,13 +117,13 @@ async def get_provider_scoped(scope_id: str, provider_id: str, registry=Depends(
 
 # ---- 引擎代理 ----
 
-@router.get("/{provider_id}/v1/health")
+@router.get("/{provider_id}/v1/health", tags=["04 Legacy Provider 旧接口"], summary="Provider 健康检查")
 async def provider_health(provider_id: str, manager=Depends(get_process_manager)):
     state = manager.get_state(provider_id)
     return {"provider_id": provider_id, "status": state.status}
 
 
-@router.get("/{provider_id}/v1/voices")
+@router.get("/{provider_id}/v1/voices", tags=["04 Legacy Provider 旧接口"], summary="列出 Provider 音色")
 async def provider_voices(provider_id: str, registry=Depends(get_provider_registry)):
     provider = registry.get_provider(provider_id)
     adapter = registry.get_adapter(provider_id)
@@ -133,7 +133,7 @@ async def provider_voices(provider_id: str, registry=Depends(get_provider_regist
 
 # ---- 运维：生命周期（/{target_id} 是操作目标，可以是任意 provider） ----
 
-@router.post("/v1/providers/{provider_id}/start")
+@router.post("/v1/providers/{provider_id}/start", tags=["03 Provider 管理"], summary="启动 Provider")
 async def start_provider(provider_id: str, manager=Depends(get_process_manager)):
     try:
         state = await manager.start(provider_id)
@@ -142,7 +142,7 @@ async def start_provider(provider_id: str, manager=Depends(get_process_manager))
     return {"provider_id": provider_id, "status": state.status}
 
 
-@router.post("/v1/providers/{provider_id}/stop")
+@router.post("/v1/providers/{provider_id}/stop", tags=["03 Provider 管理"], summary="停止 Provider")
 async def stop_provider(provider_id: str, manager=Depends(get_process_manager)):
     try:
         await manager.stop(provider_id)
@@ -151,7 +151,7 @@ async def stop_provider(provider_id: str, manager=Depends(get_process_manager)):
     return {"provider_id": provider_id, "status": "stopped"}
 
 
-@router.post("/v1/providers/{provider_id}/restart")
+@router.post("/v1/providers/{provider_id}/restart", tags=["03 Provider 管理"], summary="重启 Provider")
 async def restart_provider(provider_id: str, manager=Depends(get_process_manager)):
     try:
         state = await manager.restart(provider_id)
@@ -162,7 +162,7 @@ async def restart_provider(provider_id: str, manager=Depends(get_process_manager
 
 # 客户端前缀版本
 
-@router.post("/{scope_id}/v1/providers/{provider_id}/start")
+@router.post("/{scope_id}/v1/providers/{provider_id}/start", tags=["03 Provider 管理"], summary="启动 Provider（旧 scope 路径）")
 async def start_provider_scoped(scope_id: str, provider_id: str, manager=Depends(get_process_manager)):
     try:
         state = await manager.start(provider_id)
@@ -171,7 +171,7 @@ async def start_provider_scoped(scope_id: str, provider_id: str, manager=Depends
     return {"provider_id": provider_id, "status": state.status}
 
 
-@router.post("/{scope_id}/v1/providers/{provider_id}/stop")
+@router.post("/{scope_id}/v1/providers/{provider_id}/stop", tags=["03 Provider 管理"], summary="停止 Provider（旧 scope 路径）")
 async def stop_provider_scoped(scope_id: str, provider_id: str, manager=Depends(get_process_manager)):
     try:
         await manager.stop(provider_id)
@@ -180,7 +180,7 @@ async def stop_provider_scoped(scope_id: str, provider_id: str, manager=Depends(
     return {"provider_id": provider_id, "status": "stopped"}
 
 
-@router.post("/{scope_id}/v1/providers/{provider_id}/restart")
+@router.post("/{scope_id}/v1/providers/{provider_id}/restart", tags=["03 Provider 管理"], summary="重启 Provider（旧 scope 路径）")
 async def restart_provider_scoped(scope_id: str, provider_id: str, manager=Depends(get_process_manager)):
     try:
         state = await manager.restart(provider_id)
@@ -191,7 +191,7 @@ async def restart_provider_scoped(scope_id: str, provider_id: str, manager=Depen
 
 # ---- 运维：日志 ----
 
-@router.get("/v1/providers/{provider_id}/logs")
+@router.get("/v1/providers/{provider_id}/logs", tags=["03 Provider 管理"], summary="查看 Provider 日志")
 async def provider_logs(
     provider_id: str,
     stream: str = Query(default="stderr", pattern="^(stdout|stderr)$"),
@@ -201,7 +201,7 @@ async def provider_logs(
     return {"provider_id": provider_id, "stream": stream, "lines": lines, "content": manager.get_logs(provider_id, stream, lines)}
 
 
-@router.get("/{scope_id}/v1/providers/{provider_id}/logs")
+@router.get("/{scope_id}/v1/providers/{provider_id}/logs", tags=["03 Provider 管理"], summary="查看 Provider 日志（旧 scope 路径）")
 async def provider_logs_scoped(
     scope_id: str,
     provider_id: str,

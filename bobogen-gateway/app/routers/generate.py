@@ -13,7 +13,14 @@ from pydantic import ValidationError
 
 from app.core.exceptions import GatewayError
 from app.dependencies import get_process_manager, get_provider_registry
+from app.schemas.error import ErrorResponse
 from app.schemas.generate import GenerateRequest, ModelInfo
+from app.schemas.generate_catalog import (
+    GenerateSchemaValidationError,
+    generate_json_openapi_examples,
+    schema_payload_for_model,
+    validate_generate_request_schema,
+)
 from app.schemas.voice import VoiceResponse
 from app.services.file_inputs import cleanup_temp_files, resolve_generation_files
 
@@ -168,6 +175,7 @@ def _model_info(model_id: str, provider, tasks: list[str]) -> ModelInfo:
         enabled=provider.enabled,
         voices=voices,
         capabilities=_capabilities_for_provider(provider),
+        **schema_payload_for_model(model_id, tasks),
     )
 
 
@@ -186,7 +194,12 @@ async def _parse_generate_request(http_request: Request) -> tuple[GenerateReques
     return GenerateRequest.model_validate(await http_request.json()), {}
 
 
-@router.get("/v1/models")
+@router.get(
+    "/v1/models",
+    tags=["01 Models"],
+    summary="列出可生成模型",
+    description="返回 Gateway 当前加载的模型、任务能力、输出格式和动态参数 schema 摘要。",
+)
 async def list_models(registry=Depends(get_provider_registry)):
     return {
         "models": [
@@ -196,7 +209,12 @@ async def list_models(registry=Depends(get_provider_registry)):
     }
 
 
-@router.get("/v1/models/{model_id}")
+@router.get(
+    "/v1/models/{model_id}",
+    tags=["01 Models"],
+    summary="查看模型详情与动态参数",
+    description="返回指定模型的输入参数、生成参数、输出参数 JSON Schema 和示例请求。Postman/Apifox 可用这些字段构建调参界面。",
+)
 async def get_model(model_id: str, registry=Depends(get_provider_registry)):
     try:
         provider = registry.get_provider_by_model(model_id)
@@ -205,7 +223,59 @@ async def get_model(model_id: str, registry=Depends(get_provider_registry)):
     return _model_info(model_id, provider, registry.get_model_tasks(provider)).model_dump()
 
 
-@router.post("/v1/generate")
+@router.post(
+    "/v1/generate",
+    tags=["02 Generate 新统一接口"],
+    summary="统一生成音频",
+    description=(
+        "BoboGen 新统一生成入口。请求外壳固定为 model/task/input/parameters/output，"
+        "不同模型的 input 和 parameters 通过 `/v1/models/{model_id}` 暴露动态 JSON Schema。"
+    ),
+    responses={
+        200: {
+            "description": "生成成功，返回 WAV 二进制音频。",
+            "content": {"audio/wav": {"schema": {"type": "string", "format": "binary"}}},
+        },
+        400: {"model": ErrorResponse, "description": "请求结构、任务或动态参数无效。"},
+        404: {"model": ErrorResponse, "description": "模型或 provider 不存在。"},
+        503: {"model": ErrorResponse, "description": "provider 未启动、不可用或需要外部启动。"},
+    },
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "required": ["model", "task", "input"],
+                        "properties": {
+                            "model": {"type": "string"},
+                            "task": {"type": "string"},
+                            "input": {"type": "object"},
+                            "parameters": {"type": "object"},
+                            "output": {"type": "object"},
+                        },
+                    },
+                    "examples": generate_json_openapi_examples(),
+                },
+                "multipart/form-data": {
+                    "schema": {
+                        "type": "object",
+                        "required": ["request"],
+                        "properties": {
+                            "request": {
+                                "type": "string",
+                                "description": "JSON 字符串，结构同 application/json 请求体。",
+                            },
+                            "ref_audio": {"type": "string", "format": "binary"},
+                        },
+                    },
+                    "encoding": {"ref_audio": {"contentType": "audio/wav"}},
+                },
+            },
+        }
+    },
+)
 async def generate(
     http_request: Request,
     registry=Depends(get_provider_registry),
@@ -236,6 +306,7 @@ async def generate(
                 {"model": request.model, "task": request.task, "supported_tasks": tasks},
             )
 
+        request = validate_generate_request_schema(request, tasks)
         request.input, input_cleanups = await resolve_generation_files(request.input, uploads)
         request.parameters, parameter_cleanups = await resolve_generation_files(request.parameters, uploads)
         cleanups.extend(input_cleanups)
@@ -258,6 +329,8 @@ async def generate(
         )
     except ValidationError as exc:
         return _error_response(400, "INVALID_REQUEST", "Request validation failed", {"errors": exc.errors()})
+    except GenerateSchemaValidationError as exc:
+        return _error_response(400, "INVALID_REQUEST", str(exc), {"errors": exc.errors})
     except GatewayError as exc:
         return _error_response(_gateway_error_status(exc), exc.code, exc.message, exc.details)
     except ValueError as exc:

@@ -53,6 +53,30 @@ def test_stable_audio3_model_detail_describes_audio_generation():
     assert payload["provider_id"] == "stable_audio_3_small_sfx"
     assert payload["tasks"] == ["audio.generate"]
     assert payload["voices"] == []
+    assert payload["input_schema"]["properties"]["prompt"]["type"] == "string"
+    assert "prompt" in payload["input_schema"]["required"]
+    assert "duration" in payload["parameters_schema"]["properties"]
+    assert payload["parameters_schema"]["properties"]["batch_size"]["default"] == 1
+    assert payload["examples"][0]["request"]["model"] == "stable-audio-3-small-sfx"
+    assert payload["examples"][0]["request"]["parameters"]["cfg_scale"] == 1.0
+
+
+def test_tts_model_detail_describes_dynamic_parameters():
+    from app.main import create_app
+
+    app = create_app()
+    client = TestClient(app)
+
+    response = client.get("/v1/models/local_f5_tts")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["input_schema"]["properties"]["text"]["type"] == "string"
+    assert "text" in payload["input_schema"]["required"]
+    assert "reference_audio" in payload["parameters_schema"]["properties"]
+    assert "speed" in payload["parameters_schema"]["properties"]
+    assert payload["examples"][0]["request"]["task"] == "tts.speech"
+    assert payload["examples"][0]["request"]["parameters"]["reference_audio"]["kind"] == "path"
 
 
 def test_generate_tts_speech_json_calls_adapter_generate():
@@ -104,6 +128,91 @@ def test_generate_tts_speech_json_calls_adapter_generate():
     assert response.headers["x-task"] == "tts.speech"
     assert calls["started"] == ["local_f5_tts"]
     assert calls["generated"] == [("local_f5_tts", "tts.speech", "你好")]
+
+
+def test_generate_stable_audio3_validates_registered_parameters_and_calls_adapter_generate():
+    from app.main import create_app
+    from app.services.audio_service import AudioResult
+
+    app = create_app()
+    manager = app.state.process_manager
+    registry = app.state.provider_registry
+
+    calls = {"started": [], "generated": []}
+
+    async def fake_ensure_started(provider_id):
+        calls["started"].append(provider_id)
+        return manager.get_state(provider_id)
+
+    class StubAdapter:
+        provider_type = "stub"
+
+        async def generate(self, provider, request):
+            calls["generated"].append(
+                (
+                    provider.provider_id,
+                    request.input["prompt"],
+                    request.parameters["duration"],
+                    request.parameters["batch_size"],
+                )
+            )
+            return AudioResult(
+                content=b"RIFF",
+                content_type="audio/wav",
+                duration_seconds=request.parameters["duration"],
+                sample_rate=44100,
+                format="wav",
+            )
+
+    manager.ensure_started = fake_ensure_started
+    registry._adapters["stable_audio_3_small_sfx"] = StubAdapter()
+
+    client = TestClient(app)
+    response = client.post(
+        "/v1/generate",
+        json={
+            "model": "stable-audio-3-small-sfx",
+            "task": "audio.generate",
+            "input": {"prompt": "short cinematic whoosh impact"},
+            "parameters": {
+                "duration": 5,
+                "steps": 8,
+                "cfg_scale": 1.0,
+                "seed": 1234,
+                "batch_size": 1,
+                "truncate_output_to_duration": True,
+            },
+            "output": {"format": "wav", "sample_rate": 44100},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["x-provider-id"] == "stable_audio_3_small_sfx"
+    assert calls["started"] == ["stable_audio_3_small_sfx"]
+    assert calls["generated"] == [("stable_audio_3_small_sfx", "short cinematic whoosh impact", 5, 1)]
+
+
+def test_generate_stable_audio3_missing_prompt_returns_invalid_request():
+    from app.main import create_app
+
+    app = create_app()
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/generate",
+        json={
+            "model": "stable-audio-3-small-sfx",
+            "task": "audio.generate",
+            "input": {},
+            "parameters": {"duration": 5},
+            "output": {"format": "wav"},
+        },
+    )
+
+    assert response.status_code == 400
+    payload = response.json()
+    assert payload["error"]["code"] == "INVALID_REQUEST"
+    assert "input.prompt" in payload["error"]["message"]
 
 
 def test_generate_multipart_upload_resolves_file_inputs_to_temp_paths():
