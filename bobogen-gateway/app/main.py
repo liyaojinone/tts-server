@@ -18,7 +18,20 @@ except ModuleNotFoundError as exc:
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="BoboGen Gateway", version="0.1.0")
+    tags_metadata = [
+        {"name": "00 Health", "description": "Gateway 健康检查和日志查看。"},
+        {"name": "01 Models", "description": "统一生成模型发现、能力和动态参数 schema。"},
+        {"name": "02 Generate 新统一接口", "description": "推荐使用的新统一音频生成接口。"},
+        {"name": "03 Provider 管理", "description": "Provider 列表、状态、生命周期和日志。"},
+        {"name": "04 Legacy Provider 旧接口", "description": "兼容旧客户端的 provider 直连风格接口。"},
+        {"name": "05 Stable Audio 3 调参", "description": "Stable Audio 3 参数可通过模型详情和统一生成示例查看。"},
+    ]
+    app = FastAPI(
+        title="BoboGen Gateway",
+        version="0.1.0",
+        description="BoboGen Server 统一生成网关。Postman/Apifox 可直接导入 `/openapi.json`。",
+        openapi_tags=tags_metadata,
+    )
     registry = ProviderRegistry.from_directory()
     manager = ProcessManager(registry.provider_map)
     app.state.provider_registry = registry

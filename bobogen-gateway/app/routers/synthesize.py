@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Request
 
 from app.dependencies import get_process_manager, get_provider_registry
+from app.schemas.error import ErrorResponse
 from app.schemas.synthesize import UnifiedSynthesizeRequest
 from app.services.audio_service import build_audio_response
 
@@ -17,7 +18,21 @@ def _extract_files(form) -> dict:
     return files or None
 
 
-@router.post("/{provider_id}/v1/synthesize")
+@router.post(
+    "/{provider_id}/v1/synthesize",
+    tags=["04 Legacy Provider 旧接口"],
+    summary="旧接口：Provider TTS 合成",
+    description="兼容旧客户端的 provider 直连合成接口。新接入优先使用 `/v1/generate`。",
+    responses={
+        200: {
+            "description": "合成成功，返回 WAV 二进制音频。",
+            "content": {"audio/wav": {"schema": {"type": "string", "format": "binary"}}},
+        },
+        400: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+        503: {"model": ErrorResponse},
+    },
+)
 async def synthesize(
     provider_id: str,
     http_request: Request,

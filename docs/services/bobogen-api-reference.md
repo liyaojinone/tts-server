@@ -34,6 +34,31 @@ http://127.0.0.1:6006/v1/generate
 
 ---
 
+## OpenAPI / Postman / Apifox
+
+Gateway 默认暴露机器可读 OpenAPI：
+
+```text
+http://127.0.0.1:6006/openapi.json
+http://127.0.0.1:6006/docs
+http://127.0.0.1:6006/redoc
+```
+
+Postman 或 Apifox 可直接导入 `http://127.0.0.1:6006/openapi.json`。导入后会按接口标签区分：
+
+| 分类 | 说明 |
+|------|------|
+| `00 Health` | Gateway 健康检查与日志 |
+| `01 Models` | 模型列表、模型详情和动态参数 schema |
+| `02 Generate 新统一接口` | 推荐使用的统一生成入口 |
+| `03 Provider 管理` | Provider 状态、启动、停止、重启、日志 |
+| `04 Legacy Provider 旧接口` | 旧客户端兼容接口 |
+| `05 Stable Audio 3 调参` | Stable Audio 3 参数说明入口 |
+
+`/v1/generate` 的 `input` 和 `parameters` 是动态 dict，不同模型不同。不要手猜参数；先请求 `/v1/models/{model_id}`，读取返回的 `input_schema`、`parameters_schema`、`output_schema` 和 `examples`。生成接口返回 WAV 二进制音频，在 Postman 中建议使用 **Send and Download**，或保存响应到 `.wav` 文件后试听。
+
+---
+
 ## 统一生成 API
 
 旧 TTS 专用接口暂时保留；新接入优先使用统一生成协议。
@@ -63,7 +88,16 @@ curl http://127.0.0.1:6006/v1/models
 
 ### 模型详情 `GET /v1/models/{model_id}`
 
-返回模型任务、输出格式、默认音色和能力字段。当前 TTS provider 会从旧 provider 配置自动推导 `tts.speech`。
+返回模型任务、输出格式、默认音色、能力字段，以及动态参数定义：
+
+| 字段 | 说明 |
+|------|------|
+| `input_schema` | `input` dict 的 JSON Schema |
+| `parameters_schema` | `parameters` dict 的 JSON Schema |
+| `output_schema` | `output` 选项 JSON Schema |
+| `examples` | 可直接复制到 `/v1/generate` 的请求示例 |
+
+当前 TTS provider 会从旧 provider 配置自动推导 `tts.speech`。Stable Audio 3 会返回 `prompt`、`duration`、`steps`、`cfg_scale`、`seed`、`batch_size` 等调参字段。
 
 ### 生成 `POST /v1/generate`
 

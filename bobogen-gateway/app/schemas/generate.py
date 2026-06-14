@@ -63,3 +63,7 @@ class ModelInfo(BaseModel):
     enabled: bool = True
     voices: list[VoiceResponse] = Field(default_factory=list)
     capabilities: dict[str, Any] = Field(default_factory=dict)
+    input_schema: dict[str, Any] | None = None
+    parameters_schema: dict[str, Any] | None = None
+    output_schema: dict[str, Any] | None = None
+    examples: list[dict[str, Any]] = Field(default_factory=list)
