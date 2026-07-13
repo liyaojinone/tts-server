@@ -1,0 +1,3087 @@
+{
+	"info": {
+		"_postman_id": "356512e1-48f2-4a91-835e-d87a081224c9",
+		"name": "BoboGen Gateway",
+		"description": "BoboGen Server 统一生成网关。Postman/Apifox 可直接导入 `/openapi.json`。",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "30923539"
+	},
+	"item": [
+		{
+			"name": "{provider_id}",
+			"item": [
+				{
+					"name": "v1",
+					"item": [
+						{
+							"name": "clone",
+							"item": [
+								{
+									"name": "旧接口：克隆并注册音色",
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "multipart/form-data"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "formdata",
+											"formdata": [
+												{
+													"key": "audio",
+													"value": "string",
+													"type": "text"
+												},
+												{
+													"key": "text",
+													"value": "",
+													"type": "text"
+												},
+												{
+													"key": "name",
+													"value": "",
+													"type": "text"
+												},
+												{
+													"key": "language",
+													"value": "zh",
+													"type": "text"
+												},
+												{
+													"key": "emotion",
+													"value": "",
+													"type": "text"
+												}
+											]
+										},
+										"url": {
+											"raw": "{{baseUrl}}/:provider_id/v1/clone",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												":provider_id",
+												"v1",
+												"clone"
+											],
+											"variable": [
+												{
+													"key": "provider_id",
+													"value": "string"
+												}
+											]
+										},
+										"description": "上传参考音频并注册 provider 本地音色。新协议稳定前保留此兼容接口。"
+									},
+									"response": [
+										{
+											"name": "Successful Response",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "multipart/form-data"
+													},
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "formdata",
+													"formdata": [
+														{
+															"key": "audio",
+															"value": "string",
+															"type": "text"
+														},
+														{
+															"key": "text",
+															"value": "",
+															"type": "text"
+														},
+														{
+															"key": "name",
+															"value": "",
+															"type": "text"
+														},
+														{
+															"key": "language",
+															"value": "zh",
+															"type": "text"
+														},
+														{
+															"key": "emotion",
+															"value": "",
+															"type": "text"
+														}
+													]
+												},
+												"url": {
+													"raw": "{{baseUrl}}/:provider_id/v1/clone",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														":provider_id",
+														"v1",
+														"clone"
+													],
+													"variable": [
+														{
+															"key": "provider_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Validation Error",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "multipart/form-data"
+													},
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"body": {
+													"mode": "formdata",
+													"formdata": [
+														{
+															"key": "audio",
+															"value": "string",
+															"type": "text"
+														},
+														{
+															"key": "text",
+															"value": "",
+															"type": "text"
+														},
+														{
+															"key": "name",
+															"value": "",
+															"type": "text"
+														},
+														{
+															"key": "language",
+															"value": "zh",
+															"type": "text"
+														},
+														{
+															"key": "emotion",
+															"value": "",
+															"type": "text"
+														}
+													]
+												},
+												"url": {
+													"raw": "{{baseUrl}}/:provider_id/v1/clone",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														":provider_id",
+														"v1",
+														"clone"
+													],
+													"variable": [
+														{
+															"key": "provider_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+											"code": 422,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"string\",\n        3903\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"string\",\n        6004\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}"
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "health",
+							"item": [
+								{
+									"name": "Provider 健康检查",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/:provider_id/v1/health",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												":provider_id",
+												"v1",
+												"health"
+											],
+											"variable": [
+												{
+													"key": "provider_id",
+													"value": "string"
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Successful Response",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/:provider_id/v1/health",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														":provider_id",
+														"v1",
+														"health"
+													],
+													"variable": [
+														{
+															"key": "provider_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Validation Error",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/:provider_id/v1/health",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														":provider_id",
+														"v1",
+														"health"
+													],
+													"variable": [
+														{
+															"key": "provider_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+											"code": 422,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"string\",\n        3903\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"string\",\n        6004\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}"
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "voices",
+							"item": [
+								{
+									"name": "列出 Provider 音色",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/:provider_id/v1/voices",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												":provider_id",
+												"v1",
+												"voices"
+											],
+											"variable": [
+												{
+													"key": "provider_id",
+													"value": "string"
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Successful Response",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/:provider_id/v1/voices",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														":provider_id",
+														"v1",
+														"voices"
+													],
+													"variable": [
+														{
+															"key": "provider_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Validation Error",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/:provider_id/v1/voices",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														":provider_id",
+														"v1",
+														"voices"
+													],
+													"variable": [
+														{
+															"key": "provider_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+											"code": 422,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"string\",\n        3903\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"string\",\n        6004\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}"
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "synthesize",
+							"item": [
+								{
+									"name": "旧接口：Provider TTS 合成",
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/:provider_id/v1/synthesize",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												":provider_id",
+												"v1",
+												"synthesize"
+											],
+											"variable": [
+												{
+													"key": "provider_id",
+													"value": "string"
+												}
+											]
+										},
+										"description": "兼容旧客户端的 provider 直连合成接口。新接入优先使用 `/v1/generate`。"
+									},
+									"response": [
+										{
+											"name": "合成成功，返回 WAV 二进制音频。",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/:provider_id/v1/synthesize",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														":provider_id",
+														"v1",
+														"synthesize"
+													],
+													"variable": [
+														{
+															"key": "provider_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Bad Request",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/:provider_id/v1/synthesize",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														":provider_id",
+														"v1",
+														"synthesize"
+													],
+													"variable": [
+														{
+															"key": "provider_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"status": "Bad Request",
+											"code": 400,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"error\": {\n    \"code\": \"string\",\n    \"message\": \"string\",\n    \"details\": {\n      \"key_0\": 6574.475469108243\n    }\n  }\n}"
+										},
+										{
+											"name": "Not Found",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/:provider_id/v1/synthesize",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														":provider_id",
+														"v1",
+														"synthesize"
+													],
+													"variable": [
+														{
+															"key": "provider_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"status": "Not Found",
+											"code": 404,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"error\": {\n    \"code\": \"string\",\n    \"message\": \"string\",\n    \"details\": {\n      \"key_0\": 6574.475469108243\n    }\n  }\n}"
+										},
+										{
+											"name": "Validation Error",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/:provider_id/v1/synthesize",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														":provider_id",
+														"v1",
+														"synthesize"
+													],
+													"variable": [
+														{
+															"key": "provider_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+											"code": 422,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"string\",\n        3903\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"string\",\n        6004\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}"
+										},
+										{
+											"name": "Service Unavailable",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/:provider_id/v1/synthesize",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														":provider_id",
+														"v1",
+														"synthesize"
+													],
+													"variable": [
+														{
+															"key": "provider_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"status": "Service Unavailable",
+											"code": 503,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"error\": {\n    \"code\": \"string\",\n    \"message\": \"string\",\n    \"details\": {\n      \"key_0\": 6574.475469108243\n    }\n  }\n}"
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "v1",
+			"item": [
+				{
+					"name": "models",
+					"item": [
+						{
+							"name": "{model_id}",
+							"item": [
+								{
+									"name": "查看模型详情与动态参数",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/v1/models/:model_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v1",
+												"models",
+												":model_id"
+											],
+											"variable": [
+												{
+													"key": "model_id",
+													"value": "stable_audio_3_medium"
+												}
+											]
+										},
+										"description": "返回指定模型的输入参数、生成参数、输出参数 JSON Schema 和示例请求。Postman/Apifox 可用这些字段构建调参界面。"
+									},
+									"response": [
+										{
+											"name": "Successful Response",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/v1/models/:model_id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"v1",
+														"models",
+														":model_id"
+													],
+													"variable": [
+														{
+															"key": "model_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Validation Error",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/v1/models/:model_id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"v1",
+														"models",
+														":model_id"
+													],
+													"variable": [
+														{
+															"key": "model_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+											"code": 422,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"string\",\n        3903\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"string\",\n        6004\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}"
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "列出可生成模型",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/v1/models",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"models"
+									]
+								},
+								"description": "返回 Gateway 当前加载的模型、任务能力、输出格式和动态参数 schema 摘要。"
+							},
+							"response": [
+								{
+									"name": "Successful Response",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/v1/models",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v1",
+												"models"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "generate",
+					"item": [
+						{
+							"name": "统一生成音频",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"model\": \"stable_audio_3_small_sfx\",\n  \"task\": \"audio.generate\",\n  \"input\": {\n    \"prompt\": \"short cinematic whoosh impact\"\n  },\n  \"parameters\": {\n    \"negative_prompt\": \"\",\n    \"duration\": 7,\n    \"steps\": 8,\n    \"cfg_scale\": 1,\n    \"seed\": 1234,\n    \"batch_size\": 1,\n    \"truncate_output_to_duration\": true\n  },\n  \"output\": {\n    \"format\": \"wav\",\n    \"sample_rate\": 44100\n  }\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/v1/generate",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"generate"
+									]
+								},
+								"description": "BoboGen 新统一生成入口。请求外壳固定为 model/task/input/parameters/output，不同模型的 input 和 parameters 通过 `/v1/models/{model_id}` 暴露动态 JSON Schema。"
+							},
+							"response": [
+								{
+									"name": "音效生成(stable_audio_3_small_sfx)",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"model\": \"stable_audio_3_small_sfx\",\n  \"task\": \"audio.generate\",\n  \"input\": {\n    \"prompt\": \"short cinematic whoosh impact\"\n  },\n  \"parameters\": {\n    \"negative_prompt\": \"\",\n    \"duration\": 7,\n    \"steps\": 8,\n    \"cfg_scale\": 1,\n    \"seed\": 1234,\n    \"batch_size\": 1,\n    \"truncate_output_to_duration\": true\n  },\n  \"output\": {\n    \"format\": \"wav\",\n    \"sample_rate\": 44100\n  }\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/v1/generate",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v1",
+												"generate"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "音效生成(stable_audio_3_small_music)",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"model\": \"stable_audio_3_small_music\",\n  \"task\": \"audio.generate\",\n  \"input\": {\n    \"prompt\": \"short cinematic whoosh impact\"\n  },\n  \"parameters\": {\n    \"negative_prompt\": \"\",\n    \"duration\": 7,\n    \"steps\": 8,\n    \"cfg_scale\": 1,\n    \"seed\": 1234,\n    \"batch_size\": 1,\n    \"truncate_output_to_duration\": true\n  },\n  \"output\": {\n    \"format\": \"wav\",\n    \"sample_rate\": 44100\n  }\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/v1/generate",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v1",
+												"generate"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "音效生成(stable_audio_3_medium)",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"model\": \"stable_audio_3_medium\",\n  \"task\": \"audio.generate\",\n  \"input\": {\n    \"prompt\": \"short cinematic whoosh impact\"\n  },\n  \"parameters\": {\n    \"negative_prompt\": \"\",\n    \"duration\": 7,\n    \"steps\": 8,\n    \"cfg_scale\": 1,\n    \"seed\": 1234,\n    \"batch_size\": 1,\n    \"truncate_output_to_duration\": true\n  },\n  \"output\": {\n    \"format\": \"wav\",\n    \"sample_rate\": 44100\n  }\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/v1/generate",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v1",
+												"generate"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "语音合成(f5_tts )",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"model\": \"local_f5_tts\",\n  \"task\": \"tts.speech\",\n  \"input\": {\n    \"text\": \"你好，测试成功。\",\n    \"voice\": \"f5-default\",\n    \"language\": \"zh\"\n  },\n  \"parameters\": {\n    \"reference_audio\": {\n      \"kind\": \"path\",\n      \"path\": \"E:/audio/ref.wav\"\n    },\n    \"reference_text\": \"参考文本\",\n    \"speed\": 1,\n    \"extra\": {}\n  },\n  \"output\": {\n    \"format\": \"wav\",\n    \"sample_rate\": 24000\n  }\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/v1/generate",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v1",
+												"generate"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						},
+						{
+							"name": "统一生成音频",
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"model\": \"stable_audio_3_small_sfx\", // 固定值；模型 ID\n    \"task\": \"audio.generate\", // 固定值；音频生成任务\n    \"input\": {\n        \"prompt\": \"suspense hallway ambience, distant footsteps echo, cold wind, faint fluorescent light hum, tense unease\" // 任意英文描述；想生成的声音\n    },\n    \"parameters\": {\n        \"negative_prompt\": \"\", // 可空；不想要的声音特征\n        \"duration\": 12, // 建议 3-10；音频时长，单位秒\n        \"steps\": 8, // 建议 8-16；推理步数，越高越慢\n        \"cfg_scale\": 1.5, // 建议 1.0-3.0；提示词引导强度\n        \"seed\": -1, // -1 或任意整数；固定可复现，-1 为随机\n        \"batch_size\": 1, // 建议固定 1；批量生成数量\n        \"truncate_output_to_duration\": true // true/false；是否裁剪到指定 duration\n    },\n    \"output\": {\n        \"format\": \"wav\", // 固定 wav；输出格式\n        \"sample_rate\": 44100 // 建议 44100；采样率\n    }\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/v1/generate",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"generate"
+									]
+								},
+								"description": "StartFragment\n\n这个是 Stable Audio 3 的统一生成请求，字段含义如下。\n\n```\n{\n  \"model\": \"stable_audio_3_small_sfx\",\n  \"task\": \"audio.generate\"\n}\n\n ```\n\n| 字段 | 说明 |\n| --- | --- |\n| `model` | 模型 ID，Stable Audio 3 固定用 `stable_audio_3_small_sfx` |\n| `task` | 任务类型，音频生成固定用 `audio.generate` |\n\n**input**\n\n```\n\"input\": {\n  \"prompt\": \"short cinematic whoosh impact\"\n}\n\n ```\n\n| 字段 | 类型 | 必填 | 说明 |\n| --- | --- | --- | --- |\n| `prompt` | string | 是 | 正向提示词，描述你想生成的声音 |\n\n例子：\n\n```\nshort cinematic whoosh impact\n\n ```\n\n可以理解为：短促、电影感的呼啸冲击音效。\n\n**parameters**\n\n| 字段 | 类型 | 默认值 | 说明 |\n| --- | --- | --- | --- |\n| `negative_prompt` | string | `null` | 反向提示词，描述不想要的声音特征 |\n| `duration` | number | `7` | 生成音频时长，单位秒 |\n| `steps` | integer | `8` | 推理步数，越高通常越细，但更慢 |\n| `cfg_scale` | number | `1.0` | prompt 引导强度，越高越贴近提示词，但过高可能不自然 |\n| `seed` | integer | `-1` | 随机种子；固定值可复现，`-1` 表示随机 |\n| `batch_size` | integer | `1` | 一次生成几条；建议始终用 `1` |\n| `truncate_output_to_duration` | boolean | `true` | 是否裁剪到指定 `duration` |\n\n调参建议：\n\n| 目标 | 建议 |\n| --- | --- |\n| 先跑通 | `duration: 3-7`，`steps: 8`，`batch_size: 1` |\n| 想更细一点 | `steps: 12` 或 `16` |\n| 想多试几个版本 | 改 `seed` |\n| 显存紧张 | 降低 `duration`，保持 `batch_size: 1` |\n| 输出过于随机 | 固定 `seed` |\n| 效果不像 prompt | 小幅提高 `cfg_scale` |\n\n**output**\n\n```\n\"output\": {\n  \"format\": \"wav\",\n  \"sample_rate\": 44100\n}\n\n ```\n\n| 字段 | 类型 | 说明 |\n| --- | --- | --- |\n| `format` | string | 当前只支持 `wav` |\n| `sample_rate` | integer | 期望采样率，Stable Audio 3 常用 `44100` |\n\n一个更适合测试的版本：\n\n```\n{\n  \"model\": \"stable_audio_3_small_sfx\",\n  \"task\": \"audio.generate\",\n  \"input\": {\n    \"prompt\": \"short cinematic whoosh impact\"\n  },\n  \"parameters\": {\n    \"duration\": 5,\n    \"steps\": 8,\n    \"cfg_scale\": 1.0,\n    \"seed\": 1234,\n    \"batch_size\": 1,\n    \"truncate_output_to_duration\": true\n  },\n  \"output\": {\n    \"format\": \"wav\",\n    \"sample_rate\": 44100\n  }\n}\n\n ```\n\nEndFragment"
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "health",
+					"item": [
+						{
+							"name": "Gateway 健康检查",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/v1/health",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"health"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Successful Response",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/v1/health",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v1",
+												"health"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "logs",
+					"item": [
+						{
+							"name": "查看 Gateway 日志",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/v1/logs?lines=100",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"logs"
+									],
+									"query": [
+										{
+											"key": "lines",
+											"value": "100"
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Successful Response",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/v1/logs?lines=100",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v1",
+												"logs"
+											],
+											"query": [
+												{
+													"key": "lines",
+													"value": "100"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Validation Error",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/v1/logs?lines=100",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v1",
+												"logs"
+											],
+											"query": [
+												{
+													"key": "lines",
+													"value": "100"
+												}
+											]
+										}
+									},
+									"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+									"code": 422,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"string\",\n        3903\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"string\",\n        6004\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "providers",
+					"item": [
+						{
+							"name": "status",
+							"item": [
+								{
+									"name": "查看所有 Provider 运行状态",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/v1/providers/status",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v1",
+												"providers",
+												"status"
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Successful Response",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/v1/providers/status",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"v1",
+														"providers",
+														"status"
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "{provider_id}",
+							"item": [
+								{
+									"name": "start",
+									"item": [
+										{
+											"name": "启动 Provider",
+											"request": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/v1/providers/:provider_id/start",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"v1",
+														"providers",
+														":provider_id",
+														"start"
+													],
+													"variable": [
+														{
+															"key": "provider_id",
+															"value": "stable_audio_3_medium"
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "Successful Response",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Accept",
+																"value": "application/json"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/v1/providers/:provider_id/start",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"v1",
+																"providers",
+																":provider_id",
+																"start"
+															],
+															"variable": [
+																{
+																	"key": "provider_id",
+																	"value": "string"
+																}
+															]
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "json",
+													"header": [
+														{
+															"key": "Content-Type",
+															"value": "application/json"
+														}
+													],
+													"cookie": [],
+													"body": ""
+												},
+												{
+													"name": "Validation Error",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Accept",
+																"value": "application/json"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/v1/providers/:provider_id/start",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"v1",
+																"providers",
+																":provider_id",
+																"start"
+															],
+															"variable": [
+																{
+																	"key": "provider_id",
+																	"value": "string"
+																}
+															]
+														}
+													},
+													"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+													"code": 422,
+													"_postman_previewlanguage": "json",
+													"header": [
+														{
+															"key": "Content-Type",
+															"value": "application/json"
+														}
+													],
+													"cookie": [],
+													"body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"string\",\n        3903\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"string\",\n        6004\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}"
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "stop",
+									"item": [
+										{
+											"name": "停止 Provider",
+											"request": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/v1/providers/:provider_id/stop",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"v1",
+														"providers",
+														":provider_id",
+														"stop"
+													],
+													"variable": [
+														{
+															"key": "provider_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "Successful Response",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Accept",
+																"value": "application/json"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/v1/providers/:provider_id/stop",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"v1",
+																"providers",
+																":provider_id",
+																"stop"
+															],
+															"variable": [
+																{
+																	"key": "provider_id",
+																	"value": "string"
+																}
+															]
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "json",
+													"header": [
+														{
+															"key": "Content-Type",
+															"value": "application/json"
+														}
+													],
+													"cookie": [],
+													"body": ""
+												},
+												{
+													"name": "Validation Error",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Accept",
+																"value": "application/json"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/v1/providers/:provider_id/stop",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"v1",
+																"providers",
+																":provider_id",
+																"stop"
+															],
+															"variable": [
+																{
+																	"key": "provider_id",
+																	"value": "string"
+																}
+															]
+														}
+													},
+													"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+													"code": 422,
+													"_postman_previewlanguage": "json",
+													"header": [
+														{
+															"key": "Content-Type",
+															"value": "application/json"
+														}
+													],
+													"cookie": [],
+													"body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"string\",\n        3903\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"string\",\n        6004\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}"
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "restart",
+									"item": [
+										{
+											"name": "重启 Provider",
+											"request": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/v1/providers/:provider_id/restart",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"v1",
+														"providers",
+														":provider_id",
+														"restart"
+													],
+													"variable": [
+														{
+															"key": "provider_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "Successful Response",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Accept",
+																"value": "application/json"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/v1/providers/:provider_id/restart",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"v1",
+																"providers",
+																":provider_id",
+																"restart"
+															],
+															"variable": [
+																{
+																	"key": "provider_id",
+																	"value": "string"
+																}
+															]
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "json",
+													"header": [
+														{
+															"key": "Content-Type",
+															"value": "application/json"
+														}
+													],
+													"cookie": [],
+													"body": ""
+												},
+												{
+													"name": "Validation Error",
+													"originalRequest": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Accept",
+																"value": "application/json"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/v1/providers/:provider_id/restart",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"v1",
+																"providers",
+																":provider_id",
+																"restart"
+															],
+															"variable": [
+																{
+																	"key": "provider_id",
+																	"value": "string"
+																}
+															]
+														}
+													},
+													"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+													"code": 422,
+													"_postman_previewlanguage": "json",
+													"header": [
+														{
+															"key": "Content-Type",
+															"value": "application/json"
+														}
+													],
+													"cookie": [],
+													"body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"string\",\n        3903\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"string\",\n        6004\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}"
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "logs",
+									"item": [
+										{
+											"name": "查看 Provider 日志",
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/v1/providers/:provider_id/logs?stream=stderr&lines=100",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"v1",
+														"providers",
+														":provider_id",
+														"logs"
+													],
+													"query": [
+														{
+															"key": "stream",
+															"value": "stderr"
+														},
+														{
+															"key": "lines",
+															"value": "100"
+														}
+													],
+													"variable": [
+														{
+															"key": "provider_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "Successful Response",
+													"originalRequest": {
+														"method": "GET",
+														"header": [
+															{
+																"key": "Accept",
+																"value": "application/json"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/v1/providers/:provider_id/logs?stream=stderr&lines=100",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"v1",
+																"providers",
+																":provider_id",
+																"logs"
+															],
+															"query": [
+																{
+																	"key": "stream",
+																	"value": "stderr"
+																},
+																{
+																	"key": "lines",
+																	"value": "100"
+																}
+															],
+															"variable": [
+																{
+																	"key": "provider_id",
+																	"value": "string"
+																}
+															]
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "json",
+													"header": [
+														{
+															"key": "Content-Type",
+															"value": "application/json"
+														}
+													],
+													"cookie": [],
+													"body": ""
+												},
+												{
+													"name": "Validation Error",
+													"originalRequest": {
+														"method": "GET",
+														"header": [
+															{
+																"key": "Accept",
+																"value": "application/json"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/v1/providers/:provider_id/logs?stream=stderr&lines=100",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																"v1",
+																"providers",
+																":provider_id",
+																"logs"
+															],
+															"query": [
+																{
+																	"key": "stream",
+																	"value": "stderr"
+																},
+																{
+																	"key": "lines",
+																	"value": "100"
+																}
+															],
+															"variable": [
+																{
+																	"key": "provider_id",
+																	"value": "string"
+																}
+															]
+														}
+													},
+													"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+													"code": 422,
+													"_postman_previewlanguage": "json",
+													"header": [
+														{
+															"key": "Content-Type",
+															"value": "application/json"
+														}
+													],
+													"cookie": [],
+													"body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"string\",\n        3903\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"string\",\n        6004\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}"
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "查看 Provider 配置摘要",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/v1/providers/:provider_id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v1",
+												"providers",
+												":provider_id"
+											],
+											"variable": [
+												{
+													"key": "provider_id",
+													"value": "string"
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Successful Response",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/v1/providers/:provider_id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"v1",
+														"providers",
+														":provider_id"
+													],
+													"variable": [
+														{
+															"key": "provider_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Validation Error",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/v1/providers/:provider_id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"v1",
+														"providers",
+														":provider_id"
+													],
+													"variable": [
+														{
+															"key": "provider_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+											"code": 422,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"string\",\n        3903\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"string\",\n        6004\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}"
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "列出 Provider",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/v1/providers",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"providers"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Successful Response",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/v1/providers",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v1",
+												"providers"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "{scope_id}",
+			"item": [
+				{
+					"name": "v1",
+					"item": [
+						{
+							"name": "logs",
+							"item": [
+								{
+									"name": "查看 Gateway 日志（旧 scope 路径）",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/:scope_id/v1/logs?lines=100",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												":scope_id",
+												"v1",
+												"logs"
+											],
+											"query": [
+												{
+													"key": "lines",
+													"value": "100"
+												}
+											],
+											"variable": [
+												{
+													"key": "scope_id",
+													"value": "string"
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Successful Response",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/:scope_id/v1/logs?lines=100",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														":scope_id",
+														"v1",
+														"logs"
+													],
+													"query": [
+														{
+															"key": "lines",
+															"value": "100"
+														}
+													],
+													"variable": [
+														{
+															"key": "scope_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Validation Error",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/:scope_id/v1/logs?lines=100",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														":scope_id",
+														"v1",
+														"logs"
+													],
+													"query": [
+														{
+															"key": "lines",
+															"value": "100"
+														}
+													],
+													"variable": [
+														{
+															"key": "scope_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+											"code": 422,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"string\",\n        3903\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"string\",\n        6004\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}"
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "providers",
+							"item": [
+								{
+									"name": "status",
+									"item": [
+										{
+											"name": "查看所有 Provider 运行状态（旧 scope 路径）",
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/:scope_id/v1/providers/status",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														":scope_id",
+														"v1",
+														"providers",
+														"status"
+													],
+													"variable": [
+														{
+															"key": "scope_id"
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "Successful Response",
+													"originalRequest": {
+														"method": "GET",
+														"header": [
+															{
+																"key": "Accept",
+																"value": "application/json"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/:scope_id/v1/providers/status",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																":scope_id",
+																"v1",
+																"providers",
+																"status"
+															],
+															"variable": [
+																{
+																	"key": "scope_id"
+																}
+															]
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "json",
+													"header": [
+														{
+															"key": "Content-Type",
+															"value": "application/json"
+														}
+													],
+													"cookie": [],
+													"body": ""
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "{provider_id}",
+									"item": [
+										{
+											"name": "start",
+											"item": [
+												{
+													"name": "启动 Provider（旧 scope 路径）",
+													"request": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Accept",
+																"value": "application/json"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/:scope_id/v1/providers/:provider_id/start",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																":scope_id",
+																"v1",
+																"providers",
+																":provider_id",
+																"start"
+															],
+															"variable": [
+																{
+																	"key": "scope_id",
+																	"value": "string"
+																},
+																{
+																	"key": "provider_id",
+																	"value": "string"
+																}
+															]
+														}
+													},
+													"response": [
+														{
+															"name": "Successful Response",
+															"originalRequest": {
+																"method": "POST",
+																"header": [
+																	{
+																		"key": "Accept",
+																		"value": "application/json"
+																	}
+																],
+																"url": {
+																	"raw": "{{baseUrl}}/:scope_id/v1/providers/:provider_id/start",
+																	"host": [
+																		"{{baseUrl}}"
+																	],
+																	"path": [
+																		":scope_id",
+																		"v1",
+																		"providers",
+																		":provider_id",
+																		"start"
+																	],
+																	"variable": [
+																		{
+																			"key": "scope_id",
+																			"value": "string"
+																		},
+																		{
+																			"key": "provider_id",
+																			"value": "string"
+																		}
+																	]
+																}
+															},
+															"status": "OK",
+															"code": 200,
+															"_postman_previewlanguage": "json",
+															"header": [
+																{
+																	"key": "Content-Type",
+																	"value": "application/json"
+																}
+															],
+															"cookie": [],
+															"body": ""
+														},
+														{
+															"name": "Validation Error",
+															"originalRequest": {
+																"method": "POST",
+																"header": [
+																	{
+																		"key": "Accept",
+																		"value": "application/json"
+																	}
+																],
+																"url": {
+																	"raw": "{{baseUrl}}/:scope_id/v1/providers/:provider_id/start",
+																	"host": [
+																		"{{baseUrl}}"
+																	],
+																	"path": [
+																		":scope_id",
+																		"v1",
+																		"providers",
+																		":provider_id",
+																		"start"
+																	],
+																	"variable": [
+																		{
+																			"key": "scope_id",
+																			"value": "string"
+																		},
+																		{
+																			"key": "provider_id",
+																			"value": "string"
+																		}
+																	]
+																}
+															},
+															"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+															"code": 422,
+															"_postman_previewlanguage": "json",
+															"header": [
+																{
+																	"key": "Content-Type",
+																	"value": "application/json"
+																}
+															],
+															"cookie": [],
+															"body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"string\",\n        3903\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"string\",\n        6004\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}"
+														}
+													]
+												}
+											]
+										},
+										{
+											"name": "stop",
+											"item": [
+												{
+													"name": "停止 Provider（旧 scope 路径）",
+													"request": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Accept",
+																"value": "application/json"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/:scope_id/v1/providers/:provider_id/stop",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																":scope_id",
+																"v1",
+																"providers",
+																":provider_id",
+																"stop"
+															],
+															"variable": [
+																{
+																	"key": "scope_id",
+																	"value": "string"
+																},
+																{
+																	"key": "provider_id",
+																	"value": "string"
+																}
+															]
+														}
+													},
+													"response": [
+														{
+															"name": "Successful Response",
+															"originalRequest": {
+																"method": "POST",
+																"header": [
+																	{
+																		"key": "Accept",
+																		"value": "application/json"
+																	}
+																],
+																"url": {
+																	"raw": "{{baseUrl}}/:scope_id/v1/providers/:provider_id/stop",
+																	"host": [
+																		"{{baseUrl}}"
+																	],
+																	"path": [
+																		":scope_id",
+																		"v1",
+																		"providers",
+																		":provider_id",
+																		"stop"
+																	],
+																	"variable": [
+																		{
+																			"key": "scope_id",
+																			"value": "string"
+																		},
+																		{
+																			"key": "provider_id",
+																			"value": "string"
+																		}
+																	]
+																}
+															},
+															"status": "OK",
+															"code": 200,
+															"_postman_previewlanguage": "json",
+															"header": [
+																{
+																	"key": "Content-Type",
+																	"value": "application/json"
+																}
+															],
+															"cookie": [],
+															"body": ""
+														},
+														{
+															"name": "Validation Error",
+															"originalRequest": {
+																"method": "POST",
+																"header": [
+																	{
+																		"key": "Accept",
+																		"value": "application/json"
+																	}
+																],
+																"url": {
+																	"raw": "{{baseUrl}}/:scope_id/v1/providers/:provider_id/stop",
+																	"host": [
+																		"{{baseUrl}}"
+																	],
+																	"path": [
+																		":scope_id",
+																		"v1",
+																		"providers",
+																		":provider_id",
+																		"stop"
+																	],
+																	"variable": [
+																		{
+																			"key": "scope_id",
+																			"value": "string"
+																		},
+																		{
+																			"key": "provider_id",
+																			"value": "string"
+																		}
+																	]
+																}
+															},
+															"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+															"code": 422,
+															"_postman_previewlanguage": "json",
+															"header": [
+																{
+																	"key": "Content-Type",
+																	"value": "application/json"
+																}
+															],
+															"cookie": [],
+															"body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"string\",\n        3903\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"string\",\n        6004\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}"
+														}
+													]
+												}
+											]
+										},
+										{
+											"name": "restart",
+											"item": [
+												{
+													"name": "重启 Provider（旧 scope 路径）",
+													"request": {
+														"method": "POST",
+														"header": [
+															{
+																"key": "Accept",
+																"value": "application/json"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/:scope_id/v1/providers/:provider_id/restart",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																":scope_id",
+																"v1",
+																"providers",
+																":provider_id",
+																"restart"
+															],
+															"variable": [
+																{
+																	"key": "scope_id",
+																	"value": "string"
+																},
+																{
+																	"key": "provider_id",
+																	"value": "string"
+																}
+															]
+														}
+													},
+													"response": [
+														{
+															"name": "Successful Response",
+															"originalRequest": {
+																"method": "POST",
+																"header": [
+																	{
+																		"key": "Accept",
+																		"value": "application/json"
+																	}
+																],
+																"url": {
+																	"raw": "{{baseUrl}}/:scope_id/v1/providers/:provider_id/restart",
+																	"host": [
+																		"{{baseUrl}}"
+																	],
+																	"path": [
+																		":scope_id",
+																		"v1",
+																		"providers",
+																		":provider_id",
+																		"restart"
+																	],
+																	"variable": [
+																		{
+																			"key": "scope_id",
+																			"value": "string"
+																		},
+																		{
+																			"key": "provider_id",
+																			"value": "string"
+																		}
+																	]
+																}
+															},
+															"status": "OK",
+															"code": 200,
+															"_postman_previewlanguage": "json",
+															"header": [
+																{
+																	"key": "Content-Type",
+																	"value": "application/json"
+																}
+															],
+															"cookie": [],
+															"body": ""
+														},
+														{
+															"name": "Validation Error",
+															"originalRequest": {
+																"method": "POST",
+																"header": [
+																	{
+																		"key": "Accept",
+																		"value": "application/json"
+																	}
+																],
+																"url": {
+																	"raw": "{{baseUrl}}/:scope_id/v1/providers/:provider_id/restart",
+																	"host": [
+																		"{{baseUrl}}"
+																	],
+																	"path": [
+																		":scope_id",
+																		"v1",
+																		"providers",
+																		":provider_id",
+																		"restart"
+																	],
+																	"variable": [
+																		{
+																			"key": "scope_id",
+																			"value": "string"
+																		},
+																		{
+																			"key": "provider_id",
+																			"value": "string"
+																		}
+																	]
+																}
+															},
+															"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+															"code": 422,
+															"_postman_previewlanguage": "json",
+															"header": [
+																{
+																	"key": "Content-Type",
+																	"value": "application/json"
+																}
+															],
+															"cookie": [],
+															"body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"string\",\n        3903\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"string\",\n        6004\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}"
+														}
+													]
+												}
+											]
+										},
+										{
+											"name": "logs",
+											"item": [
+												{
+													"name": "查看 Provider 日志（旧 scope 路径）",
+													"request": {
+														"method": "GET",
+														"header": [
+															{
+																"key": "Accept",
+																"value": "application/json"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/:scope_id/v1/providers/:provider_id/logs?stream=stderr&lines=100",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																":scope_id",
+																"v1",
+																"providers",
+																":provider_id",
+																"logs"
+															],
+															"query": [
+																{
+																	"key": "stream",
+																	"value": "stderr"
+																},
+																{
+																	"key": "lines",
+																	"value": "100"
+																}
+															],
+															"variable": [
+																{
+																	"key": "scope_id",
+																	"value": "string"
+																},
+																{
+																	"key": "provider_id",
+																	"value": "string"
+																}
+															]
+														}
+													},
+													"response": [
+														{
+															"name": "Successful Response",
+															"originalRequest": {
+																"method": "GET",
+																"header": [
+																	{
+																		"key": "Accept",
+																		"value": "application/json"
+																	}
+																],
+																"url": {
+																	"raw": "{{baseUrl}}/:scope_id/v1/providers/:provider_id/logs?stream=stderr&lines=100",
+																	"host": [
+																		"{{baseUrl}}"
+																	],
+																	"path": [
+																		":scope_id",
+																		"v1",
+																		"providers",
+																		":provider_id",
+																		"logs"
+																	],
+																	"query": [
+																		{
+																			"key": "stream",
+																			"value": "stderr"
+																		},
+																		{
+																			"key": "lines",
+																			"value": "100"
+																		}
+																	],
+																	"variable": [
+																		{
+																			"key": "scope_id",
+																			"value": "string"
+																		},
+																		{
+																			"key": "provider_id",
+																			"value": "string"
+																		}
+																	]
+																}
+															},
+															"status": "OK",
+															"code": 200,
+															"_postman_previewlanguage": "json",
+															"header": [
+																{
+																	"key": "Content-Type",
+																	"value": "application/json"
+																}
+															],
+															"cookie": [],
+															"body": ""
+														},
+														{
+															"name": "Validation Error",
+															"originalRequest": {
+																"method": "GET",
+																"header": [
+																	{
+																		"key": "Accept",
+																		"value": "application/json"
+																	}
+																],
+																"url": {
+																	"raw": "{{baseUrl}}/:scope_id/v1/providers/:provider_id/logs?stream=stderr&lines=100",
+																	"host": [
+																		"{{baseUrl}}"
+																	],
+																	"path": [
+																		":scope_id",
+																		"v1",
+																		"providers",
+																		":provider_id",
+																		"logs"
+																	],
+																	"query": [
+																		{
+																			"key": "stream",
+																			"value": "stderr"
+																		},
+																		{
+																			"key": "lines",
+																			"value": "100"
+																		}
+																	],
+																	"variable": [
+																		{
+																			"key": "scope_id",
+																			"value": "string"
+																		},
+																		{
+																			"key": "provider_id",
+																			"value": "string"
+																		}
+																	]
+																}
+															},
+															"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+															"code": 422,
+															"_postman_previewlanguage": "json",
+															"header": [
+																{
+																	"key": "Content-Type",
+																	"value": "application/json"
+																}
+															],
+															"cookie": [],
+															"body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"string\",\n        3903\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"string\",\n        6004\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}"
+														}
+													]
+												}
+											]
+										},
+										{
+											"name": "查看 Provider 配置摘要（旧 scope 路径）",
+											"request": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/:scope_id/v1/providers/:provider_id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														":scope_id",
+														"v1",
+														"providers",
+														":provider_id"
+													],
+													"variable": [
+														{
+															"key": "scope_id",
+															"value": "string"
+														},
+														{
+															"key": "provider_id",
+															"value": "string"
+														}
+													]
+												}
+											},
+											"response": [
+												{
+													"name": "Successful Response",
+													"originalRequest": {
+														"method": "GET",
+														"header": [
+															{
+																"key": "Accept",
+																"value": "application/json"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/:scope_id/v1/providers/:provider_id",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																":scope_id",
+																"v1",
+																"providers",
+																":provider_id"
+															],
+															"variable": [
+																{
+																	"key": "scope_id",
+																	"value": "string"
+																},
+																{
+																	"key": "provider_id",
+																	"value": "string"
+																}
+															]
+														}
+													},
+													"status": "OK",
+													"code": 200,
+													"_postman_previewlanguage": "json",
+													"header": [
+														{
+															"key": "Content-Type",
+															"value": "application/json"
+														}
+													],
+													"cookie": [],
+													"body": ""
+												},
+												{
+													"name": "Validation Error",
+													"originalRequest": {
+														"method": "GET",
+														"header": [
+															{
+																"key": "Accept",
+																"value": "application/json"
+															}
+														],
+														"url": {
+															"raw": "{{baseUrl}}/:scope_id/v1/providers/:provider_id",
+															"host": [
+																"{{baseUrl}}"
+															],
+															"path": [
+																":scope_id",
+																"v1",
+																"providers",
+																":provider_id"
+															],
+															"variable": [
+																{
+																	"key": "scope_id",
+																	"value": "string"
+																},
+																{
+																	"key": "provider_id",
+																	"value": "string"
+																}
+															]
+														}
+													},
+													"status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+													"code": 422,
+													"_postman_previewlanguage": "json",
+													"header": [
+														{
+															"key": "Content-Type",
+															"value": "application/json"
+														}
+													],
+													"cookie": [],
+													"body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"string\",\n        3903\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"string\",\n        6004\n      ],\n      \"msg\": \"string\",\n      \"type\": \"string\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}"
+												}
+											]
+										}
+									]
+								},
+								{
+									"name": "列出 Provider（旧 scope 路径）",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/:scope_id/v1/providers",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												":scope_id",
+												"v1",
+												"providers"
+											],
+											"variable": [
+												{
+													"key": "scope_id"
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Successful Response",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "application/json"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/:scope_id/v1/providers",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														":scope_id",
+														"v1",
+														"providers"
+													],
+													"variable": [
+														{
+															"key": "scope_id"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								}
+							]
+						}
+					]
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "/"
+		}
+	]
+}

@@ -237,7 +237,7 @@ Stable Audio 3 Small-SFX 音效生成使用 `task: "audio.generate"`：
 curl -sS -H "Content-Type: application/json" -o sfx.wav \
   -X POST http://127.0.0.1:6006/v1/generate \
   -d '{
-    "model": "stable-audio-3-small-sfx",
+    "model": "stable_audio_3_small_sfx",
     "task": "audio.generate",
     "input": {"prompt": "short cinematic whoosh impact"},
     "parameters": {"duration": 7, "seed": 1234},

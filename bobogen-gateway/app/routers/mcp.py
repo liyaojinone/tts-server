@@ -136,6 +136,6 @@ async def tts_restart_provider(provider_id: str = "local_index_tts"):
 
 
 @mcp.tool()
-async def tts_provider_logs(provider_id: str = "local_index_tts", stream: str = "stderr", lines: int = 50):
+async def tts_provider_logs(provider_id: str = "local_index_tts", stream: str = "combined", lines: int = 50):
     """查看引擎运行日志。"""
     return {"provider_id": provider_id, "stream": stream, "content": _manager.get_logs(provider_id, stream, lines)}

@@ -23,10 +23,33 @@ def test_start_script_supports_native_and_docker_operations_without_provider_sco
     assert "local_index_tts/v1/providers/status" not in start_script
 
 
-def test_windows_start_script_uses_distinct_daemon_log_files():
+def test_start_scripts_stop_stable_audio3_native_providers():
+    linux_start_script = (ROOT / "start.sh").read_text(encoding="utf-8")
+    windows_start_script = (ROOT / "start.ps1").read_text(encoding="utf-8")
+
+    for provider_id in ["stable_audio_3_small_sfx", "stable_audio_3_small_music", "stable_audio_3_medium"]:
+        assert provider_id in linux_start_script
+        assert provider_id in windows_start_script
+
+
+def test_windows_start_script_uses_single_gateway_log_file():
     start_script = (ROOT / "start.ps1").read_text(encoding="utf-8")
 
-    assert "gateway.out.log" in start_script
-    assert "gateway.err.log" in start_script
-    assert "-RedirectStandardOutput $outLogPath -RedirectStandardError $errLogPath" in start_script
-    assert "-RedirectStandardOutput $logPath -RedirectStandardError $logPath" not in start_script
+    assert "gateway.log" in start_script
+    assert "gateway.out.log" not in start_script
+    assert "gateway.err.log" not in start_script
+    assert "2>&1" in start_script
+
+
+def test_windows_start_script_help_does_not_start_gateway_or_change_caller_directory():
+    start_script = (ROOT / "start.ps1").read_text(encoding="utf-8")
+
+    assert "[switch]$Help" in start_script
+    assert "function Show-Usage" in start_script
+    assert "if ($Help)" in start_script
+    assert "Push-Location $root" in start_script
+    assert "Push-Location $gatewayDir" in start_script
+    assert "finally {" in start_script
+    assert start_script.count("Pop-Location") >= 2
+    assert "Set-Location $root" not in start_script
+    assert "Set-Location $gatewayDir" not in start_script

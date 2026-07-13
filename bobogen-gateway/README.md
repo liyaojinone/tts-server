@@ -150,7 +150,7 @@ Stable Audio 3 Small-SFX:
 ```json
 POST /v1/generate
 {
-  "model": "stable-audio-3-small-sfx",
+  "model": "stable_audio_3_small_sfx",
   "task": "audio.generate",
   "input": {
     "prompt": "short cinematic whoosh impact"

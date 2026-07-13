@@ -1,5 +1,5 @@
 provider_id: stable_audio_3_small_sfx
-model_id: stable-audio-3-small-sfx
+model_id: stable_audio_3_small_sfx
 provider_type: stableaudio3
 display_name: Stable Audio 3 Small-SFX
 enabled: true

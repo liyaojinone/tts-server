@@ -27,6 +27,10 @@ http://127.0.0.1:6006/v1/generate
 | `local_f5_tts` | F5-TTS | 5102 |
 | `local_cosyvoice2` | CosyVoice2 | 5101 |
 | `stable_audio_3_small_sfx` | Stable Audio 3 Small-SFX | 5106 |
+| `qwen3_asr_0_6b` | Qwen3-ASR 0.6B | 5110 |
+| `qwen3_asr_1_7b` | Qwen3-ASR 1.7B | 5111 |
+| `qwen3_forced_aligner_0_6b` | Qwen3 ForcedAligner 0.6B | 5112 |
+| `campplus_speaker_diarization` | CAM++ Speaker Diarization | 5113 |
 
 ## Authentication
 
@@ -160,13 +164,13 @@ curl -sS -o out.wav \
 
 ### Stable Audio 3 Small-SFX
 
-Stable Audio 3 通过统一生成协议接入，模型 ID 为 `stable-audio-3-small-sfx`，任务为 `audio.generate`。
+Stable Audio 3 通过统一生成协议接入，模型 ID 为 `stable_audio_3_small_sfx`，任务为 `audio.generate`。
 
 ```bash
 curl -sS -H "Content-Type: application/json" -o sfx.wav \
   -X POST http://127.0.0.1:6006/v1/generate \
   -d '{
-    "model": "stable-audio-3-small-sfx",
+    "model": "stable_audio_3_small_sfx",
     "task": "audio.generate",
     "input": {
       "prompt": "short cinematic whoosh impact"
@@ -189,6 +193,96 @@ huggingface-cli login
 ```
 
 需要先在 Hugging Face 接受 `stabilityai/stable-audio-3-small-sfx` 模型条款。服务启动脚本默认读取 `models/stable-audio-3/repo/.venv`；如需使用其他 Python，设置 `STABLE_AUDIO3_PYTHON`。
+
+---
+
+### Qwen3-ASR
+
+Qwen3-ASR 通过统一生成协议接入，默认本地模型 ID 为 `qwen3_asr_0_6b`，任务为 `asr.transcribe`，返回 JSON。
+
+```bash
+curl -sS -X POST http://127.0.0.1:6006/v1/generate \
+  -F 'request={"model":"qwen3_asr_0_6b","task":"asr.transcribe","input":{"audio":{"kind":"upload","field":"audio"},"language":"auto"},"parameters":{"mode":"offline","timestamps":false},"output":{"format":"json"}}' \
+  -F "audio=@speech.wav"
+```
+
+响应：
+
+```json
+{
+  "text": "识别文本",
+  "language": "Chinese",
+  "duration_seconds": null,
+  "segments": [],
+  "model": "qwen3_asr_0_6b"
+}
+```
+
+服务位于 `services/qwen3-asr-service`，必须使用 CUDA 版 PyTorch。0.6B 默认端口 `5110`；1.7B 预留端口 `5111`，可通过 provider `qwen3_asr_1_7b` 启动测试。
+
+### Qwen3 ForcedAligner
+
+Qwen3 ForcedAligner 通过统一生成协议接入，模型 ID 为 `qwen3_forced_aligner_0_6b`，任务为 `audio.align`。它不做语音识别，只负责把可信文本对齐到音频，返回片段内时间和工程全局时间。客户端仍负责 FFmpeg 静音检测、VAD 粗切、字幕 cue 拆分和编辑策略。
+
+```bash
+curl -sS -X POST http://127.0.0.1:6006/v1/generate \
+  -F 'request={"model":"qwen3_forced_aligner_0_6b","task":"audio.align","input":{"audio":{"kind":"upload","field":"audio"},"text":"你终于来了。","language":"Chinese","clip_start":120.0},"parameters":{"granularity":"word"},"output":{"format":"json"}}' \
+  -F "audio=@line.wav"
+```
+
+响应：
+
+```json
+{
+  "text": "你终于来了。",
+  "language": "Chinese",
+  "clip_start": 120.0,
+  "segments": [
+    {
+      "index": 0,
+      "text": "你",
+      "start": 0.1,
+      "end": 0.22,
+      "global_start": 120.1,
+      "global_end": 120.22
+    }
+  ],
+  "model": "qwen3_forced_aligner_0_6b"
+}
+```
+
+---
+
+### CAM++ Speaker Diarization
+
+CAM++ Speaker Diarization 通过统一生成协议接入，模型 ID 为 `campplus_speaker_diarization`，任务为 `audio.diarize`。它只回答“谁在什么时候说话”，返回匿名 speaker 标签；不做语音识别，也不把 `SPEAKER_00` 自动映射成真实角色名。
+
+```bash
+curl -sS -X POST http://127.0.0.1:6006/v1/generate \
+  -F 'request={"model":"campplus_speaker_diarization","task":"audio.diarize","input":{"audio":{"kind":"upload","field":"audio"},"clip_start":10.0},"parameters":{"oracle_num":2,"min_duration":0.0},"output":{"format":"json"}}' \
+  -F "audio=@dialogue.wav"
+```
+
+响应：
+
+```json
+{
+  "model": "campplus_speaker_diarization",
+  "clip_start": 10.0,
+  "segments": [
+    {
+      "index": 0,
+      "speaker": "SPEAKER_00",
+      "start": 0.12,
+      "end": 3.84,
+      "global_start": 10.12,
+      "global_end": 13.84
+    }
+  ]
+}
+```
+
+服务位于 `services/speaker-diarization-service`，默认端口 `5113`。已知说话人数时可传 `oracle_num` 提升聚类稳定性；真实角色名映射需要后续接入参考声纹匹配。
 
 ---
 

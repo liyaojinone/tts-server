@@ -1,0 +1,8 @@
+[project]
+name = "qwen3-asr-service"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["fastapi", "uvicorn", "pydantic", "qwen-asr"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

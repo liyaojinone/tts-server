@@ -1,0 +1,34 @@
+provider_id: qwen3_asr_1_7b
+model_id: qwen3_asr_1_7b
+provider_type: qwen3-asr
+display_name: Qwen3-ASR 1.7B
+enabled: true
+tasks:
+  - asr.transcribe
+runtime:
+  root_dir: ${BOBOGEN_ROOT}\services\qwen3-asr-service
+  cwd: ${BOBOGEN_ROOT}\services\qwen3-asr-service
+  command:
+    - powershell
+    - -File
+    - ${BOBOGEN_ROOT}\services\qwen3-asr-service\start.ps1
+  env:
+    QWEN3_ASR_MODEL_ID: qwen3_asr_1_7b
+    QWEN3_ASR_HF_REPO_ID: Qwen/Qwen3-ASR-1.7B
+    QWEN3_ASR_MODEL_DIR: "${BOBOGEN_ROOT}\\models\\qwen3-asr\\Qwen3-ASR-1.7B"
+    QWEN3_ASR_PORT: "5111"
+    QWEN3_ASR_DEVICE: cuda:0
+  startup_timeout_ms: 300000
+  request_timeout_ms: 900000
+  idle_shutdown_seconds: 0
+network:
+  host: 127.0.0.1
+  port: 5111
+  base_url: http://127.0.0.1:5111
+  healthcheck_path: /v1/health
+capabilities:
+  voices: false
+  synthesize: false
+  clone: false
+  stream: false
+voices: []

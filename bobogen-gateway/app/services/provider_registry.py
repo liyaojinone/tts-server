@@ -4,6 +4,8 @@ from app.adapters.cosyvoice import CosyVoiceAdapter
 from app.adapters.f5tts import F5TTSAdapter
 from app.adapters.gptsovits import GPTSoVITSAdapter
 from app.adapters.indextts import IndexTTSAdapter
+from app.adapters.qwen3_asr import Qwen3ASRAdapter
+from app.adapters.speaker_diarization import SpeakerDiarizationAdapter
 from app.adapters.stableaudio3 import StableAudio3Adapter
 from app.adapters.voxcpm import VoxCPMAdapter
 from app.config import PROVIDER_DIR, load_provider_configs
@@ -33,6 +35,8 @@ class ProviderRegistry:
             "f5-tts": F5TTSAdapter,
             "gptsovits": GPTSoVITSAdapter,
             "indextts": IndexTTSAdapter,
+            "qwen3-asr": Qwen3ASRAdapter,
+            "speaker-diarization": SpeakerDiarizationAdapter,
             "stableaudio3": StableAudio3Adapter,
             "voxcpm": VoxCPMAdapter,
         }

@@ -1,4 +1,5 @@
 import asyncio
+import subprocess
 
 import pytest
 
@@ -39,10 +40,121 @@ def test_ensure_started_returns_existing_healthy_state():
         port=provider.network.port,
     )
 
+    async def fake_healthcheck(provider_id):
+        return True
+
+    manager.healthcheck = fake_healthcheck
+
     state = asyncio.run(manager.ensure_started(provider.provider_id))
 
     assert state.status == "healthy"
     assert state.pid == 1234
+
+
+def test_ensure_started_restarts_stale_healthy_state():
+    from app.core.state import ProviderRuntimeState
+    from app.services.process_manager import ProcessManager
+    from app.schemas.provider import ProviderConfig, RuntimeConfig, NetworkConfig, CapabilityConfig
+
+    provider = ProviderConfig(
+        provider_id="stale-provider",
+        provider_type="qwen3-asr",
+        display_name="Stale Provider",
+        enabled=True,
+        runtime=RuntimeConfig(
+            root_dir="E:/services/qwen3-asr-service",
+            cwd="E:/services/qwen3-asr-service",
+            command=["python", "-m", "app.main"],
+            env={},
+            startup_timeout_ms=1000,
+            request_timeout_ms=1000,
+            idle_shutdown_seconds=0,
+        ),
+        network=NetworkConfig(
+            host="127.0.0.1",
+            port=5110,
+            base_url="http://127.0.0.1:5110",
+            healthcheck_path="/v1/health",
+        ),
+        capabilities=CapabilityConfig(voices=False, synthesize=False, clone=False, stream=False),
+    )
+
+    manager = ProcessManager({provider.provider_id: provider})
+    manager._states[provider.provider_id] = ProviderRuntimeState(
+        provider_id=provider.provider_id,
+        status="healthy",
+        pid=27976,
+        port=provider.network.port,
+    )
+    health_results = [False, False]
+    launched = []
+
+    async def fake_healthcheck(provider_id):
+        return health_results.pop(0) if health_results else True
+
+    async def fake_launcher(provider_config):
+        launched.append(provider_config.provider_id)
+        return 30001
+
+    async def fake_wait_until_healthy(provider_id):
+        return True
+
+    manager.healthcheck = fake_healthcheck
+    manager._launch_process = fake_launcher
+    manager._wait_until_healthy = fake_wait_until_healthy
+
+    state = asyncio.run(manager.ensure_started(provider.provider_id))
+
+    assert launched == ["stale-provider"]
+    assert state.status == "healthy"
+    assert state.pid == 30001
+
+
+def test_refresh_state_marks_stale_healthy_provider_stopped():
+    from app.core.state import ProviderRuntimeState
+    from app.services.process_manager import ProcessManager
+    from app.schemas.provider import ProviderConfig, RuntimeConfig, NetworkConfig, CapabilityConfig
+
+    provider = ProviderConfig(
+        provider_id="status-provider",
+        provider_type="qwen3-asr",
+        display_name="Status Provider",
+        enabled=True,
+        runtime=RuntimeConfig(
+            root_dir="E:/services/qwen3-asr-service",
+            cwd="E:/services/qwen3-asr-service",
+            command=["python", "-m", "app.main"],
+            env={},
+            startup_timeout_ms=1000,
+            request_timeout_ms=1000,
+            idle_shutdown_seconds=0,
+        ),
+        network=NetworkConfig(
+            host="127.0.0.1",
+            port=5110,
+            base_url="http://127.0.0.1:5110",
+            healthcheck_path="/v1/health",
+        ),
+        capabilities=CapabilityConfig(voices=False, synthesize=False, clone=False, stream=False),
+    )
+    manager = ProcessManager({provider.provider_id: provider})
+    manager._states[provider.provider_id] = ProviderRuntimeState(
+        provider_id=provider.provider_id,
+        status="healthy",
+        pid=27976,
+        port=provider.network.port,
+    )
+
+    async def fake_healthcheck(provider_id):
+        return False
+
+    manager.healthcheck = fake_healthcheck
+
+    state = asyncio.run(manager.refresh_state(provider.provider_id))
+
+    assert state.status == "stopped"
+    assert state.pid is None
+    assert state.last_error == "healthcheck failed"
 
 
 def test_ensure_started_rejects_unknown_provider():
@@ -194,3 +306,91 @@ def test_external_provider_reports_compose_start_hint_when_service_is_unavailabl
     assert exc.value.code == "PROVIDER_EXTERNAL_START_REQUIRED"
     assert "bash start.sh --docker --model stable-audio3" in exc.value.message
     assert exc.value.details["compose_service"] == "stable-audio3"
+
+
+def test_provider_logs_use_single_combined_log_file(monkeypatch, tmp_path):
+    import app.services.process_manager as process_manager
+    from app.services.process_manager import ProcessManager
+    from app.schemas.provider import ProviderConfig, RuntimeConfig, NetworkConfig, CapabilityConfig
+
+    provider = ProviderConfig(
+        provider_id="combined-provider",
+        provider_type="stableaudio3",
+        display_name="Combined Provider",
+        enabled=True,
+        runtime=RuntimeConfig(
+            root_dir="E:/services/stable-audio3-service",
+            cwd="E:/services/stable-audio3-service",
+            command=["python", "service.py"],
+            env={},
+            startup_timeout_ms=1000,
+            request_timeout_ms=1000,
+            idle_shutdown_seconds=0,
+        ),
+        network=NetworkConfig(
+            host="127.0.0.1",
+            port=5107,
+            base_url="http://127.0.0.1:5107",
+            healthcheck_path="/v1/health",
+        ),
+        capabilities=CapabilityConfig(voices=False, synthesize=False, clone=False, stream=False),
+    )
+    log_dir = tmp_path / provider.provider_id
+    log_dir.mkdir(parents=True)
+    (log_dir / "combined.log").write_text("one\ntwo\nthree\n", encoding="utf-8")
+    monkeypatch.setattr(process_manager, "LOG_DIR", tmp_path)
+
+    manager = ProcessManager({provider.provider_id: provider})
+
+    assert manager.get_logs(provider.provider_id, lines=2) == "two\nthree\n"
+    assert manager.get_logs(provider.provider_id, stream="stderr", lines=1) == "three\n"
+
+
+def test_launch_process_redirects_provider_output_to_single_combined_log(monkeypatch, tmp_path):
+    import app.services.process_manager as process_manager
+    from app.services.process_manager import ProcessManager
+    from app.schemas.provider import ProviderConfig, RuntimeConfig, NetworkConfig, CapabilityConfig
+
+    provider = ProviderConfig(
+        provider_id="launch-provider",
+        provider_type="stableaudio3",
+        display_name="Launch Provider",
+        enabled=True,
+        runtime=RuntimeConfig(
+            root_dir="E:/services/stable-audio3-service",
+            cwd="E:/services/stable-audio3-service",
+            command=["python", "service.py"],
+            env={},
+            startup_timeout_ms=1000,
+            request_timeout_ms=1000,
+            idle_shutdown_seconds=0,
+        ),
+        network=NetworkConfig(
+            host="127.0.0.1",
+            port=5107,
+            base_url="http://127.0.0.1:5107",
+            healthcheck_path="/v1/health",
+        ),
+        capabilities=CapabilityConfig(voices=False, synthesize=False, clone=False, stream=False),
+    )
+    popen_args = {}
+
+    class FakeProcess:
+        pid = 4321
+
+    def fake_popen(command, cwd, env, stdout, stderr):
+        popen_args.update({"command": command, "cwd": cwd, "env": env, "stdout": stdout, "stderr": stderr})
+        return FakeProcess()
+
+    monkeypatch.setattr(process_manager, "LOG_DIR", tmp_path)
+    monkeypatch.setattr(process_manager.subprocess, "Popen", fake_popen)
+
+    manager = ProcessManager({provider.provider_id: provider})
+    pid = asyncio.run(manager._launch_process(provider))
+
+    combined_log = tmp_path / provider.provider_id / "combined.log"
+    assert pid == 4321
+    assert combined_log.exists()
+    assert "--- started at " in combined_log.read_text(encoding="utf-8")
+    assert popen_args["stdout"].name == str(combined_log)
+    assert popen_args["stderr"] == subprocess.STDOUT

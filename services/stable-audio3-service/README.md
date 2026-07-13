@@ -72,7 +72,7 @@ Only `task = "audio.generate"` is supported.
 
 ```json
 {
-  "model": "stable-audio-3-small-sfx",
+  "model": "stable_audio_3_small_sfx",
   "task": "audio.generate",
   "input": {"prompt": "short cinematic whoosh impact"},
   "parameters": {"duration": 7, "seed": 1234},

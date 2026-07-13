@@ -1,0 +1,34 @@
+provider_id: qwen3_forced_aligner_0_6b
+model_id: qwen3_forced_aligner_0_6b
+provider_type: qwen3-asr
+display_name: Qwen3 ForcedAligner 0.6B
+enabled: true
+tasks:
+  - audio.align
+runtime:
+  root_dir: ${BOBOGEN_ROOT}\services\qwen3-asr-service
+  cwd: ${BOBOGEN_ROOT}\services\qwen3-asr-service
+  command:
+    - powershell
+    - -File
+    - ${BOBOGEN_ROOT}\services\qwen3-asr-service\start.ps1
+  env:
+    QWEN3_ASR_MODEL_ID: qwen3_forced_aligner_0_6b
+    QWEN3_ASR_HF_REPO_ID: Qwen/Qwen3-ForcedAligner-0.6B
+    QWEN3_ASR_MODEL_DIR: "${BOBOGEN_ROOT}\\models\\qwen3-asr\\Qwen3-ForcedAligner-0.6B"
+    QWEN3_ASR_PORT: "5112"
+    QWEN3_ASR_DEVICE: cuda:0
+  startup_timeout_ms: 300000
+  request_timeout_ms: 600000
+  idle_shutdown_seconds: 0
+network:
+  host: 127.0.0.1
+  port: 5112
+  base_url: http://127.0.0.1:5112
+  healthcheck_path: /v1/health
+capabilities:
+  voices: false
+  synthesize: false
+  clone: false
+  stream: false
+voices: []

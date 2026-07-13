@@ -39,6 +39,21 @@ class ProcessManager:
     def list_states(self) -> list[ProviderRuntimeState]:
         return [self.get_state(provider_id) for provider_id in self.providers]
 
+    async def refresh_state(self, provider_id: str) -> ProviderRuntimeState:
+        state = self.get_state(provider_id)
+        if state.status != "healthy":
+            return state
+        if await self._is_healthy(provider_id):
+            state.last_health_at = datetime.now()
+            return state
+        state.status = "stopped"
+        state.pid = None
+        state.last_error = "healthcheck failed"
+        return state
+
+    async def list_states_refreshed(self) -> list[ProviderRuntimeState]:
+        return [await self.refresh_state(provider_id) for provider_id in self.providers]
+
     async def ensure_started(self, provider_id: str) -> ProviderRuntimeState:
         provider = self.providers.get(provider_id)
         if provider is None:
@@ -48,8 +63,13 @@ class ProcessManager:
         async with self._locks[provider_id]:
             state = self.get_state(provider_id)
             if state.status == "healthy":
-                state.last_used_at = datetime.now()
-                return state
+                if await self._is_healthy(provider_id):
+                    state.last_health_at = datetime.now()
+                    state.last_used_at = datetime.now()
+                    return state
+                state.status = "stopped"
+                state.pid = None
+                state.last_error = "healthcheck failed"
             # 先检查服务是否已被手动启动（如 Linux 上手动 start.sh）
             if await self._is_healthy(provider_id):
                 state.status = "healthy"
@@ -105,12 +125,14 @@ class ProcessManager:
         except Exception:
             return False
 
-    def get_logs(self, provider_id: str, stream: str = "stderr", lines: int = 100) -> str:
+    def get_logs(self, provider_id: str, stream: str = "combined", lines: int = 100) -> str:
         log_dir = LOG_DIR / provider_id
-        log_file = log_dir / f"{stream}.log"
+        log_file = log_dir / "combined.log"
+        if not log_file.exists():
+            log_file = log_dir / f"{stream}.log"
         if not log_file.exists():
             return ""
-        with open(log_file, "r") as f:
+        with open(log_file, "r", encoding="utf-8", errors="replace") as f:
             all_lines = f.readlines()
         return "".join(all_lines[-lines:])
 
@@ -165,15 +187,15 @@ class ProcessManager:
         env.update(provider.runtime.env)
         log_dir = LOG_DIR / provider.provider_id
         log_dir.mkdir(parents=True, exist_ok=True)
-        stdout_f = (log_dir / "stdout.log").open("a")
-        stderr_f = (log_dir / "stderr.log").open("a")
-        stdout_f.write(f"\n--- started at {datetime.now().isoformat()} ---\n")
+        combined_f = (log_dir / "combined.log").open("a", encoding="utf-8", errors="replace")
+        combined_f.write(f"\n--- started at {datetime.now().isoformat()} ---\n")
+        combined_f.flush()
         process = subprocess.Popen(
             provider.runtime.command,
             cwd=provider.runtime.cwd,
             env=env,
-            stdout=stdout_f,
-            stderr=stderr_f,
+            stdout=combined_f,
+            stderr=subprocess.STDOUT,
         )
         self._processes[provider.provider_id] = process
         return process.pid

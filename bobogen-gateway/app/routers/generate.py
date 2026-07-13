@@ -23,6 +23,7 @@ from app.schemas.generate_catalog import (
 )
 from app.schemas.voice import VoiceResponse
 from app.services.file_inputs import cleanup_temp_files, resolve_generation_files
+from app.services.generate_result import JsonResult
 
 
 router = APIRouter()
@@ -109,6 +110,15 @@ def _describe_audio_bytes(content: bytes, content_type: str) -> dict:
     return summary
 
 
+def _describe_generate_result(result) -> dict:
+    if isinstance(result, JsonResult):
+        return {
+            "contentType": "application/json",
+            "keys": sorted(result.payload.keys()),
+        }
+    return _describe_audio_bytes(result.content, result.content_type)
+
+
 def _emit_generate_log(event: str, payload: dict) -> None:
     line = f"{event} {json.dumps(payload, ensure_ascii=False, sort_keys=True)}"
     logger.info(line)
@@ -138,6 +148,8 @@ def _gateway_error_status(exc: GatewayError) -> int:
 
 
 def _outputs_for_tasks(tasks: list[str]) -> list[str]:
+    if any(task.startswith("asr.") or task in {"audio.align", "audio.diarize"} for task in tasks):
+        return ["application/json"]
     if any(task.startswith("tts.") or task.startswith("audio.") for task in tasks):
         return ["audio/wav"]
     return []
@@ -314,7 +326,7 @@ async def generate(
 
         await manager.ensure_started(provider.provider_id)
         adapter = registry.get_adapter(provider.provider_id)
-        audio = await adapter.generate(provider, request)
+        result = await adapter.generate(provider, request)
         _emit_generate_log(
             "generate.response",
             {
@@ -322,9 +334,9 @@ async def generate(
                 "task": request.task,
                 "providerId": provider.provider_id,
                 "elapsedMs": round((time.perf_counter() - started_at) * 1000, 1),
-                "audio": _describe_audio_bytes(audio.content, audio.content_type),
-                "durationSeconds": audio.duration_seconds,
-                "sampleRate": audio.sample_rate,
+                "result": _describe_generate_result(result),
+                "durationSeconds": getattr(result, "duration_seconds", None),
+                "sampleRate": getattr(result, "sample_rate", None),
             },
         )
     except ValidationError as exc:
@@ -343,8 +355,11 @@ async def generate(
         "X-Model-Id": request.model,
         "X-Task": request.task,
     }
-    if audio.duration_seconds is not None:
-        headers["X-Audio-Duration"] = str(audio.duration_seconds)
-    if audio.sample_rate is not None:
-        headers["X-Sample-Rate"] = str(audio.sample_rate)
-    return Response(content=audio.content, media_type=audio.content_type, headers=headers)
+    if isinstance(result, JsonResult):
+        headers.update(result.headers)
+        return JSONResponse(content=result.payload, headers=headers)
+    if result.duration_seconds is not None:
+        headers["X-Audio-Duration"] = str(result.duration_seconds)
+    if result.sample_rate is not None:
+        headers["X-Sample-Rate"] = str(result.sample_rate)
+    return Response(content=result.content, media_type=result.content_type, headers=headers)

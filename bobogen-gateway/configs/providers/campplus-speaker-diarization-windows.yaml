@@ -1,0 +1,34 @@
+provider_id: campplus_speaker_diarization
+model_id: campplus_speaker_diarization
+provider_type: speaker-diarization
+display_name: CAM++ Speaker Diarization
+enabled: true
+tasks:
+  - audio.diarize
+runtime:
+  root_dir: ${BOBOGEN_ROOT}\services\speaker-diarization-service
+  cwd: ${BOBOGEN_ROOT}\services\speaker-diarization-service
+  command:
+    - powershell
+    - -File
+    - ${BOBOGEN_ROOT}\services\speaker-diarization-service\start.ps1
+  env:
+    SPEAKER_DIARIZATION_MODEL_ID: campplus_speaker_diarization
+    SPEAKER_DIARIZATION_MODEL_NAME: iic/speech_campplus_speaker-diarization_common
+    SPEAKER_DIARIZATION_MODEL_REVISION: master
+    SPEAKER_DIARIZATION_PORT: "5113"
+    SPEAKER_DIARIZATION_DEVICE: cuda:0
+  startup_timeout_ms: 300000
+  request_timeout_ms: 600000
+  idle_shutdown_seconds: 0
+network:
+  host: 127.0.0.1
+  port: 5113
+  base_url: http://127.0.0.1:5113
+  healthcheck_path: /v1/health
+capabilities:
+  voices: false
+  synthesize: false
+  clone: false
+  stream: false
+voices: []

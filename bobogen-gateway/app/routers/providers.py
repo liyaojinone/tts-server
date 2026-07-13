@@ -54,7 +54,7 @@ async def all_providers_status(manager=Depends(get_process_manager)):
             "startup_attempts": state.startup_attempts,
             "last_error": state.last_error,
         }
-        for state in manager.list_states()
+        for state in await manager.list_states_refreshed()
     ]
     return {"providers": providers}
 
@@ -99,7 +99,7 @@ async def all_providers_status_scoped(manager=Depends(get_process_manager)):
             "startup_attempts": state.startup_attempts,
             "last_error": state.last_error,
         }
-        for state in manager.list_states()
+        for state in await manager.list_states_refreshed()
     ]
     return {"providers": providers}
 
@@ -194,7 +194,7 @@ async def restart_provider_scoped(scope_id: str, provider_id: str, manager=Depen
 @router.get("/v1/providers/{provider_id}/logs", tags=["03 Provider 管理"], summary="查看 Provider 日志")
 async def provider_logs(
     provider_id: str,
-    stream: str = Query(default="stderr", pattern="^(stdout|stderr)$"),
+    stream: str = Query(default="combined", pattern="^(combined|stdout|stderr)$"),
     lines: int = Query(default=100, ge=1, le=2000),
     manager=Depends(get_process_manager),
 ):
@@ -205,7 +205,7 @@ async def provider_logs(
 async def provider_logs_scoped(
     scope_id: str,
     provider_id: str,
-    stream: str = Query(default="stderr", pattern="^(stdout|stderr)$"),
+    stream: str = Query(default="combined", pattern="^(combined|stdout|stderr)$"),
     lines: int = Query(default=100, ge=1, le=2000),
     manager=Depends(get_process_manager),
 ):

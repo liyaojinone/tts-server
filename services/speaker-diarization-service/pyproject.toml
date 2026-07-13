@@ -1,0 +1,8 @@
+[project]
+name = "speaker-diarization-service"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["fastapi", "uvicorn", "pydantic", "modelscope[audio-asr]", "funasr", "hdbscan"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

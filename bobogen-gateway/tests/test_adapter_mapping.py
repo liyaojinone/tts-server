@@ -1,6 +1,23 @@
 from app.schemas.synthesize import OutputOptions, SynthesizeParameters, UnifiedSynthesizeRequest
 
 
+def test_qwen3_adapter_routes_tasks_to_matching_service_endpoints():
+    from app.adapters.qwen3_asr import Qwen3ASRAdapter
+
+    adapter = Qwen3ASRAdapter()
+
+    assert adapter.path_for_generate_task("asr.transcribe") == "/v1/transcribe"
+    assert adapter.path_for_generate_task("audio.align") == "/v1/align"
+
+
+def test_speaker_diarization_adapter_routes_task_to_diarize_endpoint():
+    from app.adapters.speaker_diarization import SpeakerDiarizationAdapter
+
+    adapter = SpeakerDiarizationAdapter()
+
+    assert adapter.path_for_generate_task("audio.diarize") == "/v1/diarize"
+
+
 def test_cosyvoice_mapping_uses_openai_compatible_endpoint():
     from app.adapters.cosyvoice import CosyVoiceAdapter
 

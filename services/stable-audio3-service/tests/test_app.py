@@ -1,6 +1,67 @@
 from fastapi.testclient import TestClient
 
 
+def test_stable_audio3_handler_uses_local_model_dir(monkeypatch, tmp_path):
+    model_dir = tmp_path / "stable-audio-3-medium"
+    tokenizer_dir = model_dir / "t5gemma-b-b-ul2"
+    tokenizer_dir.mkdir(parents=True)
+    for relative_path in [
+        "model_config.json",
+        "model.safetensors",
+        "t5gemma-b-b-ul2/config.json",
+        "t5gemma-b-b-ul2/generation_config.json",
+        "t5gemma-b-b-ul2/model.safetensors",
+        "t5gemma-b-b-ul2/special_tokens_map.json",
+        "t5gemma-b-b-ul2/tokenizer.json",
+        "t5gemma-b-b-ul2/tokenizer.model",
+        "t5gemma-b-b-ul2/tokenizer_config.json",
+    ]:
+        (model_dir / relative_path).write_text("{}", encoding="utf-8")
+
+    monkeypatch.setenv("STABLE_AUDIO3_MODEL_DIR", str(model_dir))
+
+    from app.handler import StableAudio3Handler
+
+    handler = StableAudio3Handler(test_mode=True)
+    files = handler._resolve_model_files(lambda repo_id, filename: (_ for _ in ()).throw(AssertionError(filename)))
+
+    assert files.config_path == model_dir / "model_config.json"
+    assert files.checkpoint_path == model_dir / "model.safetensors"
+    assert files.tokenizer_dir == tokenizer_dir
+
+
+def test_stable_audio3_service_can_run_medium_model_from_env(monkeypatch):
+    monkeypatch.setenv("STABLE_AUDIO3_MODEL_ID", "stable_audio_3_medium")
+    monkeypatch.setenv("STABLE_AUDIO3_MODEL_NAME", "medium")
+    monkeypatch.setenv("STABLE_AUDIO3_HF_REPO_ID", "stabilityai/stable-audio-3-medium")
+
+    from app.main import create_app
+
+    app = create_app(test_mode=True)
+    client = TestClient(app)
+
+    health = client.get("/v1/health")
+    assert health.status_code == 200
+    assert health.json()["model"] == "stable_audio_3_medium"
+    assert health.json()["upstreamModel"] == "medium"
+    assert health.json()["hfRepoId"] == "stabilityai/stable-audio-3-medium"
+
+    response = client.post(
+        "/v1/generate",
+        json={
+            "model": "stable_audio_3_medium",
+            "task": "audio.generate",
+            "input": {"prompt": "deep cinematic ambient drone"},
+            "parameters": {"duration": 2, "seed": 1234},
+            "output": {"format": "wav", "sample_rate": 44100},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["x-model-id"] == "stable_audio_3_medium"
+    assert response.content.startswith(b"RIFF")
+
+
 def test_stable_audio3_service_health_and_test_mode_generation():
     from app.main import create_app
 
@@ -10,12 +71,12 @@ def test_stable_audio3_service_health_and_test_mode_generation():
     health = client.get("/v1/health")
     assert health.status_code == 200
     assert health.json()["status"] == "ok"
-    assert health.json()["model"] == "stable-audio-3-small-sfx"
+    assert health.json()["model"] == "stable_audio_3_small_sfx"
 
     response = client.post(
         "/v1/generate",
         json={
-            "model": "stable-audio-3-small-sfx",
+            "model": "stable_audio_3_small_sfx",
             "task": "audio.generate",
             "input": {"prompt": "short cinematic whoosh impact"},
             "parameters": {"duration": 2, "seed": 1234},
@@ -25,7 +86,7 @@ def test_stable_audio3_service_health_and_test_mode_generation():
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("audio/wav")
-    assert response.headers["x-model-id"] == "stable-audio-3-small-sfx"
+    assert response.headers["x-model-id"] == "stable_audio_3_small_sfx"
     assert response.headers["x-task"] == "audio.generate"
     assert response.content.startswith(b"RIFF")
 
@@ -39,7 +100,7 @@ def test_stable_audio3_service_rejects_unsupported_task():
     response = client.post(
         "/v1/generate",
         json={
-            "model": "stable-audio-3-small-sfx",
+            "model": "stable_audio_3_small_sfx",
             "task": "tts.speech",
             "input": {"text": "你好"},
         },
@@ -62,7 +123,7 @@ def test_stable_audio3_test_mode_logs_prompt_and_silent_audio(caplog):
     response = client.post(
         "/v1/generate",
         json={
-            "model": "stable-audio-3-small-sfx",
+            "model": "stable_audio_3_small_sfx",
             "task": "audio.generate",
             "input": {"prompt": "short cinematic whoosh impact"},
             "parameters": {"duration": 1, "seed": 1234},

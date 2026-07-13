@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from io import BytesIO
 import json
 import logging
@@ -13,10 +14,28 @@ from bobogen_protocol.models import GenerateRequest
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 DEFAULT_REPO_DIR = ROOT_DIR / "models" / "stable-audio-3" / "repo"
-MODEL_ID = "stable-audio-3-small-sfx"
-HF_REPO_ID = "stabilityai/stable-audio-3-small-sfx"
-UPSTREAM_MODEL_NAME = "small-sfx"
+DEFAULT_MODEL_ID = "stable_audio_3_small_sfx"
+DEFAULT_UPSTREAM_MODEL_NAME = "small-sfx"
+MODEL_ID_BY_UPSTREAM_NAME = {
+    "small-sfx": "stable_audio_3_small_sfx",
+    "small-music": "stable_audio_3_small_music",
+    "medium": "stable_audio_3_medium",
+}
+HF_REPO_ID_BY_MODEL_ID = {
+    "stable_audio_3_small_sfx": "stabilityai/stable-audio-3-small-sfx",
+    "stable_audio_3_small_music": "stabilityai/stable-audio-3-small-music",
+    "stable_audio_3_medium": "stabilityai/stable-audio-3-medium",
+}
 DEFAULT_SAMPLE_RATE = 44100
+TOKENIZER_FILENAMES = [
+    "t5gemma-b-b-ul2/config.json",
+    "t5gemma-b-b-ul2/generation_config.json",
+    "t5gemma-b-b-ul2/model.safetensors",
+    "t5gemma-b-b-ul2/special_tokens_map.json",
+    "t5gemma-b-b-ul2/tokenizer.json",
+    "t5gemma-b-b-ul2/tokenizer.model",
+    "t5gemma-b-b-ul2/tokenizer_config.json",
+]
 logger = logging.getLogger("stable_audio3.generate")
 logger.setLevel(logging.INFO)
 if not logger.handlers:
@@ -27,6 +46,27 @@ if not logger.handlers:
 
 def _truthy(value: str | None) -> bool:
     return str(value or "").lower() in {"1", "true", "yes", "on"}
+
+
+def _model_id_from_env(model_name: str) -> str:
+    return os.environ.get("STABLE_AUDIO3_MODEL_ID") or MODEL_ID_BY_UPSTREAM_NAME.get(
+        model_name,
+        DEFAULT_MODEL_ID,
+    )
+
+
+def _hf_repo_id_from_env(model_id: str) -> str:
+    return os.environ.get("STABLE_AUDIO3_HF_REPO_ID") or HF_REPO_ID_BY_MODEL_ID.get(
+        model_id,
+        f"stabilityai/{model_id}",
+    )
+
+
+@dataclass(frozen=True)
+class StableAudio3ModelFiles:
+    config_path: Path
+    checkpoint_path: Path
+    tokenizer_dir: Path
 
 
 def _shorten(value: str, limit: int = 360) -> str | dict:
@@ -187,7 +227,11 @@ class StableAudio3Handler:
     def __init__(self, test_mode: bool = False):
         self.test_mode = test_mode or _truthy(os.environ.get("STABLE_AUDIO3_TEST_MODE"))
         self.repo_dir = Path(os.environ.get("STABLE_AUDIO3_REPO_DIR", DEFAULT_REPO_DIR))
-        self.model_name = os.environ.get("STABLE_AUDIO3_MODEL_NAME", UPSTREAM_MODEL_NAME)
+        self.model_name = os.environ.get("STABLE_AUDIO3_MODEL_NAME", DEFAULT_UPSTREAM_MODEL_NAME)
+        self.model_id = _model_id_from_env(self.model_name)
+        self.hf_repo_id = _hf_repo_id_from_env(self.model_id)
+        model_dir = os.environ.get("STABLE_AUDIO3_MODEL_DIR")
+        self.model_dir = Path(model_dir) if model_dir else None
         self.device = os.environ.get("STABLE_AUDIO3_DEVICE") or None
         self.model_half = not _truthy(os.environ.get("STABLE_AUDIO3_DISABLE_HALF"))
         self._model = None
@@ -195,14 +239,17 @@ class StableAudio3Handler:
     def health(self):
         return {
             "status": "ok",
-            "model": MODEL_ID,
+            "model": self.model_id,
+            "upstreamModel": self.model_name,
+            "hfRepoId": self.hf_repo_id,
+            "modelDir": str(self.model_dir) if self.model_dir else None,
             "version": "local",
             "ready": self.test_mode or self._model is not None,
             "testMode": self.test_mode,
         }
 
     def generate(self, request: GenerateRequest) -> dict:
-        if request.model != MODEL_ID:
+        if request.model != self.model_id:
             raise ValueError(f"Unsupported model: {request.model}")
         if request.task != "audio.generate":
             raise ValueError(f"Unsupported task: {request.task}")
@@ -227,6 +274,9 @@ class StableAudio3Handler:
                 "testMode": self.test_mode,
                 "repoDir": str(self.repo_dir),
                 "repoExists": self.repo_dir.exists(),
+                "upstreamModel": self.model_name,
+                "hfRepoId": self.hf_repo_id,
+                "modelDir": str(self.model_dir) if self.model_dir else None,
                 "prompt": _sanitize(prompt),
                 "parameters": _sanitize(request.parameters),
                 "output": _sanitize(request.output),
@@ -297,20 +347,10 @@ class StableAudio3Handler:
             device = "cpu"
 
         model_half = self.model_half and torch.cuda.is_available()
-        config_path = hf_hub_download(repo_id=HF_REPO_ID, filename="model_config.json")
-        checkpoint_path = hf_hub_download(repo_id=HF_REPO_ID, filename="model.safetensors")
-        tokenizer_dir = Path(config_path).parent / "t5gemma-b-b-ul2"
-        if not tokenizer_dir.exists():
-            for filename in [
-                "t5gemma-b-b-ul2/config.json",
-                "t5gemma-b-b-ul2/generation_config.json",
-                "t5gemma-b-b-ul2/model.safetensors",
-                "t5gemma-b-b-ul2/special_tokens_map.json",
-                "t5gemma-b-b-ul2/tokenizer.json",
-                "t5gemma-b-b-ul2/tokenizer.model",
-                "t5gemma-b-b-ul2/tokenizer_config.json",
-            ]:
-                hf_hub_download(repo_id=HF_REPO_ID, filename=filename)
+        model_files = self._resolve_model_files(hf_hub_download)
+        config_path = model_files.config_path
+        checkpoint_path = model_files.checkpoint_path
+        tokenizer_dir = model_files.tokenizer_dir
 
         with open(config_path, encoding="utf-8") as file:
             model_config = json.load(file)
@@ -335,12 +375,34 @@ class StableAudio3Handler:
         self._model = StableAudioModel(model, model_config, device, model_half)
         return self._model
 
+    def _resolve_model_files(self, hf_hub_download) -> StableAudio3ModelFiles:
+        if self.model_dir is not None and self.model_dir.exists():
+            config_path = self.model_dir / "model_config.json"
+            checkpoint_path = self.model_dir / "model.safetensors"
+            tokenizer_dir = self.model_dir / "t5gemma-b-b-ul2"
+            required_paths = [config_path, checkpoint_path, *[self.model_dir / filename for filename in TOKENIZER_FILENAMES]]
+            missing = [str(path) for path in required_paths if not path.exists()]
+            if missing:
+                raise RuntimeError(
+                    "Stable Audio 3 local model directory is incomplete. Missing files: "
+                    + ", ".join(missing[:5])
+                )
+            return StableAudio3ModelFiles(config_path, checkpoint_path, tokenizer_dir)
+
+        config_path = Path(hf_hub_download(repo_id=self.hf_repo_id, filename="model_config.json"))
+        checkpoint_path = Path(hf_hub_download(repo_id=self.hf_repo_id, filename="model.safetensors"))
+        tokenizer_dir = config_path.parent / "t5gemma-b-b-ul2"
+        if not tokenizer_dir.exists():
+            for filename in TOKENIZER_FILENAMES:
+                hf_hub_download(repo_id=self.hf_repo_id, filename=filename)
+        return StableAudio3ModelFiles(config_path, checkpoint_path, tokenizer_dir)
+
     def _audio_result(self, content: bytes, sample_rate: int, duration_seconds: float) -> dict:
         return {
             "content": content,
             "content_type": "audio/wav",
             "headers": {
-                "X-Model-Id": MODEL_ID,
+                "X-Model-Id": self.model_id,
                 "X-Task": "audio.generate",
                 "X-Sample-Rate": str(sample_rate),
                 "X-Audio-Duration": str(duration_seconds),
