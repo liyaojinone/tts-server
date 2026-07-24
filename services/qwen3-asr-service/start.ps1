@@ -10,7 +10,7 @@ $port = if ($env:QWEN3_ASR_PORT) { $env:QWEN3_ASR_PORT } else { "5110" }
 $sharedProtocolSrc = Join-Path $workspaceRoot "bobogen-protocol\src"
 
 if (-not (Test-Path $pythonExe)) {
-    throw "Python executable not found: $pythonExe. Create the service venv and install CUDA PyTorch plus qwen-asr first."
+    throw "Python executable not found: $pythonExe. Create the provider-specific service environment first."
 }
 
 Set-Location $serviceRoot

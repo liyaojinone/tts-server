@@ -29,13 +29,17 @@ class StableAudio3Parameters(DynamicParametersModel):
 
 
 class ASRInput(DynamicInputModel):
-    audio: FileInput | str = Field(..., description="待识别音频，支持 upload/path/data_uri 或本地路径字符串。")
+    audio: FileInput | str | list[FileInput | str] = Field(
+        ...,
+        description="待识别音频，支持单个或批量 upload/path/data_uri、本地路径字符串。",
+    )
     language: str = Field(default="auto", description="识别语言；auto 为自动识别，可传 Chinese、English 等 Qwen3-ASR 语言名。")
 
 
 class ASRParameters(DynamicParametersModel):
     mode: str = Field(default="offline", description="识别模式；第一版仅支持 offline。")
     timestamps: bool = Field(default=False, description="是否返回时间戳。")
+    batch_size: int = Field(default=2, ge=1, le=32, description="单次模型推理的最大批量大小。")
 
 
 class AudioAlignInput(DynamicInputModel):
@@ -134,6 +138,7 @@ def _qwen3_asr_example(model_id: str) -> dict[str, Any]:
             "parameters": {
                 "mode": "offline",
                 "timestamps": False,
+                "batch_size": 2,
             },
             "output": {"format": "json"},
         },

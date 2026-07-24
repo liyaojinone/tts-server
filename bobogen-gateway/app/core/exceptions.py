@@ -1,10 +1,16 @@
 class GatewayError(Exception):
     code = "INTERNAL_ERROR"
 
-    def __init__(self, message: str, details: dict | None = None):
+    def __init__(
+        self,
+        message: str,
+        details: dict | None = None,
+        status_code: int | None = None,
+    ):
         super().__init__(message)
         self.message = message
         self.details = details or {}
+        self.status_code = status_code
 
 
 class ProviderNotFoundError(GatewayError):

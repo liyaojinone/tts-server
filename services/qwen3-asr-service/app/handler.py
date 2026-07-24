@@ -1,4 +1,5 @@
 import os
+from threading import Lock
 from typing import Any
 
 from bobogen_protocol.models import GenerateRequest
@@ -9,7 +10,7 @@ DEFAULT_HF_REPO_ID = "Qwen/Qwen3-ASR-0.6B"
 HF_REPO_ID_BY_MODEL_ID = {
     "qwen3_asr_0_6b": "Qwen/Qwen3-ASR-0.6B",
     "qwen3_asr_1_7b": "Qwen/Qwen3-ASR-1.7B",
-    "qwen3_forced_aligner_0_6b": "Qwen/Qwen3-ForcedAligner-0.6B",
+    "qwen3_forced_aligner_0_6b": "Qwen/Qwen3-ForcedAligner-0.6B-hf",
 }
 
 
@@ -37,6 +38,7 @@ class Qwen3ASRHandler:
         self.gpu_memory_utilization = float(os.environ.get("QWEN3_ASR_GPU_MEMORY_UTILIZATION", "0.85"))
         self._model = None
         self._aligner = None
+        self._inference_lock = Lock()
 
     def health(self) -> dict[str, Any]:
         return {
@@ -46,7 +48,7 @@ class Qwen3ASRHandler:
             "modelDir": self.model_dir,
             "device": self.device,
             "gpuRequired": True,
-            "ready": self.test_mode or self._model is not None,
+            "ready": self.test_mode or self._model is not None or self._aligner is not None,
             "testMode": self.test_mode,
         }
 
@@ -64,10 +66,31 @@ class Qwen3ASRHandler:
 
         language = request.input.get("language") or "auto"
         timestamps = bool(request.parameters.get("timestamps", False))
+        batch_size = int(request.parameters.get("batch_size", 2))
+        if not 1 <= batch_size <= 32:
+            raise ValueError("parameters.batch_size must be between 1 and 32")
         if request.parameters.get("mode", "offline") != "offline":
             raise ValueError("Qwen3-ASR service currently supports offline mode only")
 
         if self.test_mode:
+            if isinstance(audio, list):
+                items = [
+                    {
+                        "index": index,
+                        "text": "test transcription",
+                        "language": language,
+                        "duration_seconds": None,
+                        "segments": [],
+                        "model": self.model_id,
+                    }
+                    for index, _ in enumerate(audio)
+                ]
+                return {
+                    "text": "".join(item["text"] for item in items),
+                    "language": language,
+                    "items": items,
+                    "model": self.model_id,
+                }
             return {
                 "text": "test transcription",
                 "language": language,
@@ -77,11 +100,32 @@ class Qwen3ASRHandler:
             }
 
         model = self._load_model()
-        result = model.transcribe(
-            audio=str(audio),
-            language=None if language == "auto" else language,
-            return_time_stamps=timestamps,
-        )
+        with self._inference_lock:
+            previous_batch_size = model.max_inference_batch_size
+            try:
+                model.max_inference_batch_size = batch_size
+                result = model.transcribe(
+                    audio=audio,
+                    language=None if language == "auto" else language,
+                    return_time_stamps=timestamps,
+                )
+            finally:
+                model.max_inference_batch_size = previous_batch_size
+        if isinstance(audio, list):
+            items = [
+                {
+                    "index": index,
+                    **self._normalize_transcription_item(item, fallback_language=language),
+                }
+                for index, item in enumerate(result)
+            ]
+            languages = [item["language"] for item in items if item["language"]]
+            return {
+                "text": "".join(item["text"] for item in items),
+                "language": ",".join(dict.fromkeys(languages)) or language,
+                "items": items,
+                "model": self.model_id,
+            }
         return self._normalize_transcription_result(result, fallback_language=language)
 
     def align(self, request: GenerateRequest) -> dict[str, Any]:
@@ -122,12 +166,34 @@ class Qwen3ASRHandler:
                 "model": self.model_id,
             }
 
-        aligner = self._load_aligner()
-        result = aligner.align(
-            audio=str(audio),
-            text=str(text),
-            language=str(language),
-        )
+        model, processor = self._load_aligner()
+        try:
+            import torch
+        except ImportError as exc:
+            raise RuntimeError("CUDA GPU is required, but PyTorch is not installed") from exc
+        with self._inference_lock:
+            inputs = None
+            outputs = None
+            try:
+                inputs, word_lists = processor.prepare_forced_aligner_inputs(
+                    audio=str(audio),
+                    transcript=str(text),
+                    language=None if str(language).lower() == "auto" else str(language),
+                )
+                inputs = inputs.to(model.device, model.dtype)
+                with torch.inference_mode():
+                    outputs = model(**inputs)
+                result = processor.decode_forced_alignment(
+                    logits=outputs.logits,
+                    input_ids=inputs["input_ids"],
+                    word_lists=word_lists,
+                    timestamp_token_id=model.config.timestamp_token_id,
+                    timestamp_segment_time=model.config.timestamp_segment_time,
+                )
+            finally:
+                del outputs
+                del inputs
+                torch.cuda.empty_cache()
         return self._normalize_alignment_result(
             result,
             text=str(text),
@@ -161,26 +227,39 @@ class Qwen3ASRHandler:
     def _load_aligner(self):
         if self._aligner is not None:
             return self._aligner
-        try:
-            import torch
-        except ImportError as exc:
-            raise RuntimeError("CUDA GPU is required, but PyTorch is not installed") from exc
-        if not torch.cuda.is_available():
-            raise RuntimeError("CUDA GPU is required for Qwen3 ForcedAligner; install CUDA-enabled PyTorch")
-        try:
-            from qwen_asr import Qwen3ForcedAligner
-        except ImportError as exc:
-            raise RuntimeError("qwen-asr is not installed. Run the qwen3-asr-service setup first.") from exc
+        with self._inference_lock:
+            if self._aligner is not None:
+                return self._aligner
+            try:
+                import torch
+            except ImportError as exc:
+                raise RuntimeError("CUDA GPU is required, but PyTorch is not installed") from exc
+            if not torch.cuda.is_available():
+                raise RuntimeError(
+                    "CUDA GPU is required for Qwen3 ForcedAligner; install CUDA-enabled PyTorch"
+                )
+            try:
+                from transformers import AutoModelForTokenClassification, AutoProcessor
+            except ImportError as exc:
+                raise RuntimeError(
+                    "Native Qwen3 ForcedAligner requires a Transformers version with "
+                    "Qwen3ASRForTokenClassification support"
+                ) from exc
 
-        self._aligner = Qwen3ForcedAligner.from_pretrained(
-            self.hf_repo_id,
-            dtype=torch.bfloat16,
-            device_map=self.device,
-        )
+            processor = AutoProcessor.from_pretrained(self.hf_repo_id)
+            model = AutoModelForTokenClassification.from_pretrained(
+                self.hf_repo_id,
+                dtype=torch.bfloat16,
+                device_map=self.device,
+            )
+            self._aligner = (model, processor)
         return self._aligner
 
     def _normalize_transcription_result(self, result, fallback_language: str) -> dict[str, Any]:
         item = result[0] if isinstance(result, list) else result
+        return self._normalize_transcription_item(item, fallback_language)
+
+    def _normalize_transcription_item(self, item, fallback_language: str) -> dict[str, Any]:
         text = self._get_value(item, "text") or ""
         language = self._get_value(item, "language") or fallback_language
         time_stamps = self._get_value(item, "time_stamps") or self._get_value(item, "timestamps") or []

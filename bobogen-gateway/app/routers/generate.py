@@ -138,6 +138,8 @@ def _error_response(status_code: int, code: str, message: str, details: dict | N
 
 
 def _gateway_error_status(exc: GatewayError) -> int:
+    if exc.status_code is not None:
+        return exc.status_code
     if exc.code in {"MODEL_NOT_FOUND", "PROVIDER_NOT_FOUND"}:
         return 404
     if exc.code == "PROVIDER_DISABLED":

@@ -157,6 +157,71 @@ def test_refresh_state_marks_stale_healthy_provider_stopped():
     assert state.last_error == "healthcheck failed"
 
 
+def test_stop_terminates_windows_provider_process_tree_and_clears_runtime_state(monkeypatch):
+    import app.services.process_manager as process_manager
+    from app.core.state import ProviderRuntimeState
+    from app.schemas.provider import CapabilityConfig, NetworkConfig, ProviderConfig, RuntimeConfig
+    from app.services.process_manager import ProcessManager
+
+    provider = ProviderConfig(
+        provider_id="tree-provider",
+        provider_type="qwen3-asr",
+        display_name="Tree Provider",
+        enabled=True,
+        runtime=RuntimeConfig(
+            root_dir="E:/services/qwen3-asr-service",
+            cwd="E:/services/qwen3-asr-service",
+            command=["powershell", "-File", "start.ps1"],
+            env={},
+            startup_timeout_ms=1000,
+            request_timeout_ms=1000,
+            idle_shutdown_seconds=0,
+        ),
+        network=NetworkConfig(
+            host="127.0.0.1",
+            port=5112,
+            base_url="http://127.0.0.1:5112",
+            healthcheck_path="/v1/health",
+        ),
+        capabilities=CapabilityConfig(voices=False, synthesize=False, clone=False, stream=False),
+    )
+
+    class FakeProcess:
+        pid = 4321
+
+        def poll(self):
+            return None
+
+    calls = []
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs))
+
+    monkeypatch.setattr(process_manager.os, "name", "nt")
+    monkeypatch.setattr(process_manager.subprocess, "run", fake_run)
+
+    manager = ProcessManager({provider.provider_id: provider})
+    manager._processes[provider.provider_id] = FakeProcess()
+    manager._states[provider.provider_id] = ProviderRuntimeState(
+        provider_id=provider.provider_id,
+        status="healthy",
+        pid=4321,
+        port=provider.network.port,
+    )
+
+    asyncio.run(manager.stop(provider.provider_id))
+
+    assert calls == [
+        (
+            ["taskkill", "/PID", "4321", "/T", "/F"],
+            {"check": False, "capture_output": True},
+        )
+    ]
+    assert manager.get_state(provider.provider_id).status == "stopped"
+    assert manager.get_state(provider.provider_id).pid is None
+    assert provider.provider_id not in manager._processes
+
+
 def test_ensure_started_rejects_unknown_provider():
     from app.core.exceptions import ProviderNotFoundError
     from app.services.process_manager import ProcessManager

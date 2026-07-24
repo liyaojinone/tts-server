@@ -10,7 +10,7 @@ port="${QWEN3_ASR_PORT:-5110}"
 shared_protocol_src="${workspace_root}/bobogen-protocol/src"
 
 if [[ ! -x "${python_exe}" ]]; then
-  echo "Python executable not found: ${python_exe}. Create the service venv and install CUDA PyTorch plus qwen-asr first." >&2
+  echo "Python executable not found: ${python_exe}. Create the provider-specific service environment first." >&2
   exit 1
 fi
 

@@ -120,9 +120,13 @@ def test_qwen3_asr_model_detail_describes_transcription_schema():
     assert "audio" in payload["input_schema"]["required"]
     assert payload["input_schema"]["properties"]["language"]["default"] == "auto"
     assert payload["parameters_schema"]["properties"]["timestamps"]["default"] is False
+    assert payload["parameters_schema"]["properties"]["batch_size"]["default"] == 2
+    audio_schema = payload["input_schema"]["properties"]["audio"]
+    assert any(option.get("type") == "array" for option in audio_schema["anyOf"])
     assert payload["output_schema"]["properties"]["format"]["default"] == "json"
     assert payload["examples"][0]["request"]["model"] == "qwen3_asr_0_6b"
     assert payload["examples"][0]["request"]["task"] == "asr.transcribe"
+    assert payload["examples"][0]["request"]["parameters"]["batch_size"] == 2
 
 
 def test_qwen3_forced_aligner_model_detail_describes_alignment_schema():

@@ -8,7 +8,7 @@ Local GPU-only ASR service for `Qwen/Qwen3-ASR-0.6B` and `Qwen/Qwen3-ASR-1.7B`.
 |----------|-------------------|------|
 | `qwen3_asr_0_6b` | `Qwen/Qwen3-ASR-0.6B` | `5110` |
 | `qwen3_asr_1_7b` | `Qwen/Qwen3-ASR-1.7B` | `5111` |
-| `qwen3_forced_aligner_0_6b` | `Qwen/Qwen3-ForcedAligner-0.6B` | `5112` |
+| `qwen3_forced_aligner_0_6b` | `Qwen/Qwen3-ForcedAligner-0.6B-hf` | `5112` |
 
 The service requires CUDA. CPU-only PyTorch is rejected at model load time.
 
@@ -29,6 +29,18 @@ python -m venv .venv
 ```
 
 Model weights download through Hugging Face on first real inference. Cache directories are placed under `models/qwen3-asr`.
+
+Forced Aligner 使用官方原生 Transformers token-classification 实现和独立环境，避免升级
+Transformers 影响现有 ASR：
+
+```powershell
+cd services\qwen3-asr-service
+python -m venv .venv-aligner
+.\.venv-aligner\Scripts\python.exe -m pip install -U pip
+.\.venv-aligner\Scripts\python.exe -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+.\.venv-aligner\Scripts\python.exe -m pip install -e ..\..\bobogen-protocol
+.\.venv-aligner\Scripts\python.exe -m pip install -e ".[aligner]"
+```
 
 ## Run
 
@@ -51,8 +63,9 @@ Run ForcedAligner:
 
 ```powershell
 $env:QWEN3_ASR_MODEL_ID = "qwen3_forced_aligner_0_6b"
-$env:QWEN3_ASR_HF_REPO_ID = "Qwen/Qwen3-ForcedAligner-0.6B"
-$env:QWEN3_ASR_MODEL_DIR = "..\..\models\qwen3-asr\Qwen3-ForcedAligner-0.6B"
+$env:QWEN3_ASR_HF_REPO_ID = "Qwen/Qwen3-ForcedAligner-0.6B-hf"
+$env:QWEN3_ASR_MODEL_DIR = "..\..\models\qwen3-asr\Qwen3-ForcedAligner-0.6B-hf"
+$env:QWEN3_ASR_PYTHON = ".\.venv-aligner\Scripts\python.exe"
 $env:QWEN3_ASR_PORT = "5112"
 .\start.ps1
 ```

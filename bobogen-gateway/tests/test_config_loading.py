@@ -159,9 +159,15 @@ def test_qwen3_asr_providers_launch_gpu_service_on_separate_ports():
     assert aligner.model_id == "qwen3_forced_aligner_0_6b"
     assert aligner.provider_type == "qwen3-asr"
     assert aligner.tasks == ["audio.align"]
-    assert aligner.runtime.env["QWEN3_ASR_HF_REPO_ID"] == "Qwen/Qwen3-ForcedAligner-0.6B"
+    assert (
+        aligner.runtime.env["QWEN3_ASR_HF_REPO_ID"]
+        == "Qwen/Qwen3-ForcedAligner-0.6B-hf"
+    )
     assert aligner.runtime.env["QWEN3_ASR_MODEL_DIR"].endswith(
-        r"models\qwen3-asr\Qwen3-ForcedAligner-0.6B"
+        r"models\qwen3-asr\Qwen3-ForcedAligner-0.6B-hf"
+    )
+    assert aligner.runtime.env["QWEN3_ASR_PYTHON"].endswith(
+        r"services\qwen3-asr-service\.venv-aligner\Scripts\python.exe"
     )
     assert aligner.runtime.env["QWEN3_ASR_DEVICE"] == "cuda:0"
     assert aligner.runtime.env["QWEN3_ASR_PORT"] == "5112"

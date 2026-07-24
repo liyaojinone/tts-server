@@ -1,3 +1,8 @@
+import asyncio
+from types import SimpleNamespace
+
+import pytest
+
 from app.schemas.synthesize import OutputOptions, SynthesizeParameters, UnifiedSynthesizeRequest
 
 
@@ -8,6 +13,66 @@ def test_qwen3_adapter_routes_tasks_to_matching_service_endpoints():
 
     assert adapter.path_for_generate_task("asr.transcribe") == "/v1/transcribe"
     assert adapter.path_for_generate_task("audio.align") == "/v1/align"
+
+
+def test_qwen3_adapter_preserves_provider_error_message_and_status(monkeypatch):
+    import app.adapters.qwen3_asr as qwen3_asr
+    from app.core.exceptions import GatewayError
+    from app.schemas.generate import GenerateRequest
+
+    class FakeResponse:
+        status_code = 400
+        is_error = True
+
+        def raise_for_status(self):
+            raise qwen3_asr.httpx.HTTPStatusError(
+                "400 Bad Request",
+                request=qwen3_asr.httpx.Request("POST", "http://127.0.0.1:5112/v1/align"),
+                response=qwen3_asr.httpx.Response(400),
+            )
+
+        def json(self):
+            return {
+                "error": {
+                    "code": "UNSUPPORTED_TASK",
+                    "message": "Unsupported language: 'auto'.",
+                    "details": {},
+                }
+            }
+
+    class FakeAsyncClient:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def post(self, *_args, **_kwargs):
+            return FakeResponse()
+
+    monkeypatch.setattr(qwen3_asr.httpx, "AsyncClient", FakeAsyncClient)
+    adapter = qwen3_asr.Qwen3ASRAdapter()
+    provider = SimpleNamespace(
+        runtime=SimpleNamespace(request_timeout_ms=1000),
+        network=SimpleNamespace(base_url="http://127.0.0.1:5112"),
+    )
+    request = GenerateRequest(
+        model="qwen3_forced_aligner_0_6b",
+        task="audio.align",
+        input={"audio": "E:/audio.wav", "text": "你好", "language": "auto"},
+        parameters={"granularity": "word"},
+        output={"format": "json"},
+    )
+
+    with pytest.raises(GatewayError) as exc:
+        asyncio.run(adapter.generate(provider, request))
+
+    assert exc.value.message == "Unsupported language: 'auto'."
+    assert exc.value.status_code == 400
+    assert exc.value.details["provider_error_code"] == "UNSUPPORTED_TASK"
 
 
 def test_speaker_diarization_adapter_routes_task_to_diarize_endpoint():

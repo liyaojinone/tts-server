@@ -222,7 +222,7 @@ curl -sS -X POST http://127.0.0.1:6006/v1/generate \
 
 ### Qwen3 ForcedAligner
 
-Qwen3 ForcedAligner 通过统一生成协议接入，模型 ID 为 `qwen3_forced_aligner_0_6b`，任务为 `audio.align`。它不做语音识别，只负责把可信文本对齐到音频，返回片段内时间和工程全局时间。客户端仍负责 FFmpeg 静音检测、VAD 粗切、字幕 cue 拆分和编辑策略。
+Qwen3 ForcedAligner 通过统一生成协议接入，模型 ID 为 `qwen3_forced_aligner_0_6b`，任务为 `audio.align`。服务使用官方 `Qwen/Qwen3-ForcedAligner-0.6B-hf` 和 `AutoModelForTokenClassification`，不再经过旧版完整语言模型词表 logits。它不做语音识别，只负责把可信文本对齐到音频，返回片段内时间和工程全局时间。客户端仍负责 FFmpeg 静音检测、VAD 粗切、字幕 cue 拆分和编辑策略。
 
 ```bash
 curl -sS -X POST http://127.0.0.1:6006/v1/generate \

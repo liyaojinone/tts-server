@@ -105,9 +105,18 @@ class ProcessManager:
     async def stop(self, provider_id: str) -> None:
         process = self._processes.get(provider_id)
         if process is not None and process.poll() is None:
-            process.terminate()
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                    check=False,
+                    capture_output=True,
+                )
+            else:
+                process.terminate()
+        self._processes.pop(provider_id, None)
         state = self.get_state(provider_id)
         state.status = "stopped"
+        state.pid = None
 
     async def restart(self, provider_id: str) -> ProviderRuntimeState:
         await self.stop(provider_id)
