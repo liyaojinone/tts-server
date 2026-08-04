@@ -15,7 +15,7 @@ def test_load_provider_configs():
         "local_cosyvoice2",
         "local_f5_tts",
         "local_gpt_sovits",
-        "local_index_tts",
+        "index_tts_2",
         "campplus_speaker_diarization",
         "qwen3_forced_aligner_0_6b",
         "qwen3_asr_0_6b",
@@ -23,6 +23,7 @@ def test_load_provider_configs():
         "stable_audio_3_medium",
         "stable_audio_3_small_music",
         "stable_audio_3_small_sfx",
+        "tiger_dnr",
         "local_voxcpm",
     }
     assert provider_types == {
@@ -33,6 +34,7 @@ def test_load_provider_configs():
         "qwen3-asr",
         "speaker-diarization",
         "stableaudio3",
+        "tiger-dnr",
         "voxcpm",
     }
     assert {provider.runtime.launch_mode for provider in providers} == {"process"}

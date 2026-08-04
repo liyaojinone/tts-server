@@ -81,7 +81,9 @@ class ProcessManager:
             return await self.start(provider_id)
 
     async def start(self, provider_id: str) -> ProviderRuntimeState:
-        provider = self.providers[provider_id]
+        provider = self.providers.get(provider_id)
+        if provider is None:
+            raise ProviderNotFoundError(f"Provider not found: {provider_id}", {"provider_id": provider_id})
         if provider.runtime.launch_mode == "external":
             return await self._require_external_start(provider_id)
         state = self.get_state(provider_id)

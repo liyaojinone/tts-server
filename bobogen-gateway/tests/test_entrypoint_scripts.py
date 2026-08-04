@@ -20,7 +20,7 @@ def test_start_script_supports_native_and_docker_operations_without_provider_sco
     assert "--model" in start_script
     assert "docker compose --profile stable-audio3 up -d stable-audio3" in start_script
     assert "/v1/providers/status" in start_script
-    assert "local_index_tts/v1/providers/status" not in start_script
+    assert "index_tts_2/v1/providers/status" not in start_script
 
 
 def test_start_scripts_stop_stable_audio3_native_providers():
@@ -30,6 +30,14 @@ def test_start_scripts_stop_stable_audio3_native_providers():
     for provider_id in ["stable_audio_3_small_sfx", "stable_audio_3_small_music", "stable_audio_3_medium"]:
         assert provider_id in linux_start_script
         assert provider_id in windows_start_script
+
+
+def test_start_scripts_stop_tiger_dnr_native_provider():
+    linux_start_script = (ROOT / "start.sh").read_text(encoding="utf-8")
+    windows_start_script = (ROOT / "start.ps1").read_text(encoding="utf-8")
+
+    assert "tiger_dnr" in linux_start_script
+    assert "tiger_dnr" in windows_start_script
 
 
 def test_windows_start_script_uses_single_gateway_log_file():

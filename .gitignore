@@ -35,6 +35,7 @@ hf_cache/
 
 # Runtime data
 outputs/
+runtime/
 **/data/profiles/
 *.wav
 *.mp3

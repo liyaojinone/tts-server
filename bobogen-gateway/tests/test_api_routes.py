@@ -17,10 +17,11 @@ def test_health_and_provider_routes():
     assert providers_response.status_code == 200
     providers = providers_response.json()["providers"]
     provider_ids = {provider["provider_id"] for provider in providers}
-    assert len(providers) == 8
+    assert len(providers) == 13
     assert "stable_audio_3_small_sfx" in provider_ids
     assert "stable_audio_3_small_music" in provider_ids
     assert "stable_audio_3_medium" in provider_ids
+    assert "tiger_dnr" in provider_ids
 
     assert status_response.status_code == 200
     assert "providers" in status_response.json()
@@ -62,3 +63,28 @@ def test_provider_start_returns_external_compose_hint():
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "PROVIDER_EXTERNAL_START_REQUIRED"
     assert "bash start.sh --docker --model stable-audio3" in response.json()["error"]["message"]
+
+
+def test_unknown_provider_lifecycle_returns_structured_not_found():
+    from fastapi import FastAPI
+
+    from app.dependencies import get_process_manager
+    from app.routers.providers import router
+    from app.services.process_manager import ProcessManager
+
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[get_process_manager] = lambda: ProcessManager({})
+    client = TestClient(app, raise_server_exceptions=False)
+
+    for operation in ("start", "restart"):
+        response = client.post(f"/v1/providers/unknown-provider/{operation}")
+
+        assert response.status_code == 404
+        assert response.json() == {
+            "error": {
+                "code": "PROVIDER_NOT_FOUND",
+                "message": "Provider not found: unknown-provider",
+                "details": {"provider_id": "unknown-provider"},
+            }
+        }

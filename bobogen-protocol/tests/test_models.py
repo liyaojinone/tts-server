@@ -112,3 +112,99 @@ def test_model_info_describes_generation_capabilities():
     assert model.tasks == ["tts.speech"]
     assert model.outputs == ["audio/wav"]
     assert model.voices[0].voice_id == "f5-default"
+
+
+def test_job_response_serializes_progress_and_two_public_artifact_roles():
+    from bobogen_protocol.models import JobResponse
+
+    job = JobResponse.model_validate(
+        {
+            "id": "opaque-job-id",
+            "model": "tiger-dnr",
+            "task": "audio.separate",
+            "status": "succeeded",
+            "progress": {
+                "phase": "validating",
+                "fraction": 1.0,
+                "message": "输出校验完成",
+            },
+            "artifacts": [
+                {
+                    "id": "opaque-dialogue-id",
+                    "role": "dialogue",
+                    "filename": "dialogue.wav",
+                    "content_type": "audio/wav",
+                    "size_bytes": 1024,
+                    "sample_rate": 44100,
+                    "channels": 2,
+                    "frame_count": 44100,
+                    "sha256": "a" * 64,
+                },
+                {
+                    "id": "opaque-background-id",
+                    "role": "background",
+                    "filename": "background.wav",
+                    "content_type": "audio/wav",
+                    "size_bytes": 1024,
+                    "sample_rate": 44100,
+                    "channels": 2,
+                    "frame_count": 44100,
+                    "sha256": "b" * 64,
+                },
+            ],
+        }
+    )
+
+    payload = job.model_dump(mode="json")
+    assert payload["progress"] == {
+        "phase": "validating",
+        "fraction": 1.0,
+        "message": "输出校验完成",
+    }
+    assert [artifact["role"] for artifact in payload["artifacts"]] == [
+        "dialogue",
+        "background",
+    ]
+
+
+def test_job_progress_rejects_fraction_outside_zero_to_one():
+    import pytest
+    from pydantic import ValidationError
+
+    from bobogen_protocol.models import JobProgress
+
+    with pytest.raises(ValidationError):
+        JobProgress.model_validate({"phase": "separating", "fraction": 1.01})
+
+
+def test_job_response_rejects_unknown_status_and_artifact_role():
+    import pytest
+    from pydantic import ValidationError
+
+    from bobogen_protocol.models import JobArtifact, JobResponse
+
+    with pytest.raises(ValidationError):
+        JobResponse.model_validate(
+            {
+                "id": "job",
+                "model": "tiger-dnr",
+                "task": "audio.separate",
+                "status": "done",
+                "progress": {"phase": "separating", "fraction": 0.5},
+            }
+        )
+
+    with pytest.raises(ValidationError):
+        JobArtifact.model_validate(
+            {
+                "id": "artifact",
+                "role": "music",
+                "filename": "music.wav",
+                "content_type": "audio/wav",
+                "size_bytes": 1,
+                "sample_rate": 44100,
+                "channels": 2,
+                "frame_count": 1,
+                "sha256": "a" * 64,
+            }
+        )

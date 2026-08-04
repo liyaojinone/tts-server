@@ -213,7 +213,7 @@ def test_generate_tts_mapping_preserves_extra_model_parameters():
 
     adapter = IndexTTSAdapter()
     generate_request = GenerateRequest(
-        model="local_index_tts",
+        model="index_tts_2",
         task="tts.speech",
         input={"text": "你好", "voice": "index-default", "language": "zh"},
         parameters={

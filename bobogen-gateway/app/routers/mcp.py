@@ -26,7 +26,7 @@ mcp = FastMCP(
 async def tts_synthesize(
     text: str,
     voice_id: str = "index-default",
-    provider_id: str = "local_index_tts",
+    provider_id: str = "index_tts_2",
     language: str = "zh",
     speed: float = 1.0,
     reference_audio: str | None = None,
@@ -70,7 +70,7 @@ async def tts_clone_voice(
     text: str = "",
     language: str = "zh",
     emotion: str = "",
-    provider_id: str = "local_index_tts",
+    provider_id: str = "index_tts_2",
 ):
     """注册新音色。上传参考音频（base64），返回 voice_id。"""
     provider = _registry.get_provider(provider_id)
@@ -86,7 +86,7 @@ async def tts_clone_voice(
 
 
 @mcp.tool()
-async def tts_list_voices(provider_id: str = "local_index_tts"):
+async def tts_list_voices(provider_id: str = "index_tts_2"):
     """列出所有音色（含已注册的 clone/design profile）。"""
     provider = _registry.get_provider(provider_id)
     async with httpx.AsyncClient(timeout=10.0, trust_env=False) as client:
@@ -108,34 +108,34 @@ async def tts_list_providers():
 
 
 @mcp.tool()
-async def tts_provider_status(provider_id: str = "local_index_tts"):
+async def tts_provider_status(provider_id: str = "index_tts_2"):
     """查看引擎运行时状态（healthy/stopped）。"""
     state = _manager.get_state(provider_id)
     return {"provider_id": provider_id, "status": state.status, "pid": state.pid}
 
 
 @mcp.tool()
-async def tts_start_provider(provider_id: str = "local_index_tts"):
+async def tts_start_provider(provider_id: str = "index_tts_2"):
     """启动指定引擎。"""
     state = await _manager.start(provider_id)
     return {"provider_id": provider_id, "status": state.status}
 
 
 @mcp.tool()
-async def tts_stop_provider(provider_id: str = "local_index_tts"):
+async def tts_stop_provider(provider_id: str = "index_tts_2"):
     """停止指定引擎。"""
     await _manager.stop(provider_id)
     return {"provider_id": provider_id, "status": "stopped"}
 
 
 @mcp.tool()
-async def tts_restart_provider(provider_id: str = "local_index_tts"):
+async def tts_restart_provider(provider_id: str = "index_tts_2"):
     """重启指定引擎。"""
     state = await _manager.restart(provider_id)
     return {"provider_id": provider_id, "status": state.status}
 
 
 @mcp.tool()
-async def tts_provider_logs(provider_id: str = "local_index_tts", stream: str = "combined", lines: int = 50):
+async def tts_provider_logs(provider_id: str = "index_tts_2", stream: str = "combined", lines: int = 50):
     """查看引擎运行日志。"""
     return {"provider_id": provider_id, "stream": stream, "content": _manager.get_logs(provider_id, stream, lines)}

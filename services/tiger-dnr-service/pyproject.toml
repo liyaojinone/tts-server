@@ -1,0 +1,32 @@
+[project]
+name = "tiger-dnr-service"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi",
+  "numpy>=1.24",
+  "pydantic",
+  "scipy>=1.10",
+  "soundfile>=0.12",
+  "uvicorn",
+]
+
+[project.optional-dependencies]
+test = ["httpx", "pytest"]
+model = [
+  "huggingface-hub==0.26.2",
+  "librosa==0.10.2.post1",
+  "lightning-utilities==0.11.9",
+  "numpy==2.0.2",
+  "packaging==24.2",
+  "pytorch-lightning==2.0.2",
+  "rich==13.9.4",
+  "safetensors==0.4.5",
+  "scipy==1.14.1",
+  "torch-complex==0.4.4",
+  "torchmetrics==1.6.0",
+  "typeguard==2.13.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

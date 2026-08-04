@@ -3,9 +3,11 @@ from fastapi import FastAPI
 from app.routers.clone import router as clone_router
 from app.routers.generate import router as generate_router
 from app.routers.health import router as health_router
+from app.routers.jobs import router as jobs_router
 from app.routers.providers import router as providers_router
 from app.routers.synthesize import router as synthesize_router
 from app.services.process_manager import ProcessManager
+from app.services.job_store import GatewayJobStore
 from app.services.provider_registry import ProviderRegistry
 
 try:
@@ -36,10 +38,12 @@ def create_app() -> FastAPI:
     manager = ProcessManager(registry.provider_map)
     app.state.provider_registry = registry
     app.state.process_manager = manager
+    app.state.job_store = GatewayJobStore()
 
     app.include_router(clone_router)
     app.include_router(generate_router)
     app.include_router(health_router)
+    app.include_router(jobs_router)
     app.include_router(providers_router)
     app.include_router(synthesize_router)
 

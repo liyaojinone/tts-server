@@ -7,6 +7,7 @@ from app.adapters.indextts import IndexTTSAdapter
 from app.adapters.qwen3_asr import Qwen3ASRAdapter
 from app.adapters.speaker_diarization import SpeakerDiarizationAdapter
 from app.adapters.stableaudio3 import StableAudio3Adapter
+from app.adapters.tiger_dnr import TigerDNRAdapter
 from app.adapters.voxcpm import VoxCPMAdapter
 from app.config import PROVIDER_DIR, load_provider_configs
 from app.core.exceptions import ModelNotFoundError, ProviderNotFoundError
@@ -38,6 +39,7 @@ class ProviderRegistry:
             "qwen3-asr": Qwen3ASRAdapter,
             "speaker-diarization": SpeakerDiarizationAdapter,
             "stableaudio3": StableAudio3Adapter,
+            "tiger-dnr": TigerDNRAdapter,
             "voxcpm": VoxCPMAdapter,
         }
         return mapping[provider_type]()
