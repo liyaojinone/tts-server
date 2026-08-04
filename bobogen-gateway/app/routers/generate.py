@@ -158,13 +158,22 @@ def _outputs_for_tasks(tasks: list[str]) -> list[str]:
 
 
 def _capabilities_for_provider(provider) -> dict:
-    return {
+    capabilities = {
         "reference_audio": provider.capabilities.synthesize,
         "emotion_reference_audio": provider.provider_type in {"indextts"},
         "instruction": provider.provider_type in {"voxcpm", "cosyvoice"},
         "clone": provider.capabilities.clone,
         "stream": provider.capabilities.stream,
     }
+    if provider.provider_type == "tiger-dnr":
+        capabilities.update(
+            {
+                "separation": True,
+                "async_jobs": True,
+                "artifact_roles": ["dialogue", "background"],
+            }
+        )
+    return capabilities
 
 
 def _model_info(model_id: str, provider, tasks: list[str]) -> ModelInfo:

@@ -63,6 +63,17 @@ class AudioDiarizeParameters(DynamicParametersModel):
     min_duration: float = Field(default=0.0, description="过滤短片段的最小时长，单位秒。")
 
 
+class AudioSeparateInput(DynamicInputModel):
+    audio: FileInput | str = Field(
+        ...,
+        description="待分离音频，支持 upload/path/data_uri 或本地路径字符串。",
+    )
+
+
+class AudioSeparateParameters(DynamicParametersModel):
+    pass
+
+
 class ASROutputOptions(GenerateOutputOptions):
     format: str = "json"
 
@@ -184,10 +195,26 @@ def _campplus_speaker_diarization_example(model_id: str) -> dict[str, Any]:
     }
 
 
+def _tiger_dnr_example(model_id: str) -> dict[str, Any]:
+    return {
+        "name": "TIGER-DnR - 分离对白与背景声",
+        "request": {
+            "model": model_id,
+            "task": "audio.separate",
+            "input": {
+                "audio": {"kind": "upload", "field": "audio"},
+            },
+            "parameters": {},
+            "output": {"format": "wav"},
+        },
+    }
+
+
 STABLE_AUDIO3_EXAMPLE = _stable_audio3_example("stable_audio_3_small_sfx")
 QWEN3_ASR_EXAMPLE = _qwen3_asr_example("qwen3_asr_0_6b")
 QWEN3_FORCED_ALIGNER_EXAMPLE = _qwen3_forced_aligner_example("qwen3_forced_aligner_0_6b")
 CAMPPLUS_SPEAKER_DIARIZATION_EXAMPLE = _campplus_speaker_diarization_example("campplus_speaker_diarization")
+TIGER_DNR_EXAMPLE = _tiger_dnr_example("tiger-dnr")
 
 TTS_JSON_EXAMPLE = {
     "name": "TTS - JSON 合成",
@@ -248,6 +275,13 @@ CAMPPLUS_SPEAKER_DIARIZATION_SPEC = GenerateSchemaSpec(
     examples=[CAMPPLUS_SPEAKER_DIARIZATION_EXAMPLE],
 )
 
+TIGER_DNR_SPEC = GenerateSchemaSpec(
+    task="audio.separate",
+    input_model=AudioSeparateInput,
+    parameters_model=AudioSeparateParameters,
+    examples=[TIGER_DNR_EXAMPLE],
+)
+
 TTS_SPEC = GenerateSchemaSpec(
     task="tts.speech",
     input_model=TTSInput,
@@ -300,6 +334,8 @@ def get_generate_schema_spec(model_id: str, tasks: list[str]) -> GenerateSchemaS
         )
     if model_id == "campplus_speaker_diarization":
         return CAMPPLUS_SPEAKER_DIARIZATION_SPEC
+    if model_id == "tiger-dnr":
+        return TIGER_DNR_SPEC
     if "tts.speech" in tasks:
         return TTS_SPEC
     return None

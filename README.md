@@ -32,6 +32,7 @@ flowchart LR
 | IndexTTS2 | 5104 | 参考音频驱动，支持 emotion control |
 | VoxCPM2 | 5105 | 文本指令驱动，无需参考音频即可合成 |
 | Stable Audio 3 Small-SFX | 5106 | 文本生成音效，统一生成协议 `audio.generate` |
+| TIGER-DnR | 5114 | 异步分离对白与全部非对白背景声，统一任务 `audio.separate` |
 
 ## 三大目标引擎源码布局
 
@@ -145,7 +146,7 @@ Gateway 自动加载对应平台的 provider 配置：
 Gateway 首次请求时自动启动引擎子进程，也可通过 API 手动控制：
 
 ```bash
-curl -X POST http://127.0.0.1:6006/v1/providers/local_index_tts/start
+curl -X POST http://127.0.0.1:6006/v1/providers/index_tts_2/start
 curl http://127.0.0.1:6006/v1/providers/status
 ```
 
@@ -251,16 +252,17 @@ curl -sS -H "Content-Type: application/json" -o sfx.wav \
 
 | Provider ID | 引擎 | 端口 |
 |-------------|------|------|
-| `local_index_tts` | IndexTTS2 | 5104 |
+| `index_tts_2` | IndexTTS2 | 5104 |
 | `local_voxcpm` | VoxCPM2 | 5105 |
 | `local_gpt_sovits` | GPT-SoVITS | 5103 |
 | `local_f5_tts` | F5-TTS | 5102 |
 | `local_cosyvoice2` | CosyVoice2 | 5101 |
 | `stable_audio_3_small_sfx` | Stable Audio 3 Small-SFX | 5106 |
+| `tiger_dnr` | TIGER-DnR | 5114 |
 
 ### Gateway（:6006）
 
-客户端 `baseUrl` 配置为 `http://127.0.0.1:6006/local_index_tts`。
+客户端 `baseUrl` 配置为 `http://127.0.0.1:6006/index_tts_2`。
 
 **引擎 API**（`/{provider_id}/v1/*`）：
 
@@ -309,7 +311,7 @@ curl -sS -H "Content-Type: application/json" -o sfx.wav \
 
 ```bash
 # 1. 注册音色（上传参考音频，得到 voice_id）
-curl -sS -X POST http://127.0.0.1:6006/local_index_tts/v1/clone \
+curl -sS -X POST http://127.0.0.1:6006/index_tts_2/v1/clone \
   -F "audio=@speaker.wav" \
   -F "name=我的音色" \
   -F "text=参考文本" \
@@ -319,7 +321,7 @@ curl -sS -X POST http://127.0.0.1:6006/local_index_tts/v1/clone \
 
 # 2. 后续合成只需 voice_id，不需要 reference_audio
 curl -sS -H "Content-Type: application/json" -o out.wav \
-  -X POST http://127.0.0.1:6006/local_index_tts/v1/synthesize \
+  -X POST http://127.0.0.1:6006/index_tts_2/v1/synthesize \
   -d '{"text":"你好","voice_id":"wo-de-yin-se"}'
 ```
 
@@ -327,7 +329,7 @@ curl -sS -H "Content-Type: application/json" -o out.wav \
 
 ```bash
 curl -sS -o out.wav \
-  -X POST http://127.0.0.1:6006/local_index_tts/v1/synthesize \
+  -X POST http://127.0.0.1:6006/index_tts_2/v1/synthesize \
   -F 'request={"text":"你好","voice_id":"index-default"}' \
   -F "reference_audio=@speaker.wav" \
   -F "emotion_reference_audio=@emo.wav"
@@ -338,7 +340,7 @@ curl -sS -o out.wav \
 ```bash
 REF_B64=$(base64 -w0 speaker.wav)
 curl -sS -H "Content-Type: application/json" -o out.wav \
-  -X POST http://127.0.0.1:6006/local_index_tts/v1/synthesize \
+  -X POST http://127.0.0.1:6006/index_tts_2/v1/synthesize \
   -d "{\"text\":\"你好\",\"voice_id\":\"index-default\",\"parameters\":{\"reference_audio\":\"data:audio/wav;base64,$REF_B64\"}}"
 ```
 
@@ -392,7 +394,7 @@ Gateway 和引擎的日志统一输出到 `bobogen-gateway/logs/`：
 ```
 logs/
 ├── gateway.log                    # Gateway 自身输出
-├── local_index_tts/
+├── index_tts_2/
 │   ├── stdout.log                 # 引擎标准输出
 │   └── stderr.log                 # 引擎错误日志
 └── ...
@@ -401,11 +403,11 @@ logs/
 ```bash
 # 实时查看
 tail -f bobogen-gateway/logs/gateway.log
-tail -f bobogen-gateway/logs/local_index_tts/stderr.log
+tail -f bobogen-gateway/logs/index_tts_2/stderr.log
 
 # 或通过 API
 curl "http://127.0.0.1:6006/v1/logs?lines=50"
-curl "http://127.0.0.1:6006/v1/providers/local_index_tts/logs?stream=stderr&lines=50"
+curl "http://127.0.0.1:6006/v1/providers/index_tts_2/logs?stream=stderr&lines=50"
 ```
 
 ## 项目结构

@@ -1,0 +1,38 @@
+provider_id: tiger_dnr
+model_id: tiger-dnr
+provider_type: tiger-dnr
+display_name: TIGER-DnR 对白与背景声分离
+enabled: true
+tasks:
+  - audio.separate
+runtime:
+  root_dir: "${BOBOGEN_ROOT}\\services\\tiger-dnr-service"
+  cwd: "${BOBOGEN_ROOT}\\services\\tiger-dnr-service"
+  command:
+    - powershell
+    - -File
+    - "${BOBOGEN_ROOT}\\services\\tiger-dnr-service\\start.ps1"
+  env:
+    TIGER_DNR_REPO_DIR: "${BOBOGEN_ROOT}\\models\\tiger\\repo"
+    TIGER_DNR_MODEL_DIR: "${BOBOGEN_ROOT}\\models\\tiger\\TIGER-DnR"
+    TIGER_DNR_JOB_ROOT: "${BOBOGEN_ROOT}\\models\\tiger\\runtime\\jobs"
+    TIGER_DNR_HF_REPO_ID: "JusperLee/TIGER-DnR"
+    TIGER_DNR_HF_REVISION: "b7a59560bbca10febbcd46fb01600f868e587f57"
+    TIGER_DNR_DEVICE: "cuda:0"
+    TIGER_DNR_PORT: "5114"
+  launch_mode: process
+  startup_timeout_ms: 120000
+  request_timeout_ms: 3600000
+  idle_shutdown_seconds: 0
+network:
+  host: 127.0.0.1
+  port: 5114
+  base_url: http://127.0.0.1:5114
+  healthcheck_path: /v1/health
+capabilities:
+  voices: false
+  synthesize: false
+  clone: false
+  stream: false
+voices: []
+mapping: {}

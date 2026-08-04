@@ -1,12 +1,12 @@
 # BoboGen API Reference
 
-> 更新时间：2026-06-01
+> 更新时间：2026-07-29
 > Gateway `:6006`
 
 客户端只需配置一个 `baseUrl`：
 
 ```
-http://127.0.0.1:6006/local_index_tts
+http://127.0.0.1:6006/index_tts_2
 ```
 
 所有接口都在 `/{provider_id}/v1/*` 下，也可通过 `/v1/*` 直接访问（不限定 provider）。
@@ -21,7 +21,7 @@ http://127.0.0.1:6006/v1/generate
 
 | Provider ID | 引擎 | 端口 |
 |-------------|------|------|
-| `local_index_tts` | IndexTTS2 | 5104 |
+| `index_tts_2` | IndexTTS2 | 5104 |
 | `local_voxcpm` | VoxCPM2 | 5105 |
 | `local_gpt_sovits` | GPT-SoVITS | 5103 |
 | `local_f5_tts` | F5-TTS | 5102 |
@@ -31,6 +31,7 @@ http://127.0.0.1:6006/v1/generate
 | `qwen3_asr_1_7b` | Qwen3-ASR 1.7B | 5111 |
 | `qwen3_forced_aligner_0_6b` | Qwen3 ForcedAligner 0.6B | 5112 |
 | `campplus_speaker_diarization` | CAM++ Speaker Diarization | 5113 |
+| `tiger_dnr` | TIGER-DnR 对白/背景声分离 | 5114 |
 
 ## Authentication
 
@@ -162,6 +163,70 @@ curl -sS -o out.wav \
 
 常见错误码：`MODEL_NOT_FOUND`、`UNSUPPORTED_TASK`、`INVALID_REQUEST`。
 
+### TIGER-DnR 异步对白/背景声分离
+
+模型 ID 为 `tiger-dnr`，任务为 `audio.separate`。公开产物固定为：
+
+- `dialogue`：模型估计的对白。
+- `background`：对齐采样率、声道和 frame count 后，以
+  `decoded_original - dialogue` 得到的全部非对白声音。
+
+输出固定为 32-bit float WAV。长音频走单 GPU worker、分块推理和异步任务接口，
+不会把完整上传或产物一次性载入 Gateway 内存。
+
+创建服务器本地文件任务：
+
+```bash
+curl -sS -H "Content-Type: application/json" \
+  -X POST http://127.0.0.1:6006/v1/jobs \
+  -d '{
+    "model": "tiger-dnr",
+    "task": "audio.separate",
+    "input": {
+      "audio": {"kind": "path", "path": "D:/media/source.m4a"}
+    },
+    "parameters": {},
+    "output": {"format": "wav"}
+  }'
+```
+
+也支持 multipart 流式上传：
+
+```bash
+curl -sS -X POST http://127.0.0.1:6006/v1/jobs \
+  -F 'request={"model":"tiger-dnr","task":"audio.separate","input":{"audio":{"kind":"upload","field":"audio"}},"parameters":{},"output":{"format":"wav"}}' \
+  -F "audio=@source.m4a"
+```
+
+创建成功返回 HTTP 202 和 opaque job ID。随后使用：
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/v1/jobs/{id}` | 查询状态、阶段、0..1 进度和产物元数据 |
+| POST | `/v1/jobs/{id}/cancel` | 请求安全取消 |
+| GET | `/v1/jobs/{id}/artifacts/{artifactId}` | 流式下载 WAV |
+| DELETE | `/v1/jobs/{id}` | 清理任务、私有输入、manifest 和产物 |
+
+状态为 `queued`、`running`、`cancelling`、`succeeded`、`failed` 或
+`cancelled`。客户端可在 cancel 后立即 DELETE：DELETE 返回 204，运行中的
+worker 会在当前安全点停止并完成延迟清理，之后再次查询返回 404。
+
+成功响应示例：
+
+```json
+{
+  "id": "opaque-id",
+  "model": "tiger-dnr",
+  "task": "audio.separate",
+  "status": "succeeded",
+  "progress": {"phase": "validating", "fraction": 1.0, "message": "分离产物校验完成"},
+  "artifacts": [
+    {"id": "opaque-artifact-id", "role": "dialogue", "filename": "dialogue.wav", "content_type": "audio/wav"},
+    {"id": "opaque-artifact-id", "role": "background", "filename": "background.wav", "content_type": "audio/wav"}
+  ]
+}
+```
+
 ### Stable Audio 3 Small-SFX
 
 Stable Audio 3 通过统一生成协议接入，模型 ID 为 `stable_audio_3_small_sfx`，任务为 `audio.generate`。
@@ -291,14 +356,14 @@ curl -sS -X POST http://127.0.0.1:6006/v1/generate \
 ### 健康 `GET /{provider_id}/v1/health`
 
 ```bash
-curl http://127.0.0.1:6006/local_index_tts/v1/health
-# {"provider_id":"local_index_tts","status":"healthy"}
+curl http://127.0.0.1:6006/index_tts_2/v1/health
+# {"provider_id":"index_tts_2","status":"healthy"}
 ```
 
 ### 音色 `GET /{provider_id}/v1/voices`
 
 ```bash
-curl http://127.0.0.1:6006/local_index_tts/v1/voices
+curl http://127.0.0.1:6006/index_tts_2/v1/voices
 ```
 
 ### 合成 `POST /{provider_id}/v1/synthesize`
@@ -307,7 +372,7 @@ curl http://127.0.0.1:6006/local_index_tts/v1/voices
 
 ```bash
 curl -sS -H "Content-Type: application/json" -o out.wav \
-  -X POST http://127.0.0.1:6006/local_index_tts/v1/synthesize \
+  -X POST http://127.0.0.1:6006/index_tts_2/v1/synthesize \
   -d '{
     "text": "你好。",
     "voice_id": "index-default",
@@ -333,7 +398,7 @@ curl -sS -H "Content-Type: application/json" -o out.wav \
 
 ```bash
 curl -sS -o out.wav \
-  -X POST http://127.0.0.1:6006/local_index_tts/v1/synthesize \
+  -X POST http://127.0.0.1:6006/index_tts_2/v1/synthesize \
   -F 'request={"text":"你好","voice_id":"index-default"}' \
   -F "reference_audio=@speaker.wav" \
   -F "emotion_reference_audio=@emo.wav"
@@ -344,7 +409,7 @@ curl -sS -o out.wav \
 上传参考音频注册音色。之后合成只需 voice_id。
 
 ```bash
-curl -sS -X POST http://127.0.0.1:6006/local_index_tts/v1/clone \
+curl -sS -X POST http://127.0.0.1:6006/index_tts_2/v1/clone \
   -F "audio=@speaker.wav" \
   -F "name=我的音色" \
   -F "text=参考文本" \
@@ -356,7 +421,7 @@ curl -sS -X POST http://127.0.0.1:6006/local_index_tts/v1/clone \
 ```bash
 # 之后合成只需 voice_id
 curl -sS -H "Content-Type: application/json" -o out.wav \
-  -X POST http://127.0.0.1:6006/local_index_tts/v1/synthesize \
+  -X POST http://127.0.0.1:6006/index_tts_2/v1/synthesize \
   -d '{"text":"你好","voice_id":"wo-de-yin-se"}'
 ```
 
@@ -369,24 +434,24 @@ curl -sS -H "Content-Type: application/json" -o out.wav \
 ### 列表
 
 ```bash
-curl http://127.0.0.1:6006/local_index_tts/v1/providers
-curl http://127.0.0.1:6006/local_index_tts/v1/providers/local_voxcpm
-curl http://127.0.0.1:6006/local_index_tts/v1/providers/status
+curl http://127.0.0.1:6006/index_tts_2/v1/providers
+curl http://127.0.0.1:6006/index_tts_2/v1/providers/local_voxcpm
+curl http://127.0.0.1:6006/index_tts_2/v1/providers/status
 ```
 
 ### 生命周期
 
 ```bash
-curl -X POST http://127.0.0.1:6006/local_index_tts/v1/providers/local_index_tts/start
-curl -X POST http://127.0.0.1:6006/local_index_tts/v1/providers/local_voxcpm/stop
-curl -X POST http://127.0.0.1:6006/local_index_tts/v1/providers/local_index_tts/restart
+curl -X POST http://127.0.0.1:6006/index_tts_2/v1/providers/index_tts_2/start
+curl -X POST http://127.0.0.1:6006/index_tts_2/v1/providers/local_voxcpm/stop
+curl -X POST http://127.0.0.1:6006/index_tts_2/v1/providers/index_tts_2/restart
 ```
 
 ### 日志
 
 ```bash
-curl "http://127.0.0.1:6006/local_index_tts/v1/logs?lines=100"
-curl "http://127.0.0.1:6006/local_index_tts/v1/providers/local_index_tts/logs?stream=stderr&lines=50"
+curl "http://127.0.0.1:6006/index_tts_2/v1/logs?lines=100"
+curl "http://127.0.0.1:6006/index_tts_2/v1/providers/index_tts_2/logs?stream=stderr&lines=50"
 ```
 
 ---
@@ -521,7 +586,7 @@ curl "http://127.0.0.1:6006/local_index_tts/v1/providers/local_index_tts/logs?st
 ```
 bobogen-gateway/logs/
 ├── gateway.log
-└── local_index_tts/
+└── index_tts_2/
     ├── stdout.log
     └── stderr.log
 ```
@@ -531,8 +596,8 @@ bobogen-gateway/logs/
 MCP Server 内嵌在 Gateway 中，SSE 端点：
 
 ```
-GET /local_index_tts/v1/mcp/sse
-POST /local_index_tts/v1/mcp/messages/
+GET /index_tts_2/v1/mcp/sse
+POST /index_tts_2/v1/mcp/messages/
 ```
 
 ### 客户端配置
@@ -543,7 +608,7 @@ POST /local_index_tts/v1/mcp/messages/
 {
   "mcpServers": {
     "bobogen": {
-      "url": "https://xxx:8443/local_index_tts/v1/mcp/sse"
+      "url": "https://xxx:8443/index_tts_2/v1/mcp/sse"
     }
   }
 }
@@ -556,7 +621,7 @@ POST /local_index_tts/v1/mcp/messages/
   "mcpServers": {
     "bobogen": {
       "type": "sse",
-      "url": "https://xxx:8443/local_index_tts/v1/mcp/sse"
+      "url": "https://xxx:8443/index_tts_2/v1/mcp/sse"
     }
   }
 }
@@ -570,7 +635,7 @@ POST /local_index_tts/v1/mcp/messages/
 |------|------|--------|------|
 | `text` | str | 必填 | 合成文本 |
 | `voice_id` | str | `"index-default"` | 音色 ID |
-| `provider_id` | str | `"local_index_tts"` | Provider ID |
+| `provider_id` | str | `"index_tts_2"` | Provider ID |
 | `language` | str | `"zh"` | 语言 |
 | `speed` | float | `1.0` | 语速 |
 | `reference_audio` | str | null | 参考音频 base64 |
@@ -588,7 +653,7 @@ POST /local_index_tts/v1/mcp/messages/
 | `text` | str | `""` | 参考文本 |
 | `language` | str | `"zh"` | 语言 |
 | `emotion` | str | `""` | 情绪标签 |
-| `provider_id` | str | `"local_index_tts"` | Provider ID |
+| `provider_id` | str | `"index_tts_2"` | Provider ID |
 
 返回 `voice_id`。
 
