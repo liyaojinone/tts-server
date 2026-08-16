@@ -9,6 +9,8 @@ from bobogen_service_kit.profiles import ProfileStore, slugify_voice_id
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
+DEFAULT_MODEL_ID = "voxcpm2"
+DEFAULT_EXPECTED_ARCHITECTURE = "voxcpm2"
 
 
 def env_flag(name: str, default: bool) -> bool:
@@ -22,16 +24,50 @@ def get_repo_dir() -> Path:
     return Path(os.environ.get("VOXCPM_REPO_DIR", ROOT_DIR / "models" / "voxcpm" / "repo"))
 
 
+def get_model_id() -> str:
+    return os.environ.get("VOXCPM_MODEL_ID", DEFAULT_MODEL_ID)
+
+
+def get_expected_architecture() -> str:
+    return os.environ.get("VOXCPM_EXPECTED_ARCHITECTURE", DEFAULT_EXPECTED_ARCHITECTURE).strip().lower()
+
+
 def get_model_dir() -> Path:
     return Path(os.environ.get("VOXCPM_MODEL_DIR", ROOT_DIR / "models" / "voxcpm" / "checkpoints"))
 
 
+def get_config_path() -> Path:
+    return Path(os.environ.get("VOXCPM_CONFIG_PATH", get_model_dir() / "config.json"))
+
+
+def get_model_weights_path() -> Path:
+    return Path(os.environ.get("VOXCPM_MODEL_WEIGHTS_PATH", get_model_dir() / "model.safetensors"))
+
+
+def get_audiovae_weights_path() -> Path:
+    return Path(os.environ.get("VOXCPM_AUDIOVAE_WEIGHTS_PATH", get_model_dir() / "audiovae.pth"))
+
+
+def get_tokenizer_path() -> Path:
+    return Path(os.environ.get("VOXCPM_TOKENIZER_PATH", get_model_dir() / "tokenizer.json"))
+
+
 def get_profile_dir() -> Path:
-    return Path(os.environ.get("VOXCPM_PROFILE_DIR", ROOT_DIR / "services" / "voxcpm-service" / "data" / "profiles"))
+    return Path(
+        os.environ.get(
+            "VOXCPM_PROFILE_DIR",
+            ROOT_DIR / "services" / "voxcpm-service" / "data" / "profiles" / get_model_id(),
+        )
+    )
 
 
 def get_output_dir() -> Path:
-    return Path(os.environ.get("VOXCPM_OUTPUT_DIR", ROOT_DIR / "models" / "voxcpm" / "outputs"))
+    return Path(
+        os.environ.get(
+            "VOXCPM_OUTPUT_DIR",
+            ROOT_DIR / "models" / "voxcpm" / "outputs" / get_model_id(),
+        )
+    )
 
 
 class DesignStore:
@@ -77,29 +113,76 @@ class VoxCPMHandler:
         self.model = None
         self.ready = False
         self.last_error = None
+        self.model_id = get_model_id()
+        self.expected_architecture = get_expected_architecture()
         self.repo_dir = get_repo_dir()
         self.model_dir = get_model_dir()
+        self.config_path = get_config_path()
+        self.model_weights_path = get_model_weights_path()
+        self.audiovae_weights_path = get_audiovae_weights_path()
+        self.tokenizer_path = get_tokenizer_path()
         self.profile_dir = get_profile_dir()
         self.output_dir = get_output_dir()
         self.clone_store = ProfileStore(self.profile_dir / "clones")
         self.design_store = DesignStore(self.profile_dir / "designs")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
+    def _required_paths(self) -> dict[str, Path]:
+        return {
+            "VOXCPM_REPO_DIR": self.repo_dir,
+            "VOXCPM_SOURCE_DIR": self.repo_dir / "src",
+            "VOXCPM_CONFIG_PATH": self.config_path,
+            "VOXCPM_MODEL_WEIGHTS_PATH": self.model_weights_path,
+            "VOXCPM_AUDIOVAE_WEIGHTS_PATH": self.audiovae_weights_path,
+            "VOXCPM_TOKENIZER_PATH": self.tokenizer_path,
+        }
+
+    def _validate_required_paths(self) -> None:
+        missing = [f"{name}={path}" for name, path in self._required_paths().items() if not path.exists()]
+        if missing:
+            raise FileNotFoundError(
+                f"VoxCPM {self.model_id} requires version-matched local model files: "
+                + "; ".join(missing)
+            )
+
+        try:
+            architecture = json.loads(self.config_path.read_text(encoding="utf-8")).get("architecture")
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError(
+                f"VoxCPM {self.model_id} requires a readable version-matched config: {self.config_path}"
+            ) from exc
+
+        if not isinstance(architecture, str) or architecture.strip().lower() != self.expected_architecture:
+            raise ValueError(
+                f"VoxCPM {self.model_id} requires architecture {self.expected_architecture!r}, "
+                f"found {architecture!r} in {self.config_path}"
+            )
+
     async def startup(self):
         if self.test_mode:
             self.ready = True
             return
+        self.model_id = get_model_id()
+        self.expected_architecture = get_expected_architecture()
         self.repo_dir = get_repo_dir()
         self.model_dir = get_model_dir()
-        self.ready = self.repo_dir.exists() and self.model_dir.exists()
-        if not self.ready:
-            self.last_error = "VoxCPM repository or model directory is missing"
-            return
-        if env_flag("VOXCPM_PRELOAD_ON_STARTUP", True):
-            self._ensure_model()
+        self.config_path = get_config_path()
+        self.model_weights_path = get_model_weights_path()
+        self.audiovae_weights_path = get_audiovae_weights_path()
+        self.tokenizer_path = get_tokenizer_path()
+        try:
+            self._validate_required_paths()
+            self.ready = True
+            if env_flag("VOXCPM_PRELOAD_ON_STARTUP", True):
+                self._ensure_model()
+            self.last_error = None
+        except Exception as exc:
+            self.ready = False
+            self.last_error = str(exc)
+            raise
 
     async def health(self):
-        payload = HealthResponse(status="ok", model="VoxCPM2", version="local").model_dump()
+        payload = HealthResponse(status="ok", model="VoxCPM2", version=self.model_id).model_dump()
         payload["ready"] = self.ready
         if self.last_error:
             payload["last_error"] = self.last_error
@@ -113,7 +196,11 @@ class VoxCPMHandler:
                 language=["zh", "en", "ja", "ko"],
                 description="Instruction-first VoxCPM2 synthesis mode",
                 tags=["default", "design"],
-                metadata={"repo_dir": str(self.repo_dir), "model_dir": str(self.model_dir)},
+                metadata={
+                    "model_id": self.model_id,
+                    "repo_dir": str(self.repo_dir),
+                    "model_dir": str(self.model_dir),
+                },
             )
         ]
         for profile in self.clone_store.list():
@@ -194,6 +281,7 @@ class VoxCPMHandler:
         if self.test_mode:
             return None
         if self.model is None:
+            self._validate_required_paths()
             repo_src = self.repo_dir / "src"
             if str(repo_src) not in sys.path:
                 sys.path.insert(0, str(repo_src))

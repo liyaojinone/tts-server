@@ -9,21 +9,22 @@ from app.adapters.speaker_diarization import SpeakerDiarizationAdapter
 from app.adapters.stableaudio3 import StableAudio3Adapter
 from app.adapters.tiger_dnr import TigerDNRAdapter
 from app.adapters.voxcpm import VoxCPMAdapter
-from app.config import PROVIDER_DIR, load_provider_configs
+from app.config import PROVIDER_DIR, load_provider_configs, validate_provider_configs
 from app.core.exceptions import ModelNotFoundError, ProviderNotFoundError
 
 
 class ProviderRegistry:
     def __init__(self, providers):
-        self.providers = providers
-        self.provider_map = {provider.provider_id: provider for provider in providers}
+        self.providers = list(providers)
+        validate_provider_configs(self.providers)
+        self.provider_map = {provider.provider_id: provider for provider in self.providers}
         self.model_map = {
             self.get_model_id(provider): provider
-            for provider in providers
+            for provider in self.providers
         }
         self._adapters = {
             provider.provider_id: self._create_adapter(provider.provider_type)
-            for provider in providers
+            for provider in self.providers
         }
 
     @classmethod

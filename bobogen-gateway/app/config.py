@@ -46,6 +46,57 @@ def _expand_value(value):
     return value
 
 
+def validate_provider_configs(providers: list[ProviderConfig]) -> list[ProviderConfig]:
+    provider_ids: dict[str, ProviderConfig] = {}
+    model_ids: dict[str, ProviderConfig] = {}
+    endpoints: dict[tuple[str, int], ProviderConfig] = {}
+    process_ports: dict[int, ProviderConfig] = {}
+
+    for provider in providers:
+        previous_provider = provider_ids.get(provider.provider_id)
+        if previous_provider is not None:
+            raise ValueError(
+                "Duplicate provider_id "
+                f"{provider.provider_id!r}: {previous_provider.display_name!r} and {provider.display_name!r}"
+            )
+        provider_ids[provider.provider_id] = provider
+
+        model_id = provider.model_id or provider.provider_id
+        previous_model = model_ids.get(model_id)
+        if previous_model is not None:
+            raise ValueError(
+                "Duplicate model_id "
+                f"{model_id!r}: {previous_model.provider_id!r} and {provider.provider_id!r}"
+            )
+        model_ids[model_id] = provider
+
+        endpoint = (provider.network.host, provider.network.port)
+        previous_endpoint = endpoints.get(endpoint)
+        if previous_endpoint is not None:
+            raise ValueError(
+                "Duplicate network endpoint "
+                f"{provider.network.host}:{provider.network.port}: "
+                f"{previous_endpoint.provider_id!r} and {provider.provider_id!r}"
+            )
+        endpoints[endpoint] = provider
+
+        # Local process launchers bind a local socket themselves.  They must not
+        # share a port even if a future YAML happens to use a different network
+        # host value, otherwise both processes can still contend for the same
+        # local listener.
+        if provider.runtime.launch_mode == "process":
+            previous_process_port = process_ports.get(provider.network.port)
+            if previous_process_port is not None:
+                raise ValueError(
+                    "Duplicate local process port "
+                    f"{provider.network.port}: {previous_process_port.provider_id!r} "
+                    f"and {provider.provider_id!r}"
+                )
+            process_ports[provider.network.port] = provider
+
+    return providers
+
+
 def load_provider_configs(config_dir: Path | None = None) -> list[ProviderConfig]:
     directory = config_dir or PROVIDER_DIR
     providers: list[ProviderConfig] = []
@@ -53,4 +104,4 @@ def load_provider_configs(config_dir: Path | None = None) -> list[ProviderConfig
         if _platform_skip(path.name):
             continue
         providers.append(ProviderConfig.model_validate(_expand_value(load_yaml(path))))
-    return providers
+    return validate_provider_configs(providers)

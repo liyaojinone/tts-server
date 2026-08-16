@@ -780,7 +780,7 @@ def test_create_job_rejects_sync_task_and_wrong_model_task(tmp_path):
     response = client.post(
         "/v1/jobs",
         json={
-            "model": "local_f5_tts",
+            "model": "f5_tts",
             "task": "tts.speech",
             "input": {"text": "hello"},
         },

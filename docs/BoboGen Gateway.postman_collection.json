@@ -1085,7 +1085,7 @@
 										],
 										"body": {
 											"mode": "raw",
-											"raw": "{\n  \"model\": \"local_f5_tts\",\n  \"task\": \"tts.speech\",\n  \"input\": {\n    \"text\": \"你好，测试成功。\",\n    \"voice\": \"f5-default\",\n    \"language\": \"zh\"\n  },\n  \"parameters\": {\n    \"reference_audio\": {\n      \"kind\": \"path\",\n      \"path\": \"E:/audio/ref.wav\"\n    },\n    \"reference_text\": \"参考文本\",\n    \"speed\": 1,\n    \"extra\": {}\n  },\n  \"output\": {\n    \"format\": \"wav\",\n    \"sample_rate\": 24000\n  }\n}",
+											"raw": "{\n  \"model\": \"f5_tts\",\n  \"task\": \"tts.speech\",\n  \"input\": {\n    \"text\": \"你好，测试成功。\",\n    \"voice\": \"f5-default\",\n    \"language\": \"zh\"\n  },\n  \"parameters\": {\n    \"reference_audio\": {\n      \"kind\": \"path\",\n      \"path\": \"E:/audio/ref.wav\"\n    },\n    \"reference_text\": \"参考文本\",\n    \"speed\": 1,\n    \"extra\": {}\n  },\n  \"output\": {\n    \"format\": \"wav\",\n    \"sample_rate\": 24000\n  }\n}",
 											"options": {
 												"raw": {
 													"headerFamily": "json",

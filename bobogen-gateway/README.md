@@ -9,6 +9,7 @@ This gateway exposes one HTTP interface for local TTS engines:
 - `CosyVoice`
 - `F5-TTS`
 - `GPT-SoVITS`
+- `VoxCPM2`
 - `Stable Audio 3 Small-SFX`
 
 It loads provider definitions from `configs/providers`, starts model services lazily, and forwards unified synthesize requests to provider-native APIs.
@@ -41,9 +42,11 @@ configs/providers/
 
 Included defaults:
 
-- `cosyvoice-default.yaml`
-- `f5tts-default.yaml`
-- `gptsovits-default.yaml`
+- `cosyvoice-windows.yaml`
+- `f5tts-windows.yaml`
+- `gptsovits-windows.yaml`
+- `indextts-windows.yaml`
+- `voxcpm-windows.yaml`
 
 Each provider defines:
 
@@ -53,6 +56,8 @@ Each provider defines:
 - healthcheck path
 - supported capabilities
 - default logical voices
+
+For versioned local TTS, keep `provider_type` as the stable engine family while using versioned `provider_id` and `model_id` values: `cosyvoice2`, `f5_tts`, `gpt_sovits_v2pro`, `index_tts_2`, and `voxcpm2`. Configuration loading rejects duplicate provider IDs, effective model IDs, and `host:port` endpoints, so separate versions cannot silently replace one another.
 
 ## Current provider-native mappings
 
@@ -79,7 +84,7 @@ Important implementation details:
   - prefer local cached vocoder files
   - prefer local checkpoint files before downloading
 
-`CosyVoice` and `GPT-SoVITS` now also expose `/health`, but they have not yet been fully exercised through the gateway in this round.
+`CosyVoice`, `GPT-SoVITS`, and `VoxCPM2` expose `/v1/health`. The GPT-SoVITS and VoxCPM2 services report `gpt_sovits_v2pro` and `voxcpm2` respectively and require their configured local model paths instead of scanning or falling back to another version.
 
 ## Install
 
@@ -107,7 +112,7 @@ New generation API:
 ```json
 POST /v1/generate
 {
-  "model": "local_f5_tts",
+  "model": "f5_tts",
   "task": "tts.speech",
   "input": {
     "text": "你好",
@@ -130,7 +135,7 @@ Legacy synthesize API remains available:
 ```json
 POST /v1/synthesize
 {
-  "provider_id": "f5tts-default",
+  "provider_id": "f5_tts",
   "text": "你好",
   "voice_id": "f5-default",
   "language": "zh",

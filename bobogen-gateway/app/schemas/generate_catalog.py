@@ -219,7 +219,7 @@ TIGER_DNR_EXAMPLE = _tiger_dnr_example("tiger-dnr")
 TTS_JSON_EXAMPLE = {
     "name": "TTS - JSON 合成",
     "request": {
-        "model": "local_f5_tts",
+        "model": "f5_tts",
         "task": "tts.speech",
         "input": {"text": "你好，测试成功。", "voice": "f5-default", "language": "zh"},
         "parameters": {
@@ -235,7 +235,7 @@ TTS_JSON_EXAMPLE = {
 TTS_MULTIPART_EXAMPLE = {
     "name": "TTS - multipart 上传参考音频",
     "request": {
-        "model": "local_f5_tts",
+        "model": "f5_tts",
         "task": "tts.speech",
         "input": {"text": "你好，测试成功。", "voice": "f5-default", "language": "zh"},
         "parameters": {"reference_audio": {"kind": "upload", "field": "ref_audio"}, "speed": 1.0},

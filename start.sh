@@ -112,7 +112,7 @@ run_native() {
             ;;
         stop)
             echo "正在停止服务..."
-            for provider in stable_audio_3_small_sfx stable_audio_3_small_music stable_audio_3_medium index_tts_2 local_voxcpm local_gpt_sovits local_f5_tts local_cosyvoice2 tiger_dnr; do
+            for provider in stable_audio_3_small_sfx stable_audio_3_small_music stable_audio_3_medium index_tts_2 voxcpm2 gpt_sovits_v2pro f5_tts cosyvoice2 tiger_dnr; do
                 curl -s -X POST "http://127.0.0.1:$PORT/v1/providers/$provider/stop" >/dev/null 2>&1 || true
             done
             pkill -f "uvicorn app.main" 2>/dev/null || true

@@ -212,7 +212,7 @@ TTS 合成使用 `task: "tts.speech"`：
 curl -sS -H "Content-Type: application/json" -o out.wav \
   -X POST http://127.0.0.1:6006/v1/generate \
   -d '{
-    "model": "local_f5_tts",
+    "model": "f5_tts",
     "task": "tts.speech",
     "input": {"text": "你好", "voice": "f5-default", "language": "zh"},
     "parameters": {
@@ -228,7 +228,7 @@ multipart 上传使用 `request` 字段传 JSON，文件字段通过 `FileInput`
 ```bash
 curl -sS -o out.wav \
   -X POST http://127.0.0.1:6006/v1/generate \
-  -F 'request={"model":"local_f5_tts","task":"tts.speech","input":{"text":"你好","voice":"f5-default"},"parameters":{"reference_audio":{"kind":"upload","field":"ref_audio"}}}' \
+  -F 'request={"model":"f5_tts","task":"tts.speech","input":{"text":"你好","voice":"f5-default"},"parameters":{"reference_audio":{"kind":"upload","field":"ref_audio"}}}' \
   -F "ref_audio=@speaker.wav"
 ```
 
@@ -253,12 +253,26 @@ curl -sS -H "Content-Type: application/json" -o sfx.wav \
 | Provider ID | 引擎 | 端口 |
 |-------------|------|------|
 | `index_tts_2` | IndexTTS2 | 5104 |
-| `local_voxcpm` | VoxCPM2 | 5105 |
-| `local_gpt_sovits` | GPT-SoVITS | 5103 |
-| `local_f5_tts` | F5-TTS | 5102 |
-| `local_cosyvoice2` | CosyVoice2 | 5101 |
+| `voxcpm2` | VoxCPM2 | 5105 |
+| `gpt_sovits_v2pro` | GPT-SoVITS | 5103 |
+| `f5_tts` | F5-TTS | 5102 |
+| `cosyvoice2` | CosyVoice2 | 5101 |
 | `stable_audio_3_small_sfx` | Stable Audio 3 Small-SFX | 5106 |
 | `tiger_dnr` | TIGER-DnR | 5114 |
+
+### 本地 TTS 版本与资产隔离
+
+`provider_type` 保持引擎家族标识，`provider_id` 和 `model_id` 表示可独立升级的具体版本。当前本地 TTS 映射如下：
+
+| provider_id / model_id | provider_type | 配置端口 |
+|------------------------|---------------|----------|
+| `cosyvoice2` | `cosyvoice` | 5101 |
+| `f5_tts` | `f5-tts` | 5102 |
+| `gpt_sovits_v2pro` | `gptsovits` | 5103 |
+| `index_tts_2` | `indextts` | 5104 |
+| `voxcpm2` | `voxcpm` | 5105 |
+
+`gpt_sovits_v2pro` 只接受显式传入且版本匹配的本地资产：`s1v3.ckpt`、`v2Pro/s2Gv2Pro.pth`、BERT、CN-HuBERT 和 `sv/pretrained_eres2netv2w24s4ep4.ckpt`，均位于 `models/gpt-sovits/checkpoints/gpt_sovits_v2pro/`。路径缺失时服务会明确失败，不扫描或回退到其他版本。`voxcpm2` 显式使用现有 `models/voxcpm/checkpoints/` 中的 `config.json`、`model.safetensors`、`audiovae.pth` 与 `tokenizer.json`；其 profile/output 路径按版本隔离。此次源码升级未下载或替换任何模型 checkpoint。
 
 ### Gateway（:6006）
 

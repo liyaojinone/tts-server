@@ -1,6 +1,6 @@
 # BoboGen API Reference
 
-> 更新时间：2026-07-29
+> 更新时间：2026-08-12
 > Gateway `:6006`
 
 客户端只需配置一个 `baseUrl`：
@@ -22,16 +22,30 @@ http://127.0.0.1:6006/v1/generate
 | Provider ID | 引擎 | 端口 |
 |-------------|------|------|
 | `index_tts_2` | IndexTTS2 | 5104 |
-| `local_voxcpm` | VoxCPM2 | 5105 |
-| `local_gpt_sovits` | GPT-SoVITS | 5103 |
-| `local_f5_tts` | F5-TTS | 5102 |
-| `local_cosyvoice2` | CosyVoice2 | 5101 |
+| `voxcpm2` | VoxCPM2 | 5105 |
+| `gpt_sovits_v2pro` | GPT-SoVITS | 5103 |
+| `f5_tts` | F5-TTS | 5102 |
+| `cosyvoice2` | CosyVoice2 | 5101 |
 | `stable_audio_3_small_sfx` | Stable Audio 3 Small-SFX | 5106 |
 | `qwen3_asr_0_6b` | Qwen3-ASR 0.6B | 5110 |
 | `qwen3_asr_1_7b` | Qwen3-ASR 1.7B | 5111 |
 | `qwen3_forced_aligner_0_6b` | Qwen3 ForcedAligner 0.6B | 5112 |
 | `campplus_speaker_diarization` | CAM++ Speaker Diarization | 5113 |
 | `tiger_dnr` | TIGER-DnR 对白/背景声分离 | 5114 |
+
+### 版本化本地 TTS
+
+对本地 TTS，`provider_type` 是稳定的引擎家族名，`provider_id` 与 `model_id` 是可并存的具体版本标识。Gateway 会拒绝重复的 provider ID、有效 model ID 或 `host:port`；对于本地 `process` provider，还会强制端口全局唯一，避免新版本因不同 YAML host 值而静默覆盖旧版本或抢占端口。
+
+| provider_id / model_id | provider_type | 版本化运行目录 |
+|------------------------|---------------|----------------|
+| `cosyvoice2` | `cosyvoice` | `profiles/cosyvoice2` |
+| `f5_tts` | `f5-tts` | `profiles/f5_tts` |
+| `gpt_sovits_v2pro` | `gptsovits` | `profiles/gpt_sovits_v2pro`、`outputs/gpt_sovits_v2pro` |
+| `index_tts_2` | `indextts` | 既有 IndexTTS2 配置 |
+| `voxcpm2` | `voxcpm` | `profiles/voxcpm2`、`outputs/voxcpm2` |
+
+`gpt_sovits_v2pro` 要求显式配置的 `s1v3.ckpt`、`v2Pro/s2Gv2Pro.pth`、BERT、CN-HuBERT 和 `sv/pretrained_eres2netv2w24s4ep4.ckpt` 路径全部存在；`voxcpm2` 要求 `config.json`、`model.safetensors`、`audiovae.pth` 与 `tokenizer.json` 全部存在，且 `config.json.architecture` 必须为 `voxcpm2`。二者不会扫描旧权重目录或静默回退；缺失或版本不匹配时启动/预加载会失败并返回具体路径或架构错误。
 
 ## Authentication
 
@@ -80,9 +94,9 @@ curl http://127.0.0.1:6006/v1/models
 {
   "models": [
     {
-      "id": "local_f5_tts",
+      "id": "f5_tts",
       "name": "F5-TTS",
-      "provider_id": "local_f5_tts",
+      "provider_id": "f5_tts",
       "tasks": ["tts.speech"],
       "outputs": ["audio/wav"],
       "enabled": true
@@ -112,7 +126,7 @@ curl http://127.0.0.1:6006/v1/models
 curl -sS -H "Content-Type: application/json" -o out.wav \
   -X POST http://127.0.0.1:6006/v1/generate \
   -d '{
-    "model": "local_f5_tts",
+    "model": "f5_tts",
     "task": "tts.speech",
     "input": {
       "text": "你好。",
@@ -133,7 +147,7 @@ curl -sS -H "Content-Type: application/json" -o out.wav \
 ```bash
 curl -sS -o out.wav \
   -X POST http://127.0.0.1:6006/v1/generate \
-  -F 'request={"model":"local_f5_tts","task":"tts.speech","input":{"text":"你好","voice":"f5-default"},"parameters":{"reference_audio":{"kind":"upload","field":"ref_audio"}}}' \
+  -F 'request={"model":"f5_tts","task":"tts.speech","input":{"text":"你好","voice":"f5-default"},"parameters":{"reference_audio":{"kind":"upload","field":"ref_audio"}}}' \
   -F "ref_audio=@speaker.wav"
 ```
 
@@ -435,7 +449,7 @@ curl -sS -H "Content-Type: application/json" -o out.wav \
 
 ```bash
 curl http://127.0.0.1:6006/index_tts_2/v1/providers
-curl http://127.0.0.1:6006/index_tts_2/v1/providers/local_voxcpm
+curl http://127.0.0.1:6006/index_tts_2/v1/providers/voxcpm2
 curl http://127.0.0.1:6006/index_tts_2/v1/providers/status
 ```
 
@@ -443,7 +457,7 @@ curl http://127.0.0.1:6006/index_tts_2/v1/providers/status
 
 ```bash
 curl -X POST http://127.0.0.1:6006/index_tts_2/v1/providers/index_tts_2/start
-curl -X POST http://127.0.0.1:6006/index_tts_2/v1/providers/local_voxcpm/stop
+curl -X POST http://127.0.0.1:6006/index_tts_2/v1/providers/voxcpm2/stop
 curl -X POST http://127.0.0.1:6006/index_tts_2/v1/providers/index_tts_2/restart
 ```
 

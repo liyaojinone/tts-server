@@ -33,7 +33,7 @@ def test_voices_alias_route():
     app = create_app()
     client = TestClient(app)
 
-    response = client.get("/local_f5_tts/v1/voices")
+    response = client.get("/f5_tts/v1/voices")
 
     assert response.status_code == 200
     assert response.json()["total"] == 1

@@ -4,17 +4,22 @@ param(
     [string]$Text = "庞白参考文本",
     [string]$Language = "zh",
     [string]$Emotion = "calm",
-    [string]$Output = "gptsovits-clone-test.wav"
+    [string]$Output = "gptsovits-clone-test.wav",
+    [int]$Port = 0
 )
 
 $ErrorActionPreference = "Stop"
+
+if ($Port -eq 0) {
+    $Port = if ($env:GPTSOVITS_PORT) { [int]$env:GPTSOVITS_PORT } else { 5103 }
+}
 
 if (-not (Test-Path $ReferenceAudio)) {
     throw "Reference audio not found: $ReferenceAudio"
 }
 
 $cloneResponseJson = & curl.exe -sS `
-    -X POST "http://127.0.0.1:5103/v1/clone" `
+    -X POST "http://127.0.0.1:$Port/v1/clone" `
     -F "audio=@$ReferenceAudio" `
     -F "name=$Name" `
     -F "text=$Text" `
@@ -44,7 +49,7 @@ $responseHeaders = Join-Path $env:TEMP "gptsovits-clone-headers.txt"
     -D $responseHeaders `
     -H "Content-Type: application/json" `
     -o $Output `
-    -X POST "http://127.0.0.1:5103/v1/synthesize" `
+    -X POST "http://127.0.0.1:$Port/v1/synthesize" `
     --data-binary "@$payloadFile" | Out-Null
 
 $statusLine = Get-Content $responseHeaders | Select-Object -First 1

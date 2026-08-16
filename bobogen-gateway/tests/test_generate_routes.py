@@ -11,8 +11,8 @@ def test_models_endpoint_lists_tts_models_from_existing_providers():
 
     assert response.status_code == 200
     models = response.json()["models"]
-    f5 = next(model for model in models if model["id"] == "local_f5_tts")
-    assert f5["provider_id"] == "local_f5_tts"
+    f5 = next(model for model in models if model["id"] == "f5_tts")
+    assert f5["provider_id"] == "f5_tts"
     assert f5["tasks"] == ["tts.speech"]
     assert "audio/wav" in f5["outputs"]
     assert f5["enabled"] is True
@@ -34,11 +34,11 @@ def test_model_detail_includes_voices_and_generation_capabilities():
     app = create_app()
     client = TestClient(app)
 
-    response = client.get("/v1/models/local_f5_tts")
+    response = client.get("/v1/models/f5_tts")
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["id"] == "local_f5_tts"
+    assert payload["id"] == "f5_tts"
     assert payload["tasks"] == ["tts.speech"]
     assert payload["voices"][0]["voice_id"] == "f5-default"
     assert payload["capabilities"]["reference_audio"] is True
@@ -180,7 +180,7 @@ def test_tts_model_detail_describes_dynamic_parameters():
     app = create_app()
     client = TestClient(app)
 
-    response = client.get("/v1/models/local_f5_tts")
+    response = client.get("/v1/models/f5_tts")
 
     assert response.status_code == 200
     payload = response.json()
@@ -220,13 +220,13 @@ def test_generate_tts_speech_json_calls_adapter_generate():
             )
 
     manager.ensure_started = fake_ensure_started
-    registry._adapters["local_f5_tts"] = StubAdapter()
+    registry._adapters["f5_tts"] = StubAdapter()
 
     client = TestClient(app)
     response = client.post(
         "/v1/generate",
         json={
-            "model": "local_f5_tts",
+            "model": "f5_tts",
             "task": "tts.speech",
             "input": {"text": "你好", "voice": "f5-default", "language": "zh"},
             "parameters": {"reference_audio": {"kind": "path", "path": "E:/AiModel/tts/ref.wav"}},
@@ -236,11 +236,11 @@ def test_generate_tts_speech_json_calls_adapter_generate():
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("audio/wav")
-    assert response.headers["x-provider-id"] == "local_f5_tts"
-    assert response.headers["x-model-id"] == "local_f5_tts"
+    assert response.headers["x-provider-id"] == "f5_tts"
+    assert response.headers["x-model-id"] == "f5_tts"
     assert response.headers["x-task"] == "tts.speech"
-    assert calls["started"] == ["local_f5_tts"]
-    assert calls["generated"] == [("local_f5_tts", "tts.speech", "你好")]
+    assert calls["started"] == ["f5_tts"]
+    assert calls["generated"] == [("f5_tts", "tts.speech", "你好")]
 
 
 def test_generate_can_return_json_result_from_adapter():
@@ -268,13 +268,13 @@ def test_generate_can_return_json_result_from_adapter():
             )
 
     manager.ensure_started = fake_ensure_started
-    registry._adapters["local_f5_tts"] = StubAdapter()
+    registry._adapters["f5_tts"] = StubAdapter()
 
     client = TestClient(app)
     response = client.post(
         "/v1/generate",
         json={
-            "model": "local_f5_tts",
+            "model": "f5_tts",
             "task": "tts.speech",
             "input": {"text": "ignored", "voice": "f5-default", "language": "zh"},
             "parameters": {},
@@ -284,7 +284,7 @@ def test_generate_can_return_json_result_from_adapter():
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("application/json")
-    assert response.headers["x-provider-id"] == "local_f5_tts"
+    assert response.headers["x-provider-id"] == "f5_tts"
     assert response.json()["text"] == "你好，世界。"
 
 
@@ -399,14 +399,14 @@ def test_generate_multipart_upload_resolves_file_inputs_to_temp_paths():
             return AudioResult(content=b"RIFF", content_type="audio/wav")
 
     manager.ensure_started = fake_ensure_started
-    registry._adapters["local_f5_tts"] = StubAdapter()
+    registry._adapters["f5_tts"] = StubAdapter()
 
     client = TestClient(app)
     response = client.post(
         "/v1/generate",
         data={
             "request": """{
-                "model": "local_f5_tts",
+                "model": "f5_tts",
                 "task": "tts.speech",
                 "input": {"text": "你好", "voice": "f5-default"},
                 "parameters": {"reference_audio": {"kind": "upload", "field": "ref_audio"}},
@@ -652,13 +652,13 @@ def test_generate_json_data_uri_resolves_file_inputs_to_temp_paths():
             return AudioResult(content=b"RIFF", content_type="audio/wav")
 
     manager.ensure_started = fake_ensure_started
-    registry._adapters["local_f5_tts"] = StubAdapter()
+    registry._adapters["f5_tts"] = StubAdapter()
 
     client = TestClient(app)
     response = client.post(
         "/v1/generate",
         json={
-            "model": "local_f5_tts",
+            "model": "f5_tts",
             "task": "tts.speech",
             "input": {"text": "你好", "voice": "f5-default"},
             "parameters": {"reference_audio": {"kind": "data_uri", "data": "data:audio/wav;base64,UklGRg=="}},
@@ -694,13 +694,13 @@ def test_generate_logs_sanitized_request_without_data_uri(caplog):
             return AudioResult(content=b"RIFF", content_type="audio/wav")
 
     manager.ensure_started = fake_ensure_started
-    registry._adapters["local_f5_tts"] = StubAdapter()
+    registry._adapters["f5_tts"] = StubAdapter()
 
     client = TestClient(app)
     response = client.post(
         "/v1/generate",
         json={
-            "model": "local_f5_tts",
+            "model": "f5_tts",
             "task": "tts.speech",
             "input": {"text": "你好", "voice": "f5-default"},
             "parameters": {"reference_audio": {"kind": "data_uri", "data": "data:audio/wav;base64,UklGRg=="}},
@@ -710,7 +710,7 @@ def test_generate_logs_sanitized_request_without_data_uri(caplog):
 
     assert response.status_code == 200
     messages = "\n".join(record.getMessage() for record in caplog.records)
-    assert "local_f5_tts" in messages
+    assert "f5_tts" in messages
     assert "tts.speech" in messages
     assert "data_uri" in messages
     assert "UklGRg==" not in messages
@@ -776,7 +776,7 @@ def test_generate_unsupported_task_returns_stable_error_payload():
     response = client.post(
         "/v1/generate",
         json={
-            "model": "local_f5_tts",
+            "model": "f5_tts",
             "task": "audio.generate",
             "input": {"prompt": "cinematic hit"},
         },
@@ -804,11 +804,11 @@ def test_legacy_synthesize_endpoint_remains_available():
             return AudioResult(content=b"RIFF", content_type="audio/wav")
 
     manager.ensure_started = fake_ensure_started
-    registry._adapters["local_f5_tts"] = StubAdapter()
+    registry._adapters["f5_tts"] = StubAdapter()
 
     client = TestClient(app)
     response = client.post(
-        "/local_f5_tts/v1/synthesize",
+        "/f5_tts/v1/synthesize",
         json={"text": "你好", "voice_id": "f5-default", "parameters": {}, "output": {"format": "wav"}},
     )
 

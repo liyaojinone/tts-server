@@ -1,6 +1,7 @@
-provider_id: local_voxcpm
+provider_id: voxcpm2
+model_id: voxcpm2
 provider_type: voxcpm
-display_name: VoxCPM2 Default
+display_name: VoxCPM2
 enabled: true
 runtime:
   root_dir: ${BOBOGEN_ROOT}\services\voxcpm-service
@@ -10,8 +11,18 @@ runtime:
     - -File
     - ${BOBOGEN_ROOT}\services\voxcpm-service\start.ps1
   env:
+    VOXCPM_MODEL_ID: voxcpm2
     VOXCPM_REPO_DIR: "${BOBOGEN_ROOT}\\models\\voxcpm\\repo"
     VOXCPM_MODEL_DIR: "${BOBOGEN_ROOT}\\models\\voxcpm\\checkpoints"
+    VOXCPM_CONFIG_PATH: "${BOBOGEN_ROOT}\\models\\voxcpm\\checkpoints\\config.json"
+    VOXCPM_MODEL_WEIGHTS_PATH: "${BOBOGEN_ROOT}\\models\\voxcpm\\checkpoints\\model.safetensors"
+    VOXCPM_AUDIOVAE_WEIGHTS_PATH: "${BOBOGEN_ROOT}\\models\\voxcpm\\checkpoints\\audiovae.pth"
+    VOXCPM_TOKENIZER_PATH: "${BOBOGEN_ROOT}\\models\\voxcpm\\checkpoints\\tokenizer.json"
+    VOXCPM_PROFILE_DIR: "${BOBOGEN_ROOT}\\services\\voxcpm-service\\data\\profiles\\voxcpm2"
+    VOXCPM_OUTPUT_DIR: "${BOBOGEN_ROOT}\\models\\voxcpm\\outputs\\voxcpm2"
+    VOXCPM_EXPECTED_ARCHITECTURE: voxcpm2
+    VOXCPM_HOST: 127.0.0.1
+    VOXCPM_PORT: "5105"
     VOXCPM_PRELOAD_ON_STARTUP: "true"
   startup_timeout_ms: 180000
   request_timeout_ms: 300000

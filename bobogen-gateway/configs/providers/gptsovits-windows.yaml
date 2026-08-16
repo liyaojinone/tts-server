@@ -1,6 +1,7 @@
-provider_id: local_gpt_sovits
+provider_id: gpt_sovits_v2pro
+model_id: gpt_sovits_v2pro
 provider_type: gptsovits
-display_name: GPT-SoVITS Default
+display_name: GPT-SoVITS V2Pro
 enabled: true
 runtime:
   root_dir: ${BOBOGEN_ROOT}\services\gptsovits-service
@@ -10,7 +11,22 @@ runtime:
     - -File
     - ${BOBOGEN_ROOT}\services\gptsovits-service\start.ps1
   env:
+    GPTSOVITS_MODEL_ID: gpt_sovits_v2pro
+    GPTSOVITS_UPSTREAM_VERSION: v2Pro
     GPTSOVITS_REPO_DIR: "${BOBOGEN_ROOT}\\models\\gpt-sovits\\repo"
+    GPTSOVITS_MODEL_DIR: "${BOBOGEN_ROOT}\\models\\gpt-sovits\\checkpoints\\gpt_sovits_v2pro"
+    GPTSOVITS_GPT_WEIGHTS_PATH: "${BOBOGEN_ROOT}\\models\\gpt-sovits\\checkpoints\\gpt_sovits_v2pro\\s1v3.ckpt"
+    GPTSOVITS_SOVITS_WEIGHTS_PATH: "${BOBOGEN_ROOT}\\models\\gpt-sovits\\checkpoints\\gpt_sovits_v2pro\\v2Pro\\s2Gv2Pro.pth"
+    GPTSOVITS_BERT_BASE_PATH: "${BOBOGEN_ROOT}\\models\\gpt-sovits\\checkpoints\\gpt_sovits_v2pro\\chinese-roberta-wwm-ext-large"
+    GPTSOVITS_CNHUBERT_BASE_PATH: "${BOBOGEN_ROOT}\\models\\gpt-sovits\\checkpoints\\gpt_sovits_v2pro\\chinese-hubert-base"
+    GPTSOVITS_SV_WEIGHTS_PATH: "${BOBOGEN_ROOT}\\models\\gpt-sovits\\checkpoints\\gpt_sovits_v2pro\\sv\\pretrained_eres2netv2w24s4ep4.ckpt"
+    GPTSOVITS_PROFILE_DIR: "${BOBOGEN_ROOT}\\services\\gptsovits-service\\data\\profiles\\gpt_sovits_v2pro"
+    GPTSOVITS_OUTPUT_DIR: "${BOBOGEN_ROOT}\\models\\gpt-sovits\\outputs\\gpt_sovits_v2pro"
+    GPTSOVITS_RUNTIME_CONFIG_PATH: "${BOBOGEN_ROOT}\\services\\gptsovits-service\\data\\runtime\\gpt_sovits_v2pro\\tts_infer.yaml"
+    GPTSOVITS_HOST: 127.0.0.1
+    GPTSOVITS_PORT: "5103"
+    GPTSOVITS_DEVICE: cuda
+    GPTSOVITS_IS_HALF: "true"
   startup_timeout_ms: 120000
   request_timeout_ms: 180000
   idle_shutdown_seconds: 0
@@ -26,8 +42,8 @@ capabilities:
   stream: false
 voices:
   - voice_id: default
-    name: GPT-SoVITS Default
+    name: GPT-SoVITS V2Pro
     language: [zh, en, ja]
-    description: GPT-SoVITS reference-driven synthesis mode
+    description: GPT-SoVITS V2Pro reference-driven synthesis mode
     tags: [reference, default]
     metadata: {}

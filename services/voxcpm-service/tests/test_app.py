@@ -1,4 +1,6 @@
 from fastapi.testclient import TestClient
+import asyncio
+import pytest
 
 
 def test_voxcpm_app_exposes_protocol_routes():
@@ -14,6 +16,50 @@ def test_voxcpm_app_exposes_protocol_routes():
     assert health.json()["status"] == "ok"
     assert voices.status_code == 200
     assert voices.json()["total"] >= 1
+
+
+def test_voxcpm_health_reports_versioned_model_id():
+    from app.main import create_app
+
+    client = TestClient(create_app(test_mode=True))
+    health = client.get("/v1/health")
+
+    assert health.status_code == 200
+    assert health.json()["model"] == "VoxCPM2"
+    assert health.json()["version"] == "voxcpm2"
+
+
+def test_voxcpm_requires_required_checkpoint_files(tmp_path, monkeypatch):
+    repo_dir = tmp_path / "repo"
+    (repo_dir / "src").mkdir(parents=True)
+    model_dir = tmp_path / "voxcpm2"
+    model_dir.mkdir()
+    monkeypatch.setenv("VOXCPM_REPO_DIR", str(repo_dir))
+    monkeypatch.setenv("VOXCPM_MODEL_DIR", str(model_dir))
+
+    from app.handler import VoxCPMHandler
+
+    with pytest.raises(FileNotFoundError, match="voxcpm2"):
+        asyncio.run(VoxCPMHandler().startup())
+
+
+def test_voxcpm_rejects_checkpoint_bundle_for_another_architecture(tmp_path, monkeypatch):
+    repo_dir = tmp_path / "repo"
+    model_dir = tmp_path / "model"
+    (repo_dir / "src").mkdir(parents=True)
+    model_dir.mkdir()
+    (model_dir / "config.json").write_text('{"architecture": "voxcpm"}', encoding="utf-8")
+    for filename in ["model.safetensors", "audiovae.pth", "tokenizer.json"]:
+        (model_dir / filename).write_bytes(b"test")
+
+    monkeypatch.setenv("VOXCPM_REPO_DIR", str(repo_dir))
+    monkeypatch.setenv("VOXCPM_MODEL_DIR", str(model_dir))
+    monkeypatch.setenv("VOXCPM_PRELOAD_ON_STARTUP", "false")
+
+    from app.handler import VoxCPMHandler
+
+    with pytest.raises(ValueError, match="requires architecture 'voxcpm2'"):
+        asyncio.run(VoxCPMHandler().startup())
 
 
 def test_voxcpm_clone_creates_reusable_voice_profile(tmp_path, monkeypatch):
@@ -179,8 +225,11 @@ def test_voxcpm_synthesize_uses_designed_voice_profile_when_instruction_is_omitt
 def test_voxcpm_startup_preloads_model_when_not_in_test_mode(tmp_path, monkeypatch):
     repo_dir = tmp_path / "repo"
     model_dir = tmp_path / "model"
-    repo_dir.mkdir()
+    (repo_dir / "src").mkdir(parents=True)
     model_dir.mkdir()
+    (model_dir / "config.json").write_text('{"architecture": "voxcpm2"}', encoding="utf-8")
+    for filename in ["model.safetensors", "audiovae.pth", "tokenizer.json"]:
+        (model_dir / filename).write_bytes(b"test")
 
     monkeypatch.setenv("VOXCPM_REPO_DIR", str(repo_dir))
     monkeypatch.setenv("VOXCPM_MODEL_DIR", str(model_dir))

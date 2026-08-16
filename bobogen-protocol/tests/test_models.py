@@ -68,7 +68,7 @@ def test_generate_request_supports_tts_speech_and_file_inputs():
 
     request = GenerateRequest.model_validate(
         {
-            "model": "local_f5_tts",
+            "model": "f5_tts",
             "task": "tts.speech",
             "input": {
                 "text": "你好",
@@ -84,7 +84,7 @@ def test_generate_request_supports_tts_speech_and_file_inputs():
         }
     )
 
-    assert request.model == "local_f5_tts"
+    assert request.model == "f5_tts"
     assert request.task == "tts.speech"
     assert request.input["voice"] == "f5-default"
     assert request.parameters["reference_audio"].kind == "upload"
@@ -97,9 +97,9 @@ def test_model_info_describes_generation_capabilities():
 
     model = ModelInfo.model_validate(
         {
-            "id": "local_f5_tts",
+            "id": "f5_tts",
             "name": "F5-TTS",
-            "provider_id": "local_f5_tts",
+            "provider_id": "f5_tts",
             "tasks": ["tts.speech"],
             "outputs": ["audio/wav"],
             "enabled": True,
@@ -108,7 +108,7 @@ def test_model_info_describes_generation_capabilities():
         }
     )
 
-    assert model.id == "local_f5_tts"
+    assert model.id == "f5_tts"
     assert model.tasks == ["tts.speech"]
     assert model.outputs == ["audio/wav"]
     assert model.voices[0].voice_id == "f5-default"

@@ -1,4 +1,5 @@
 provider_id: index_tts_2
+model_id: index_tts_2
 provider_type: indextts
 display_name: IndexTTS Default
 enabled: true

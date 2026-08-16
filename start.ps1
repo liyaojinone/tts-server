@@ -83,7 +83,7 @@ function Invoke-NativeMode {
             return
         }
         if ($Stop) {
-            foreach ($provider in @("stable_audio_3_small_sfx", "stable_audio_3_small_music", "stable_audio_3_medium", "index_tts_2", "local_voxcpm", "local_gpt_sovits", "local_f5_tts", "local_cosyvoice2", "tiger_dnr")) {
+            foreach ($provider in @("stable_audio_3_small_sfx", "stable_audio_3_small_music", "stable_audio_3_medium", "index_tts_2", "voxcpm2", "gpt_sovits_v2pro", "f5_tts", "cosyvoice2", "tiger_dnr")) {
                 try { Invoke-RestMethod -Method Post "http://127.0.0.1:$Port/v1/providers/$provider/stop" | Out-Null } catch {}
             }
             Get-CimInstance Win32_Process -Filter "Name = 'python.exe'" |

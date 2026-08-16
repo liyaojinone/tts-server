@@ -1,6 +1,21 @@
 # gptsovits-service
 
-Protocol-compliant `GPT-SoVITS` service built on top of the shared local TTS packages.
+Protocol-compliant `GPT-SoVITS V2Pro` service (`model_id: gpt_sovits_v2pro`) built on top of the shared local TTS packages.
+
+## Versioned runtime assets
+
+The gateway configuration passes every runtime path explicitly. The default V2Pro bundle is isolated at:
+
+```text
+models/gpt-sovits/checkpoints/gpt_sovits_v2pro/
+├── s1v3.ckpt
+├── v2Pro/s2Gv2Pro.pth
+├── chinese-roberta-wwm-ext-large/
+├── chinese-hubert-base/
+└── sv/pretrained_eres2netv2w24s4ep4.ckpt
+```
+
+`start.ps1` forwards these as `GPTSOVITS_GPT_WEIGHTS_PATH`, `GPTSOVITS_SOVITS_WEIGHTS_PATH`, `GPTSOVITS_BERT_BASE_PATH`, `GPTSOVITS_CNHUBERT_BASE_PATH`, and `GPTSOVITS_SV_WEIGHTS_PATH`. All five must exist; the service does not scan legacy `GPT_weights*` / `SoVITS_weights*` directories or silently fall back to another version. Profiles, synthesis outputs, and the generated runtime config are separated under `gpt_sovits_v2pro` as well.
 
 ## Install
 
@@ -31,7 +46,7 @@ Or just use the bundled script:
 .\start.ps1
 ```
 
-By default `start.ps1` reads upstream source from `models\gpt-sovits\repo` and Python from `services\gptsovits-service\.venv\Scripts\python.exe`. Override with `GPTSOVITS_REPO_DIR` or `GPTSOVITS_PYTHON` when needed.
+By default `start.ps1` reads upstream source from `models\gpt-sovits\repo`, V2Pro assets from `models\gpt-sovits\checkpoints\gpt_sovits_v2pro`, and Python from `services\gptsovits-service\.venv\Scripts\python.exe`. Override the explicit `GPTSOVITS_*` paths and `GPTSOVITS_PORT` when needed.
 
 Windows double-click:
 
@@ -60,8 +75,10 @@ Clone and synthesize smoke test:
 - serves `/v1/clone/{task_id}/status`
 - reserves `/v1/synthesize/stream` and `/v1/design` with protocol `404`
 - uses reference-driven GPT-SoVITS synthesis
-- prefers local GPT and SoVITS weight directories
-- stores cloned voice profiles under `services/gptsovits-service/data/profiles` by default
+- reports `version: gpt_sovits_v2pro` from `/v1/health`
+- requires the configured, version-matched local model bundle
+- stores cloned voice profiles under `services/gptsovits-service/data/profiles/gpt_sovits_v2pro` by default
+- writes transient synthesis output under `models/gpt-sovits/outputs/gpt_sovits_v2pro`
 
 Protocol endpoint overview:
 - [bobogen-api-reference.md](..\..\docs\services\bobogen-api-reference.md)

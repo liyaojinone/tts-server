@@ -35,11 +35,11 @@ def test_synthesize_endpoint_calls_manager_and_adapter():
             return True
 
     manager.ensure_started = fake_ensure_started
-    registry._adapters["local_f5_tts"] = StubAdapter()
+    registry._adapters["f5_tts"] = StubAdapter()
 
     client = TestClient(app)
     response = client.post(
-        "/local_f5_tts/v1/synthesize",
+        "/f5_tts/v1/synthesize",
         json={
             "text": "你好",
             "voice_id": "f5-default",
@@ -51,6 +51,6 @@ def test_synthesize_endpoint_calls_manager_and_adapter():
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("audio/wav")
-    assert response.headers["x-provider-id"] == "local_f5_tts"
-    assert calls["started"] == ["local_f5_tts"]
-    assert calls["synthesized"] == [("local_f5_tts", "你好")]
+    assert response.headers["x-provider-id"] == "f5_tts"
+    assert calls["started"] == ["f5_tts"]
+    assert calls["synthesized"] == [("f5_tts", "你好")]

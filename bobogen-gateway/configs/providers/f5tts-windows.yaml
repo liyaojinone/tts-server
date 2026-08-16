@@ -1,6 +1,7 @@
-provider_id: local_f5_tts
+provider_id: f5_tts
+model_id: f5_tts
 provider_type: f5-tts
-display_name: F5-TTS Default
+display_name: F5-TTS
 enabled: true
 runtime:
   root_dir: ${BOBOGEN_ROOT}\services\f5tts-service
@@ -10,7 +11,10 @@ runtime:
     - -File
     - ${BOBOGEN_ROOT}\services\f5tts-service\start.ps1
   env:
+    F5TTS_MODEL_ID: f5_tts
     F5TTS_REPO_DIR: "${BOBOGEN_ROOT}\\models\\f5-tts\\repo"
+    F5TTS_PROFILE_DIR: "${BOBOGEN_ROOT}\\services\\f5tts-service\\data\\profiles\\f5_tts"
+    F5TTS_PORT: "5102"
   startup_timeout_ms: 120000
   request_timeout_ms: 180000
   idle_shutdown_seconds: 0

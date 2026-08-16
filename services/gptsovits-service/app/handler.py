@@ -10,33 +10,107 @@ from bobogen_protocol.models import CloneResponse, CloneStatusResponse, HealthRe
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
-GPTSOVITS_ROOT = Path(os.environ.get("GPTSOVITS_REPO_DIR", ROOT_DIR / "models" / "gpt-sovits" / "repo"))
+DEFAULT_MODEL_ID = "gpt_sovits_v2pro"
+DEFAULT_UPSTREAM_VERSION = "v2Pro"
+
+
+def get_repo_dir() -> Path:
+    return Path(os.environ.get("GPTSOVITS_REPO_DIR", ROOT_DIR / "models" / "gpt-sovits" / "repo"))
+
+
+def get_model_id() -> str:
+    return os.environ.get("GPTSOVITS_MODEL_ID", DEFAULT_MODEL_ID)
+
+
+def get_model_dir() -> Path:
+    return Path(
+        os.environ.get(
+            "GPTSOVITS_MODEL_DIR",
+            ROOT_DIR / "models" / "gpt-sovits" / "checkpoints" / get_model_id(),
+        )
+    )
+
+
+def get_gpt_weights_path() -> Path:
+    return Path(os.environ.get("GPTSOVITS_GPT_WEIGHTS_PATH", get_model_dir() / "s1v3.ckpt"))
+
+
+def get_sovits_weights_path() -> Path:
+    return Path(
+        os.environ.get(
+            "GPTSOVITS_SOVITS_WEIGHTS_PATH",
+            get_model_dir() / "v2Pro" / "s2Gv2Pro.pth",
+        )
+    )
+
+
+def get_bert_base_path() -> Path:
+    return Path(
+        os.environ.get(
+            "GPTSOVITS_BERT_BASE_PATH",
+            get_model_dir() / "chinese-roberta-wwm-ext-large",
+        )
+    )
+
+
+def get_cnhuhbert_base_path() -> Path:
+    return Path(
+        os.environ.get(
+            "GPTSOVITS_CNHUBERT_BASE_PATH",
+            get_model_dir() / "chinese-hubert-base",
+        )
+    )
+
+
+def get_sv_weights_path() -> Path:
+    return Path(
+        os.environ.get(
+            "GPTSOVITS_SV_WEIGHTS_PATH",
+            get_model_dir() / "sv" / "pretrained_eres2netv2w24s4ep4.ckpt",
+        )
+    )
+
+
+def get_profile_dir() -> Path:
+    return Path(
+        os.environ.get(
+            "GPTSOVITS_PROFILE_DIR",
+            ROOT_DIR / "services" / "gptsovits-service" / "data" / "profiles" / get_model_id(),
+        )
+    )
+
+
+def get_output_dir() -> Path:
+    return Path(
+        os.environ.get(
+            "GPTSOVITS_OUTPUT_DIR",
+            ROOT_DIR / "models" / "gpt-sovits" / "outputs" / get_model_id(),
+        )
+    )
+
+
+def get_runtime_config_path() -> Path:
+    return Path(
+        os.environ.get(
+            "GPTSOVITS_RUNTIME_CONFIG_PATH",
+            ROOT_DIR
+            / "services"
+            / "gptsovits-service"
+            / "data"
+            / "runtime"
+            / get_model_id()
+            / "tts_infer.yaml",
+        )
+    )
+
+
+GPTSOVITS_ROOT = get_repo_dir()
 
 if str(GPTSOVITS_ROOT) not in sys.path:
     sys.path.insert(0, str(GPTSOVITS_ROOT))
 gpt_pkg = GPTSOVITS_ROOT / "GPT_SoVITS"
 if str(gpt_pkg) not in sys.path:
     sys.path.insert(0, str(gpt_pkg))
-
-
-def find_default_gpt_weights() -> Optional[str]:
-    for directory in [GPTSOVITS_ROOT / "GPT_weights_v2", GPTSOVITS_ROOT / "GPT_weights"]:
-        if not directory.exists():
-            continue
-        candidates = sorted(directory.glob("*.ckpt"))
-        if candidates:
-            return str(candidates[0])
-    return None
-
-
-def find_default_sovits_weights() -> Optional[str]:
-    for directory in [GPTSOVITS_ROOT / "SoVITS_weights_v2", GPTSOVITS_ROOT / "SoVITS_weights"]:
-        if not directory.exists():
-            continue
-        candidates = sorted(list(directory.glob("*.pth")) + list(directory.glob("*.ckpt")))
-        if candidates:
-            return str(candidates[0])
-    return None
 
 
 def slugify_voice_id(name: str) -> str:
@@ -51,9 +125,39 @@ class GPTSoVITSHandler:
         self.pipeline = None
         self.ready = False
         self.last_error = None
-        profile_dir = os.environ.get("GPTSOVITS_PROFILE_DIR")
-        self.profile_dir = Path(profile_dir) if profile_dir else ROOT_DIR / "services" / "gptsovits-service" / "data" / "profiles"
+        self.model_id = get_model_id()
+        self.upstream_version = os.environ.get("GPTSOVITS_UPSTREAM_VERSION", DEFAULT_UPSTREAM_VERSION)
+        self.repo_dir = get_repo_dir()
+        self.model_dir = get_model_dir()
+        self.gpt_weights_path = get_gpt_weights_path()
+        self.sovits_weights_path = get_sovits_weights_path()
+        self.bert_base_path = get_bert_base_path()
+        self.cnhuhbert_base_path = get_cnhuhbert_base_path()
+        self.sv_weights_path = get_sv_weights_path()
+        self.profile_dir = get_profile_dir()
+        self.output_dir = get_output_dir()
+        self.runtime_config_path = get_runtime_config_path()
         self.profile_dir.mkdir(parents=True, exist_ok=True)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _required_paths(self) -> dict[str, Path]:
+        return {
+            "GPTSOVITS_REPO_DIR": self.repo_dir,
+            "GPTSOVITS_SOURCE_DIR": self.repo_dir / "GPT_SoVITS",
+            "GPTSOVITS_GPT_WEIGHTS_PATH": self.gpt_weights_path,
+            "GPTSOVITS_SOVITS_WEIGHTS_PATH": self.sovits_weights_path,
+            "GPTSOVITS_BERT_BASE_PATH": self.bert_base_path,
+            "GPTSOVITS_CNHUBERT_BASE_PATH": self.cnhuhbert_base_path,
+            "GPTSOVITS_SV_WEIGHTS_PATH": self.sv_weights_path,
+        }
+
+    def _validate_required_paths(self) -> None:
+        missing = [f"{name}={path}" for name, path in self._required_paths().items() if not path.exists()]
+        if missing:
+            raise FileNotFoundError(
+                f"GPT-SoVITS {self.model_id} requires version-matched local model files: "
+                + "; ".join(missing)
+            )
 
     async def startup(self):
         if self.test_mode:
@@ -72,31 +176,42 @@ class GPTSoVITSHandler:
         if self.test_mode:
             return None
         if self.pipeline is None:
-            from GPT_SoVITS.TTS_infer_pack.TTS import TTS, TTS_Config
-
-            config_path = str(GPTSOVITS_ROOT / "GPT_SoVITS" / "configs" / "tts_infer.yaml")
+            self._validate_required_paths()
+            for path in [self.repo_dir, self.repo_dir / "GPT_SoVITS"]:
+                if str(path) not in sys.path:
+                    sys.path.insert(0, str(path))
             original_cwd = os.getcwd()
-            os.chdir(str(GPTSOVITS_ROOT))
+            os.chdir(str(self.repo_dir))
             try:
-                tts_config = TTS_Config(config_path)
+                # The upstream TTS module imports ``sv.py`` during module loading.
+                # ``sv.py`` resolves ``GPT_SoVITS/eres2net`` relative to the current
+                # working directory, so this must happen before either upstream
+                # module is imported rather than only around pipeline construction.
+                from GPT_SoVITS.TTS_infer_pack.TTS import TTS, TTS_Config
+                import sv as speaker_encoder_module
+
+                speaker_encoder_module.sv_path = str(self.sv_weights_path)
+
+                tts_config = TTS_Config(
+                    {
+                        "custom": {
+                            "device": os.environ.get("GPTSOVITS_DEVICE", "cuda"),
+                            "is_half": os.environ.get("GPTSOVITS_IS_HALF", "true").strip().lower()
+                            in {"1", "true", "yes", "on"},
+                            "version": self.upstream_version,
+                            "t2s_weights_path": str(self.gpt_weights_path),
+                            "vits_weights_path": str(self.sovits_weights_path),
+                            "bert_base_path": str(self.bert_base_path),
+                            "cnhuhbert_base_path": str(self.cnhuhbert_base_path),
+                        }
+                    }
+                )
+                self.runtime_config_path.parent.mkdir(parents=True, exist_ok=True)
+                tts_config.configs_path = str(self.runtime_config_path)
             finally:
                 os.chdir(original_cwd)
-
-            bert_base_path = GPTSOVITS_ROOT / "GPT_SoVITS" / "pretrained_models" / "chinese-roberta-wwm-ext-large"
-            cnhuhbert_base_path = GPTSOVITS_ROOT / "GPT_SoVITS" / "pretrained_models" / "chinese-hubert-base"
-            if bert_base_path.exists():
-                tts_config.bert_base_path = str(bert_base_path)
-            if cnhuhbert_base_path.exists():
-                tts_config.cnhuhbert_base_path = str(cnhuhbert_base_path)
-
-            gpt_weights = find_default_gpt_weights()
-            sovits_weights = find_default_sovits_weights()
-            if gpt_weights:
-                tts_config.t2s_weights_path = gpt_weights
-            if sovits_weights:
-                tts_config.vits_weights_path = sovits_weights
             original_cwd = os.getcwd()
-            os.chdir(str(GPTSOVITS_ROOT))
+            os.chdir(str(self.repo_dir))
             try:
                 self.pipeline = TTS(tts_config)
             finally:
@@ -104,7 +219,7 @@ class GPTSoVITSHandler:
         return self.pipeline
 
     async def health(self):
-        payload = HealthResponse(status="ok", model="GPT-SoVITS", version="local").model_dump()
+        payload = HealthResponse(status="ok", model="GPT-SoVITS", version=self.model_id).model_dump()
         payload["ready"] = self.ready
         if self.last_error:
             payload["last_error"] = self.last_error
@@ -181,7 +296,12 @@ class GPTSoVITSHandler:
                 language=["zh", "en", "ja", "ko", "yue"],
                 description="Reference-driven GPT-SoVITS mode",
                 tags=["reference", "default"],
-                metadata={"gpt_weights": find_default_gpt_weights(), "sovits_weights": find_default_sovits_weights()},
+                metadata={
+                    "model_id": self.model_id,
+                    "upstream_version": self.upstream_version,
+                    "gpt_weights": str(self.gpt_weights_path),
+                    "sovits_weights": str(self.sovits_weights_path),
+                },
             )
         ]
         for profile in self._list_profiles():
@@ -228,7 +348,7 @@ class GPTSoVITSHandler:
         lang = request.language or (profile or {}).get("language") or "zh"
         media_type = request.output.format or "wav"
 
-        with tempfile.NamedTemporaryFile(suffix=f".{media_type}", delete=False) as temp_out:
+        with tempfile.NamedTemporaryFile(suffix=f".{media_type}", dir=self.output_dir, delete=False) as temp_out:
             output_path = temp_out.name
 
         req = {
