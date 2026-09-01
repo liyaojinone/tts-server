@@ -141,6 +141,7 @@ def test_indextts_synthesize_accepts_independent_emotion_reference_audio():
 def test_indextts_startup_preloads_model_when_not_in_test_mode(tmp_path, monkeypatch):
     monkeypatch.setenv("INDEXTTS_REPO_DIR", str(tmp_path / "repo"))
     monkeypatch.setenv("INDEXTTS_MODEL_DIR", str(tmp_path / "checkpoints"))
+    monkeypatch.setenv("INDEXTTS_PRELOAD_ON_STARTUP", "true")
     (tmp_path / "repo").mkdir()
     (tmp_path / "checkpoints").mkdir()
 

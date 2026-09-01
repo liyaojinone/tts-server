@@ -151,6 +151,11 @@ curl -sS -o out.wav \
   -F "ref_audio=@speaker.wav"
 ```
 
+当调用方（例如 BoboVoxClient）部署在另一台机器时，应使用 `upload` 或 `data_uri`，
+不要把调用方本机路径放进 `path`。`upload` 会由 Gateway 保存为服务端临时文件，
+本次请求直接使用该参考音频；因此 `input.voice` 可以是客户端自己的逻辑音色 ID，
+不要求服务端 profile 目录中预先存在同名 profile。
+
 `FileInput` 支持三种来源：
 
 | kind | 示例 | 说明 |
@@ -271,7 +276,7 @@ uv sync
 huggingface-cli login
 ```
 
-需要先在 Hugging Face 接受 `stabilityai/stable-audio-3-small-sfx` 模型条款。服务启动脚本默认读取 `models/stable-audio-3/repo/.venv`；如需使用其他 Python，设置 `STABLE_AUDIO3_PYTHON`。
+需要先在 Hugging Face 接受 `stabilityai/stable-audio-3-small-sfx` 模型条款。服务启动脚本默认读取 `services/stable-audio3-service/.venv`；如需使用其他 Python，设置 `STABLE_AUDIO3_PYTHON`，但该路径仍必须位于 BoboGenServer 内。
 
 ---
 
@@ -425,12 +430,20 @@ curl -sS -o out.wav \
 ```bash
 curl -sS -X POST http://127.0.0.1:6006/index_tts_2/v1/clone \
   -F "audio=@speaker.wav" \
+  -F "voice_id=voice_shared_001" \
   -F "name=我的音色" \
   -F "text=参考文本" \
   -F "language=zh" \
   -F "emotion=calm"
-# {"voice_id":"wo-de-yin-se","status":"ready",...}
+# {"voice_id":"voice_shared_001","status":"ready",...}
 ```
+
+`voice_id` 是可选字段。旧调用可以用该接口登记服务器本地 profile；但新的客户端解耦链路不依赖它：
+客户端创建音色时只保存自己的参考素材，合成时通过 `/v1/generate` 上传素材即可。
+未提供 `voice_id` 时，为兼容旧调用，服务仍按 `name` 生成 slug。
+
+该接口只登记参考音频和 profile 元数据，不执行推理、不生成试听音频，也不要求在登记阶段加载模型权重。
+Gateway 的旧 clone 路由也不会为了登记动作自动启动模型进程；模型权重和依赖会在后续合成请求中按具体模型校验并按需加载。
 
 ```bash
 # 之后合成只需 voice_id

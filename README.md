@@ -1,5 +1,17 @@
 # BoboGen Server
 
+> [!CAUTION]
+> ## 自包含运行目录：禁止依赖 BoboGenServer 外部环境
+>
+> `BoboGenServer` 是独立交付的本地模型服务根目录。Gateway、各模型服务、Python 解释器/虚拟环境、源码、权重、缓存和运行时文件都必须位于**本目录内部**。
+>
+> - **禁止**借用用户机器上的 Conda 环境、系统 Python、全局 pip 包，或其他项目目录里的模型和权重；
+> - **禁止**通过 `COSYVOICE_PYTHON`、`*_REPO_DIR` 等变量把服务指向本目录外；这些变量只允许指向 `BoboGenServer` 内的受管目录；
+> - 如果某模型在本目录内找不到解释器、依赖或权重，服务必须明确报“缺少内部运行资源”，不能静默回退到本机其他环境；
+> - 面向用户发布前，必须在一台没有开发机遗留环境的机器上验证该目录可独立启动。
+>
+> 这样可以避免开发机上偶然存在的 Conda/缓存掩盖安装缺失，确保用户拿到的 BoboGenServer 行为一致、可复现。
+
 面向本地和云端模型的统一生成服务。BoboGen 在 TTS、音效、音乐等模型外面包一层稳定 HTTP API，通过 Gateway 统一代理，便于客户端按同一协议接入新模型。
 
 ## 架构
@@ -34,7 +46,46 @@ flowchart LR
 | Stable Audio 3 Small-SFX | 5106 | 文本生成音效，统一生成协议 `audio.generate` |
 | TIGER-DnR | 5114 | 异步分离对白与全部非对白背景声，统一任务 `audio.separate` |
 
-## 三大目标引擎源码布局
+## 目录铁律：源码/权重与服务环境分离
+
+下面这条是 BoboGenServer 的固定目录约定，所有启动脚本、安装脚本和服务都必须遵守，不能再临时推断：
+
+| 目录 | 只放什么 | 不放什么 |
+|------|----------|----------|
+| `models/<engine>/repo/` | 上游 GitHub 官方源码及其源码需要的仓库文件 | Python 环境、`.venv` |
+| `models/<engine>/checkpoints/` 或官方仓库规定的权重目录 | 模型权重、配置、词表等大文件 | Python 环境、服务代码 |
+| `models/<engine>/outputs/` | 该模型的临时生成结果 | 服务环境、源码 |
+| `services/<engine>-service/` | BoboGen 协议适配器、启动/健康检查脚本、服务测试和服务数据 | 上游模型源码、模型权重 |
+| `services/<engine>-service/.venv/` | **该服务专属 Python 解释器和依赖** | 其他服务的依赖环境 |
+| `runtime/` | BoboGen 自带的运行时辅助文件（若有）和 Gateway 任务状态 | 模型源码、模型权重、服务 `.venv` |
+
+以三个本地 TTS 引擎为例，完整对应关系如下：
+
+```text
+models/cosyvoice/repo/                         # CosyVoice 官方源码
+models/cosyvoice/repo/pretrained_models/       # CosyVoice 权重
+services/cosyvoice-service/.venv/              # CosyVoice 专属 Python 环境
+
+models/f5-tts/repo/                            # F5-TTS 官方源码
+models/f5-tts/repo/huggingface/hub/            # F5-TTS 上游代码读取的权重/缓存
+services/f5tts-service/.venv/                  # F5-TTS 专属 Python 环境
+
+models/gpt-sovits/repo/                        # GPT-SoVITS 官方源码
+models/gpt-sovits/checkpoints/gpt_sovits_v2pro/ # GPT-SoVITS V2Pro 权重
+services/gptsovits-service/.venv/              # GPT-SoVITS 专属 Python 环境
+
+models/index-tts/repo/                         # IndexTTS 官方源码
+models/index-tts/checkpoints/                  # IndexTTS 权重
+services/index-tts-service/.venv/              # IndexTTS 专属 Python 环境
+
+models/stable-audio-3/repo/                    # Stable Audio 3 官方源码
+models/stable-audio-3/checkpoints/             # Stable Audio 3 权重/缓存
+services/stable-audio3-service/.venv/           # Stable Audio 3 专属 Python 环境
+```
+
+**禁止把 `.venv` 放进 `models/<engine>/repo/`，也禁止把权重放进 `services/<engine>-service/`。**
+
+### 三大目标引擎源码布局
 
 GPT-SoVITS、F5-TTS、CosyVoice 的官方源码放在仓库内 `models/` 下：
 
@@ -45,7 +96,7 @@ models/cosyvoice/repo/
 models/stable-audio-3/repo/
 ```
 
-`models/` 不纳入版本控制，用于保存本机源码、权重、缓存和输出。本仓库的 `services/*-service/start.ps1` 会默认读取这些源码目录，也支持通过环境变量覆盖：
+`models/` 不纳入版本控制，用于保存 BoboGenServer 自己管理的源码、权重、缓存和输出。本仓库的 `services/*-service/start.ps1` 默认读取这些目录。环境变量仅用于在 **BoboGenServer 目录内** 切换受管路径，不能指向 Conda、系统 Python 或其他项目目录：
 
 | 引擎 | 源码环境变量 | Python 环境变量 |
 |------|--------------|-----------------|
@@ -53,8 +104,21 @@ models/stable-audio-3/repo/
 | F5-TTS | `F5TTS_REPO_DIR` | `F5TTS_PYTHON` |
 | GPT-SoVITS | `GPTSOVITS_REPO_DIR` | `GPTSOVITS_PYTHON` |
 | Stable Audio 3 | `STABLE_AUDIO3_REPO_DIR` | `STABLE_AUDIO3_PYTHON` |
+| IndexTTS2 | `INDEXTTS_REPO_DIR` | `INDEXTTS_PYTHON` |
 
-当前仅要求源码存在；Python 依赖、模型权重和真实链路测试需要在磁盘空间充足后单独执行。
+每个服务都必须在本目录内具备对应 Python 环境和模型权重；缺失时补齐到该模型自己的受管目录，而不是复用开发机已有环境。
+
+### 已接入的三套本地 TTS 运行资源
+
+下面是当前服务脚本实际读取的固定位置。安装或恢复环境时，先以各 `models/<engine>/repo/README.md` 的上游说明为准，再把结果放到这里；不要自行把路径改到项目外。
+
+| 引擎 | 上游安装依据 | 专属环境 | 服务实际读取的权重位置 | 启动入口 |
+|------|--------------|----------|------------------------|----------|
+| CosyVoice2 | `models/cosyvoice/repo/README.md`：Python 3.10、`requirements.txt`、`iic/CosyVoice2-0.5B` | `services/cosyvoice-service/.venv/` | `models/cosyvoice/repo/pretrained_models/CosyVoice2-0.5B/` | `services/cosyvoice-service/start.ps1`（5101） |
+| F5-TTS | `models/f5-tts/repo/README.md`：Python ≥3.10、项目 editable install、`SWivid/F5-TTS` 与 `charactr/vocos-mel-24khz` | `services/f5tts-service/.venv/` | `models/f5-tts/repo/huggingface/hub/`（上游代码的 Hugging Face cache） | `services/f5tts-service/start.ps1`（5102） |
+| GPT-SoVITS V2Pro | `models/gpt-sovits/repo/install.ps1`：Python 3.10、`extra-req.txt`、`requirements.txt`、`XXXXRT/GPT-SoVITS-Pretrained` | `services/gptsovits-service/.venv/` | `models/gpt-sovits/checkpoints/gpt_sovits_v2pro/`：`s1v3.ckpt`、`v2Pro/s2Gv2Pro.pth`、`sv/pretrained_eres2netv2w24s4ep4.ckpt`、`chinese-roberta-wwm-ext-large/`、`chinese-hubert-base/` | `services/gptsovits-service/start.ps1`（5103） |
+
+三套服务均由各自 `start.ps1` 写入只属于本次服务进程的环境变量，例如 `*_REPO_DIR`、`*_MODEL_DIR`、`*_PYTHON`。这些是启动脚本的内部配置，不要求用户在系统环境变量中长期配置。
 
 Stable Audio 3 使用官方仓库 [Stability-AI/stable-audio-3](https://github.com/Stability-AI/stable-audio-3)，当前接入 `stabilityai/stable-audio-3-small-sfx` 对应的 `small-sfx`。Hugging Face 权重需要登录并接受模型条款后才能下载；本仓库不会自动下载权重。
 
@@ -510,4 +574,4 @@ source /etc/network_turbo
 
 ### 其他引擎（CosyVoice / F5-TTS / GPT-SoVITS）
 
-这三个引擎的官方源码默认位于 `models/cosyvoice/repo`、`models/f5-tts/repo`、`models/gpt-sovits/repo`。如果源码或 Python 环境放在其他位置，通过 `COSYVOICE_REPO_DIR`、`F5TTS_REPO_DIR`、`GPTSOVITS_REPO_DIR` 以及对应 `*_PYTHON` 环境变量覆盖。
+这三个引擎的官方源码固定在 `models/cosyvoice/repo`、`models/f5-tts/repo`、`models/gpt-sovits/repo`，服务专属 Python 环境固定在各自的 `services/*-service/.venv`。启动脚本会设置对应变量，变量覆盖只允许切换到 `BoboGenServer` 内的受管路径，不能指向系统 Python、Conda 或其他项目。

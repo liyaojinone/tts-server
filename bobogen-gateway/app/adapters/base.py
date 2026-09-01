@@ -100,10 +100,16 @@ class BaseProviderAdapter:
             response = await client.get(f"{provider.network.base_url}{provider.network.healthcheck_path}")
             return response.status_code == 200
 
-    async def clone(self, provider, audio, text="", name="", language="zh", emotion=""):
+    async def clone(self, provider, audio, voice_id=None, text="", name="", language="zh", emotion=""):
         async with httpx.AsyncClient(base_url=provider.network.base_url, timeout=30.0, trust_env=False) as client:
             files = {"audio": (audio.filename, await audio.read(), audio.content_type or "audio/wav")}
-            data = {"text": text, "name": name, "language": language, "emotion": emotion}
+            data = {
+                "voice_id": voice_id or "",
+                "text": text,
+                "name": name,
+                "language": language,
+                "emotion": emotion,
+            }
             response = await client.post("/v1/clone", files=files, data=data)
             response.raise_for_status()
         return response.json()

@@ -83,7 +83,7 @@ def test_speaker_diarization_adapter_routes_task_to_diarize_endpoint():
     assert adapter.path_for_generate_task("audio.diarize") == "/v1/diarize"
 
 
-def test_cosyvoice_mapping_uses_openai_compatible_endpoint():
+def test_cosyvoice_mapping_uses_unified_synthesize_endpoint():
     from app.adapters.cosyvoice import CosyVoiceAdapter
 
     adapter = CosyVoiceAdapter()
@@ -91,19 +91,30 @@ def test_cosyvoice_mapping_uses_openai_compatible_endpoint():
         text="你好",
         voice_id="中文女",
         language="zh",
-        parameters=SynthesizeParameters(speed=1.2, instruction="温柔一点"),
+        parameters=SynthesizeParameters(
+            speed=1.2,
+            instruction="温柔一点",
+            reference_audio="E:/AiModel/tts/ref.wav",
+            reference_text="你好",
+        ),
         output=OutputOptions(format="wav", sample_rate=24000),
     )
 
     mapped = adapter.build_request(request)
 
-    assert mapped.path == "/v1/audio/speech"
-    assert mapped.json["input"] == "你好"
-    assert mapped.json["voice"] == "中文女"
-    assert mapped.json["speed"] == 1.2
+    assert mapped.path == "/v1/synthesize"
+    assert mapped.json["text"] == "你好"
+    assert mapped.json["voice_id"] == "中文女"
+    assert mapped.json["language"] == "zh"
+    assert mapped.json["parameters"]["speed"] == 1.2
+    assert mapped.json["parameters"]["instruction"] == "温柔一点"
+    assert mapped.json["parameters"]["reference_audio"] == "E:/AiModel/tts/ref.wav"
+    assert mapped.json["parameters"]["reference_text"] == "你好"
+    assert mapped.json["output"]["format"] == "wav"
+    assert mapped.json["output"]["sample_rate"] == 24000
 
 
-def test_f5tts_mapping_uses_tts_endpoint():
+def test_f5tts_mapping_uses_unified_synthesize_endpoint():
     from app.adapters.f5tts import F5TTSAdapter
 
     adapter = F5TTSAdapter()
@@ -122,14 +133,18 @@ def test_f5tts_mapping_uses_tts_endpoint():
 
     mapped = adapter.build_request(request)
 
-    assert mapped.path == "/tts"
+    assert mapped.path == "/v1/synthesize"
     assert mapped.json["text"] == "你好"
-    assert mapped.json["ref_audio"] == "E:/AiModel/tts/ref.wav"
-    assert mapped.json["ref_text"] == "你好"
-    assert mapped.json["nfe_step"] == 16
+    assert mapped.json["voice_id"] == "f5-default"
+    assert mapped.json["language"] == "zh"
+    assert mapped.json["parameters"]["reference_audio"] == "E:/AiModel/tts/ref.wav"
+    assert mapped.json["parameters"]["reference_text"] == "你好"
+    assert mapped.json["parameters"]["extra"]["nfe_step"] == 16
+    assert mapped.json["output"]["format"] == "wav"
+    assert mapped.json["output"]["sample_rate"] == 24000
 
 
-def test_gptsovits_mapping_uses_tts_endpoint():
+def test_gptsovits_mapping_uses_unified_synthesize_endpoint():
     from app.adapters.gptsovits import GPTSoVITSAdapter
 
     adapter = GPTSoVITSAdapter()
@@ -147,12 +162,16 @@ def test_gptsovits_mapping_uses_tts_endpoint():
 
     mapped = adapter.build_request(request)
 
-    assert mapped.path == "/tts"
+    assert mapped.path == "/v1/synthesize"
     assert mapped.json["text"] == "你好"
-    assert mapped.json["text_lang"] == "zh"
-    assert mapped.json["ref_audio_path"] == "E:/AiModel/tts/ref.wav"
-    assert mapped.json["prompt_text"] == "我是参考文本"
-    assert mapped.json["speed_factor"] == 1.1
+    assert mapped.json["voice_id"] == "nahida"
+    assert mapped.json["language"] == "zh"
+    assert mapped.json["parameters"]["reference_audio"] == "E:/AiModel/tts/ref.wav"
+    assert mapped.json["parameters"]["reference_text"] == "我是参考文本"
+    assert mapped.json["parameters"]["speed"] == 1.1
+    assert mapped.json["output"]["format"] == "wav"
+    assert mapped.json["output"]["sample_rate"] == 32000
+    assert "ref_audio_path" not in mapped.json
 
 
 def test_indextts_mapping_keeps_emotion_reference_audio_inside_extra():

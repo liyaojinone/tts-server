@@ -7,7 +7,7 @@ runtime:
   root_dir: ${BOBOGEN_ROOT}\services\index-tts-service
   cwd: ${BOBOGEN_ROOT}\services\index-tts-service
   command:
-    - ${BOBOGEN_ROOT}\models\index-tts\repo\.venv\Scripts\python.exe
+    - ${BOBOGEN_ROOT}\services\index-tts-service\.venv\Scripts\python.exe
     - -m
     - uvicorn
     - app.main:create_app
@@ -27,7 +27,7 @@ runtime:
     INDEXTTS_USE_DEEPSPEED: "false"
     INDEXTTS_USE_ACCEL: "false"
     INDEXTTS_USE_TORCH_COMPILE: "false"
-    INDEXTTS_PRELOAD_ON_STARTUP: "true"
+    INDEXTTS_PRELOAD_ON_STARTUP: "false"
   startup_timeout_ms: 180000
   request_timeout_ms: 600000
   idle_shutdown_seconds: 0

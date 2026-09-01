@@ -57,6 +57,9 @@ class ErrorResponse(BaseModel):
 
 
 class CloneRequest(BaseModel):
+    # Client-generated stable identifier shared by all local model services.
+    # Optional for backwards compatibility with legacy name-based callers.
+    voice_id: Optional[str] = None
     name: Optional[str] = None
     language: Optional[str] = None
     text: Optional[str] = None

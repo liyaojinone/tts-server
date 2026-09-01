@@ -141,6 +141,7 @@ def create_service_app(service_name: str, handler, api_key: Optional[str] = None
     async def clone(
         request_http: Request,
         audio: UploadFile = File(...),
+        voice_id: Optional[str] = Form(default=None),
         text: Optional[str] = Form(default=None),
         name: Optional[str] = Form(default=None),
         language: Optional[str] = Form(default=None),
@@ -151,6 +152,7 @@ def create_service_app(service_name: str, handler, api_key: Optional[str] = None
         if not callable(clone_hook):
             raise ProtocolError(404, "ENDPOINT_NOT_AVAILABLE", "Clone is not implemented for this service", {})
         request = CloneRequest(
+            voice_id=voice_id or None,
             name=name,
             language=language,
             text=text,

@@ -29,7 +29,7 @@ def test_voxcpm_health_reports_versioned_model_id():
     assert health.json()["version"] == "voxcpm2"
 
 
-def test_voxcpm_requires_required_checkpoint_files(tmp_path, monkeypatch):
+def test_voxcpm_defers_checkpoint_validation_until_synthesis(tmp_path, monkeypatch):
     repo_dir = tmp_path / "repo"
     (repo_dir / "src").mkdir(parents=True)
     model_dir = tmp_path / "voxcpm2"
@@ -39,8 +39,9 @@ def test_voxcpm_requires_required_checkpoint_files(tmp_path, monkeypatch):
 
     from app.handler import VoxCPMHandler
 
-    with pytest.raises(FileNotFoundError, match="voxcpm2"):
-        asyncio.run(VoxCPMHandler().startup())
+    handler = VoxCPMHandler()
+    asyncio.run(handler.startup())
+    assert handler.ready is True
 
 
 def test_voxcpm_rejects_checkpoint_bundle_for_another_architecture(tmp_path, monkeypatch):
@@ -58,8 +59,10 @@ def test_voxcpm_rejects_checkpoint_bundle_for_another_architecture(tmp_path, mon
 
     from app.handler import VoxCPMHandler
 
+    handler = VoxCPMHandler()
+    asyncio.run(handler.startup())
     with pytest.raises(ValueError, match="requires architecture 'voxcpm2'"):
-        asyncio.run(VoxCPMHandler().startup())
+        handler._ensure_model()
 
 
 def test_voxcpm_clone_creates_reusable_voice_profile(tmp_path, monkeypatch):
@@ -233,6 +236,7 @@ def test_voxcpm_startup_preloads_model_when_not_in_test_mode(tmp_path, monkeypat
 
     monkeypatch.setenv("VOXCPM_REPO_DIR", str(repo_dir))
     monkeypatch.setenv("VOXCPM_MODEL_DIR", str(model_dir))
+    monkeypatch.setenv("VOXCPM_PRELOAD_ON_STARTUP", "true")
 
     from app import handler as handler_module
 

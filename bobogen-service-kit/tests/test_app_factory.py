@@ -5,6 +5,7 @@ class DummyHandler:
     def __init__(self):
         self.started = False
         self.last_synthesize = None
+        self.last_clone = None
 
     async def startup(self):
         self.started = True
@@ -33,7 +34,8 @@ class DummyHandler:
         }
 
     async def clone(self, request, audio):
-        return {"voice_id": request.name or "dummy", "status": "ready", "name": request.name}
+        self.last_clone = request
+        return {"voice_id": request.voice_id or request.name or "dummy", "status": "ready", "name": request.name}
 
     async def clone_status(self, task_id):
         return {"task_id": task_id, "status": "ready", "voice_id": "dummy", "name": "Dummy"}
@@ -47,7 +49,8 @@ class ErrorHandler(DummyHandler):
 def test_app_factory_exposes_protocol_routes():
     from bobogen_service_kit.app import create_service_app
 
-    app = create_service_app("dummy", DummyHandler())
+    handler = DummyHandler()
+    app = create_service_app("dummy", handler)
     client = TestClient(app)
 
     with client:
@@ -63,10 +66,12 @@ def test_app_factory_exposes_protocol_routes():
         assert synth.headers["content-type"].startswith("audio/wav")
         clone = client.post(
             "/v1/clone",
-            data={"name": "测试音色", "language": "zh", "text": "参考文本"},
+            data={"voice_id": "shared-voice-001", "name": "测试音色", "language": "zh", "text": "参考文本"},
             files={"audio": ("ref.wav", b"RIFF", "audio/wav")},
         )
         assert clone.status_code == 200
+        assert clone.json()["voice_id"] == "shared-voice-001"
+        assert handler.last_clone.voice_id == "shared-voice-001"
         clone_status = client.get("/v1/clone/dummy/status")
         assert clone_status.status_code == 200
         assert clone_status.json()["status"] == "ready"

@@ -1,12 +1,12 @@
 from pathlib import Path
 import json
 import os
-import re
 import sys
 import tempfile
 from typing import Optional
 
 from bobogen_protocol.models import CloneResponse, CloneStatusResponse, HealthResponse, Voice, VoicesResponse
+from bobogen_service_kit.profiles import resolve_voice_id
 
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
@@ -104,6 +104,13 @@ def get_runtime_config_path() -> Path:
     )
 
 
+def env_flag(name: str, default: bool) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 GPTSOVITS_ROOT = get_repo_dir()
 
 if str(GPTSOVITS_ROOT) not in sys.path:
@@ -111,12 +118,6 @@ if str(GPTSOVITS_ROOT) not in sys.path:
 gpt_pkg = GPTSOVITS_ROOT / "GPT_SoVITS"
 if str(gpt_pkg) not in sys.path:
     sys.path.insert(0, str(gpt_pkg))
-
-
-def slugify_voice_id(name: str) -> str:
-    normalized = re.sub(r"[^a-zA-Z0-9_-]+", "-", name.strip())
-    normalized = normalized.strip("-_").lower()
-    return normalized or "voice"
 
 
 class GPTSoVITSHandler:
@@ -164,7 +165,8 @@ class GPTSoVITSHandler:
             self.ready = True
             return
         try:
-            self._ensure_pipeline()
+            if env_flag("GPTSOVITS_PRELOAD_ON_STARTUP", False):
+                self._ensure_pipeline()
             self.ready = True
             self.last_error = None
         except Exception as exc:
@@ -241,7 +243,7 @@ class GPTSoVITSHandler:
         return profiles
 
     async def clone(self, request, audio):
-        voice_id = slugify_voice_id(request.name or "voice")
+        voice_id = resolve_voice_id(request)
         profile_root = self.profile_dir / voice_id
         profile_root.mkdir(parents=True, exist_ok=True)
 
@@ -329,7 +331,8 @@ class GPTSoVITSHandler:
 
         pipeline = self._ensure_pipeline()
         profile = None
-        if request.voice_id != "default":
+        has_reference_audio = request.parameters.reference_audio or reference_audio is not None
+        if request.voice_id != "default" and not has_reference_audio:
             profile = self._load_profile(request.voice_id)
             if profile is None:
                 raise ValueError("Unknown voice_id and no cloned profile found")

@@ -40,6 +40,7 @@ def test_gptsovits_requires_explicit_versioned_weight_paths(tmp_path, monkeypatc
     model_dir.mkdir()
     monkeypatch.setenv("GPTSOVITS_REPO_DIR", str(repo_dir))
     monkeypatch.setenv("GPTSOVITS_MODEL_DIR", str(model_dir))
+    monkeypatch.setenv("GPTSOVITS_PRELOAD_ON_STARTUP", "true")
     monkeypatch.setenv("GPTSOVITS_GPT_WEIGHTS_PATH", str(model_dir / "s1v3.ckpt"))
     monkeypatch.setenv("GPTSOVITS_SOVITS_WEIGHTS_PATH", str(model_dir / "v2Pro" / "s2Gv2Pro.pth"))
 
@@ -61,6 +62,7 @@ def test_gptsovits_requires_explicit_v2pro_speaker_encoder(tmp_path, monkeypatch
     (model_dir / "chinese-hubert-base").mkdir()
     monkeypatch.setenv("GPTSOVITS_REPO_DIR", str(repo_dir))
     monkeypatch.setenv("GPTSOVITS_MODEL_DIR", str(model_dir))
+    monkeypatch.setenv("GPTSOVITS_PRELOAD_ON_STARTUP", "true")
     monkeypatch.setenv("GPTSOVITS_GPT_WEIGHTS_PATH", str(model_dir / "s1v3.ckpt"))
     monkeypatch.setenv("GPTSOVITS_SOVITS_WEIGHTS_PATH", str(model_dir / "v2Pro" / "s2Gv2Pro.pth"))
     monkeypatch.setenv("GPTSOVITS_BERT_BASE_PATH", str(model_dir / "chinese-roberta-wwm-ext-large"))
@@ -179,6 +181,7 @@ def test_gptsovits_clone_creates_reusable_voice_profile(tmp_path, monkeypatch):
         "/v1/clone",
         files={"audio": ("ref.wav", b"RIFFdemo", "audio/wav")},
         data={
+            "voice_id": "shared-voice-001",
             "name": "narrator",
             "text": "这是参考文本",
             "language": "zh",
@@ -188,14 +191,14 @@ def test_gptsovits_clone_creates_reusable_voice_profile(tmp_path, monkeypatch):
 
     assert clone_response.status_code == 200
     clone_payload = clone_response.json()
-    assert clone_payload["voice_id"] == "narrator"
+    assert clone_payload["voice_id"] == "shared-voice-001"
     assert clone_payload["metadata"]["emotion"] == "calm"
     assert clone_payload["metadata"]["reference_text"] == "这是参考文本"
 
     voices_response = client.get("/v1/voices")
     assert voices_response.status_code == 200
     voice_ids = {voice["voice_id"] for voice in voices_response.json()["voices"]}
-    assert "narrator" in voice_ids
+    assert "shared-voice-001" in voice_ids
 
 
 def test_gptsovits_synthesize_uses_cloned_voice_profile_when_reference_is_omitted(tmp_path, monkeypatch):

@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $serviceRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $workspaceRoot = Split-Path -Parent (Split-Path -Parent $serviceRoot)
-$pythonExe = Join-Path $workspaceRoot "models\index-tts\repo\.venv\Scripts\python.exe"
+$pythonExe = if ($env:INDEXTTS_PYTHON) { $env:INDEXTTS_PYTHON } else { Join-Path $serviceRoot ".venv\Scripts\python.exe" }
 $repoDir = Join-Path $workspaceRoot "models\index-tts\repo"
 $modelDir = Join-Path $workspaceRoot "models\index-tts\checkpoints"
 $profileDir = Join-Path $serviceRoot "data\profiles"
@@ -36,7 +36,7 @@ $env:INDEXTTS_USE_CUDA_KERNEL = "true"
 $env:INDEXTTS_USE_DEEPSPEED = "false"
 $env:INDEXTTS_USE_ACCEL = "false"
 $env:INDEXTTS_USE_TORCH_COMPILE = "false"
-$env:INDEXTTS_PRELOAD_ON_STARTUP = "true"
+$env:INDEXTTS_PRELOAD_ON_STARTUP = if ($env:INDEXTTS_PRELOAD_ON_STARTUP) { $env:INDEXTTS_PRELOAD_ON_STARTUP } else { "false" }
 
 Write-Host "Using Python: $pythonExe"
 Write-Host "PYTHONPATH: $env:PYTHONPATH"

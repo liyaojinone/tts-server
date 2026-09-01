@@ -26,12 +26,10 @@ if [ ! -d "$REPO_DIR" ]; then
     echo "Run: git clone https://github.com/OpenBMB/VoxCPM.git $REPO_DIR"
     exit 1
 fi
-for required_path in "$MODEL_DIR" "$CONFIG_PATH" "$MODEL_WEIGHTS_PATH" "$AUDIOVAE_WEIGHTS_PATH" "$TOKENIZER_PATH"; do
-    if [ ! -e "$required_path" ]; then
-        echo "ERROR: required VoxCPM2 model file not found: $required_path"
-        exit 1
-    fi
-done
+if [ ! -d "$REPO_SRC" ]; then
+    echo "ERROR: VoxCPM source directory not found: $REPO_SRC"
+    exit 1
+fi
 
 # venv 不存在则用 uv sync 一键创建
 if [ ! -f "$PYTHON_EXE" ]; then
@@ -62,7 +60,7 @@ export VOXCPM_OUTPUT_DIR="${OUTPUT_DIR}"
 export VOXCPM_EXPECTED_ARCHITECTURE="${EXPECTED_ARCHITECTURE}"
 export VOXCPM_HOST="${HOST}"
 export VOXCPM_PORT="${PORT}"
-export VOXCPM_PRELOAD_ON_STARTUP="${VOXCPM_PRELOAD_ON_STARTUP:-true}"
+export VOXCPM_PRELOAD_ON_STARTUP="${VOXCPM_PRELOAD_ON_STARTUP:-false}"
 export VOXCPM_LOAD_DENOISER="${VOXCPM_LOAD_DENOISER:-false}"
 export VOXCPM_OPTIMIZE="${VOXCPM_OPTIMIZE:-false}"
 

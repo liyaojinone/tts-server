@@ -171,9 +171,8 @@ class VoxCPMHandler:
         self.audiovae_weights_path = get_audiovae_weights_path()
         self.tokenizer_path = get_tokenizer_path()
         try:
-            self._validate_required_paths()
             self.ready = True
-            if env_flag("VOXCPM_PRELOAD_ON_STARTUP", True):
+            if env_flag("VOXCPM_PRELOAD_ON_STARTUP", False):
                 self._ensure_model()
             self.last_error = None
         except Exception as exc:
@@ -300,7 +299,8 @@ class VoxCPMHandler:
     async def synthesize(self, request, reference_audio=None, reference_text=None):
         clone_profile = None
         design_profile = None
-        if request.voice_id != "voxcpm2-default":
+        has_reference_audio = request.parameters.reference_audio or reference_audio is not None
+        if request.voice_id != "voxcpm2-default" and not has_reference_audio:
             clone_profile = self.clone_store.load(request.voice_id)
             if clone_profile is None:
                 design_profile = self.design_store.load(request.voice_id)

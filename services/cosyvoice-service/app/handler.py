@@ -128,9 +128,10 @@ class CosyVoiceHandler:
         text = request.text
         speed = request.parameters.speed
         profile = None
-        if request.voice_id not in {"clone", "中文女"}:
+        has_reference_audio = request.parameters.reference_audio or reference_audio is not None
+        if request.voice_id not in {"clone", "中文女"} and not has_reference_audio:
             profile = self.profile_store.load(request.voice_id)
-        mode = "zero_shot" if request.voice_id == "clone" or profile else "sft"
+        mode = "zero_shot" if request.voice_id == "clone" or profile or has_reference_audio else "sft"
 
         if mode == "sft":
             model = self._load_sft_model()

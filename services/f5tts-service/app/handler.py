@@ -13,9 +13,12 @@ F5_ROOT = Path(os.environ.get("F5TTS_REPO_DIR", ROOT_DIR / "models" / "f5-tts" /
 
 SCRIPT_DIR = str(F5_ROOT)
 HF_CACHE_DIR = str(F5_ROOT / "huggingface" / "hub")
-VOCAB_FILE = str(F5_ROOT / "src" / "f5_tts" / "infer" / "examples" / "vocab.txt")
 SRC_DIR = str(F5_ROOT / "src")
-MODEL_NAME = os.environ.get("F5_MODEL", "F5TTS_Base")
+MODEL_NAME = os.environ.get("F5_MODEL", "F5TTS_v1_Base")
+VOCAB_FILE = os.environ.get(
+    "F5_VOCAB_FILE",
+    str(F5_ROOT / "ckpts" / MODEL_NAME / "vocab.txt"),
+)
 
 if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
@@ -36,18 +39,19 @@ def find_local_ckpt_file() -> Optional[str]:
     if env_ckpt and Path(env_ckpt).exists():
         return env_ckpt
 
+    model_ckpt = "model_1200000.safetensors" if MODEL_NAME == "F5TTS_Base" else "model_1250000.safetensors"
+    local_ckpt = F5_ROOT / "ckpts" / MODEL_NAME / model_ckpt
+    if local_ckpt.exists():
+        return str(local_ckpt)
+
     official_base_root = Path(HF_CACHE_DIR) / "models--SWivid--F5-TTS" / "snapshots"
     if official_base_root.exists():
-        official_candidates = list(official_base_root.rglob("F5TTS_Base/model_1200000.safetensors"))
+        official_candidates = list(official_base_root.rglob(f"{MODEL_NAME}/{model_ckpt}"))
         if official_candidates:
             official_candidates.sort(key=lambda path: path.stat().st_mtime, reverse=True)
             return str(official_candidates[0])
 
-    candidates = list((F5_ROOT / "ckpts").rglob("*.safetensors")) + list((F5_ROOT / "ckpts").rglob("*.pt"))
-    if not candidates:
-        return None
-    candidates.sort(key=lambda path: ("pretrained" not in path.name.lower(), "model_last" not in path.name.lower(), -path.stat().st_size))
-    return str(candidates[0])
+    return None
 
 
 class F5TTSHandler:
@@ -65,17 +69,26 @@ class F5TTSHandler:
         if self.tts is None:
             from f5_tts.api import F5TTS
 
+            ckpt_file = find_local_ckpt_file()
+            if ckpt_file is None:
+                raise FileNotFoundError(
+                    f"Local F5-TTS checkpoint not found for {MODEL_NAME}. "
+                    "Set F5_CKPT_FILE or place the official checkpoint under ckpts/{model}."
+                )
+            if not Path(VOCAB_FILE).exists():
+                raise FileNotFoundError(f"Local F5-TTS vocabulary not found: {VOCAB_FILE}")
+
             self.tts = F5TTS(
                 model=MODEL_NAME,
                 hf_cache_dir=HF_CACHE_DIR,
                 vocab_file=VOCAB_FILE,
-                ckpt_file=find_local_ckpt_file(),
+                ckpt_file=ckpt_file,
                 vocoder_local_path=find_local_vocoder_path(),
             )
         return self.tts
 
     async def health(self):
-        return HealthResponse(status="ok", model="F5-TTS", version="local").model_dump()
+        return HealthResponse(status="ok", model="F5-TTS", version=MODEL_NAME).model_dump()
 
     async def clone(self, request, audio):
         profile = await self.profile_store.create(request, audio)

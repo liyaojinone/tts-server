@@ -12,6 +12,9 @@ runtime:
     - ${BOBOGEN_ROOT}\services\f5tts-service\start.ps1
   env:
     F5TTS_MODEL_ID: f5_tts
+    F5_MODEL: F5TTS_v1_Base
+    F5_CKPT_FILE: "${BOBOGEN_ROOT}\\models\\f5-tts\\repo\\ckpts\\F5TTS_v1_Base\\model_1250000.safetensors"
+    F5_VOCAB_FILE: "${BOBOGEN_ROOT}\\models\\f5-tts\\repo\\ckpts\\F5TTS_v1_Base\\vocab.txt"
     F5TTS_REPO_DIR: "${BOBOGEN_ROOT}\\models\\f5-tts\\repo"
     F5TTS_PROFILE_DIR: "${BOBOGEN_ROOT}\\services\\f5tts-service\\data\\profiles\\f5_tts"
     F5TTS_PORT: "5102"

@@ -5,7 +5,7 @@ set -euo pipefail
 SERVICE_ROOT="$(cd "$(dirname "$0")" && pwd)"
 WORKSPACE_ROOT="$(cd "$SERVICE_ROOT/../.." && pwd)"
 
-PYTHON_EXE="${WORKSPACE_ROOT}/models/index-tts/repo/.venv/bin/python"
+PYTHON_EXE="${INDEXTTS_PYTHON:-${SERVICE_ROOT}/.venv/bin/python}"
 REPO_DIR="${WORKSPACE_ROOT}/models/index-tts/repo"
 MODEL_DIR="${WORKSPACE_ROOT}/models/index-tts/checkpoints"
 PROFILE_DIR="${SERVICE_ROOT}/data/profiles"
@@ -29,7 +29,7 @@ export INDEXTTS_USE_CUDA_KERNEL="true"
 export INDEXTTS_USE_DEEPSPEED="false"
 export INDEXTTS_USE_ACCEL="false"
 export INDEXTTS_USE_TORCH_COMPILE="false"
-export INDEXTTS_PRELOAD_ON_STARTUP="true"
+export INDEXTTS_PRELOAD_ON_STARTUP="${INDEXTTS_PRELOAD_ON_STARTUP:-false}"
 
 echo "Using Python: $PYTHON_EXE"
 echo "REPO:         $INDEXTTS_REPO_DIR"

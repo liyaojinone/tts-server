@@ -23,7 +23,7 @@ runtime:
     VOXCPM_EXPECTED_ARCHITECTURE: voxcpm2
     VOXCPM_HOST: 127.0.0.1
     VOXCPM_PORT: "5105"
-    VOXCPM_PRELOAD_ON_STARTUP: "true"
+    VOXCPM_PRELOAD_ON_STARTUP: "false"
   startup_timeout_ms: 180000
   request_timeout_ms: 300000
   idle_shutdown_seconds: 0

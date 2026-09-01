@@ -7,7 +7,7 @@ WORKSPACE_ROOT="$(cd "$SERVICE_ROOT/../.." && pwd)"
 
 REPO_DIR="${STABLE_AUDIO3_REPO_DIR:-${WORKSPACE_ROOT}/models/stable-audio-3/repo}"
 CACHE_ROOT="${WORKSPACE_ROOT}/models/stable-audio-3"
-PYTHON_EXE="${STABLE_AUDIO3_PYTHON:-${REPO_DIR}/.venv/bin/python}"
+PYTHON_EXE="${STABLE_AUDIO3_PYTHON:-${SERVICE_ROOT}/.venv/bin/python}"
 PORT="${STABLE_AUDIO3_PORT:-5106}"
 SHARED_PROTOCOL_SRC="${WORKSPACE_ROOT}/bobogen-protocol/src"
 

@@ -8,7 +8,7 @@ Protocol-compliant `VoxCPM2` service (`model_id: voxcpm2`) built on top of the s
 - `models/voxcpm/checkpoints` must contain the existing VoxCPM2 model files: `config.json`, `model.safetensors`, `audiovae.pth`, and `tokenizer.json`
 - the runtime Python environment must be able to import `models/voxcpm/repo/src`
 
-The provider YAML passes `VOXCPM_MODEL_ID`, `VOXCPM_EXPECTED_ARCHITECTURE=voxcpm2`, all four model-file paths, profile/output paths, host, and port explicitly. Missing files or a `config.json` whose `architecture` is not `voxcpm2` cause startup/preload to fail; the service never downloads or falls back to a different model directory or a prior VoxCPM architecture. The existing checkpoint directory is used in place and is not copied or replaced.
+The provider YAML passes `VOXCPM_MODEL_ID`, `VOXCPM_EXPECTED_ARCHITECTURE=voxcpm2`, all four model-file paths, profile/output paths, host, and port explicitly. Missing files or a `config.json` whose `architecture` is not `voxcpm2` are reported when the model is preloaded or a synthesis request needs it; profile registration itself does not load or validate the weight bundle. The service never downloads or falls back to a different model directory or a prior VoxCPM architecture. The existing checkpoint directory is used in place and is not copied or replaced.
 
 ## Run
 
@@ -41,5 +41,5 @@ http://127.0.0.1:5105
 - reports `version: voxcpm2` from `/v1/health`
 - supports reusable clone profiles
 - supports reusable instruction-based design profiles
-- preloads the model on startup when `VOXCPM_PRELOAD_ON_STARTUP=true`
+- loads the model lazily on synthesis by default; set `VOXCPM_PRELOAD_ON_STARTUP=true` for an explicit warm startup
 - stores profile and output data under versioned `voxcpm2` paths by default

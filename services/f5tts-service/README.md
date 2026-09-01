@@ -33,7 +33,14 @@ Or use the bundled scripts:
 .\clone-test.ps1
 ```
 
-By default `start.ps1` reads upstream source from `models\f5-tts\repo` and Python from `services\f5tts-service\.venv\Scripts\python.exe`. Override with `F5TTS_REPO_DIR` or `F5TTS_PYTHON` when needed.
+By default `start.ps1` reads upstream source from `models\f5-tts\repo` and Python from `services\f5tts-service\.venv\Scripts\python.exe`. It starts the official `F5TTS_v1_Base` model and requires its local files at:
+
+```text
+models\f5-tts\repo\ckpts\F5TTS_v1_Base\model_1250000.safetensors
+models\f5-tts\repo\ckpts\F5TTS_v1_Base\vocab.txt
+```
+
+Override the model and paths with `F5_MODEL`, `F5_CKPT_FILE`, `F5_VOCAB_FILE`, `F5TTS_REPO_DIR` or `F5TTS_PYTHON` when needed. The service fails at startup if the configured local checkpoint or vocabulary is missing; it does not download or silently select another checkpoint.
 
 ## Current behavior
 

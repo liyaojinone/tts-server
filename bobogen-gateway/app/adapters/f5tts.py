@@ -6,11 +6,26 @@ class F5TTSAdapter(BaseProviderAdapter):
     provider_type = "f5-tts"
 
     def build_request(self, request: UnifiedSynthesizeRequest) -> MappedRequest:
-        payload = {
-            "ref_audio": request.parameters.reference_audio,
-            "text": request.text,
-            "ref_text": request.parameters.reference_text or "",
-            "speed": request.parameters.speed,
-        }
-        payload.update(request.parameters.extra)
-        return MappedRequest(path="/tts", json=payload)
+        return MappedRequest(
+            path="/v1/synthesize",
+            json={
+                "text": request.text,
+                "voice_id": request.voice_id,
+                "language": request.language,
+                "parameters": {
+                    "speed": request.parameters.speed,
+                    "pitch": request.parameters.pitch,
+                    "volume": request.parameters.volume,
+                    "emotion": request.parameters.emotion,
+                    "emotion_intensity": request.parameters.emotion_intensity,
+                    "instruction": request.parameters.instruction,
+                    "reference_audio": request.parameters.reference_audio,
+                    "reference_text": request.parameters.reference_text,
+                    "extra": request.parameters.extra,
+                },
+                "output": {
+                    "format": request.output.format,
+                    "sample_rate": request.output.sample_rate,
+                },
+            },
+        )

@@ -13,7 +13,7 @@ $tokenizerPath = if ($env:VOXCPM_TOKENIZER_PATH) { $env:VOXCPM_TOKENIZER_PATH } 
 $profileDir = if ($env:VOXCPM_PROFILE_DIR) { $env:VOXCPM_PROFILE_DIR } else { Join-Path $serviceRoot "data\profiles\$modelId" }
 $outputDir = if ($env:VOXCPM_OUTPUT_DIR) { $env:VOXCPM_OUTPUT_DIR } else { Join-Path $workspaceRoot "models\voxcpm\outputs\$modelId" }
 $expectedArchitecture = if ($env:VOXCPM_EXPECTED_ARCHITECTURE) { $env:VOXCPM_EXPECTED_ARCHITECTURE.ToLowerInvariant() } else { "voxcpm2" }
-$host = if ($env:VOXCPM_HOST) { $env:VOXCPM_HOST } else { "127.0.0.1" }
+$bindHost = if ($env:VOXCPM_HOST) { $env:VOXCPM_HOST } else { "127.0.0.1" }
 $port = if ($env:VOXCPM_PORT) { [int]$env:VOXCPM_PORT } else { 5105 }
 $sharedProtocolSrc = Join-Path $workspaceRoot "bobogen-protocol\src"
 $sharedKitSrc = Join-Path $workspaceRoot "bobogen-service-kit\src"
@@ -23,17 +23,8 @@ if (-not (Test-Path $pythonExe)) {
     throw "Python executable not found: $pythonExe"
 }
 
-foreach ($required in @{
-    "VoxCPM repo" = $repoDir
-    "VoxCPM source" = $repoSrc
-    "VoxCPM config" = $configPath
-    "VoxCPM model weights" = $modelWeightsPath
-    "VoxCPM AudioVAE weights" = $audioVaeWeightsPath
-    "VoxCPM tokenizer" = $tokenizerPath
-}.GetEnumerator()) {
-    if (-not (Test-Path $required.Value)) {
-        throw "$($required.Key) not found: $($required.Value)"
-    }
+if (-not (Test-Path $repoDir)) {
+    throw "VoxCPM repo not found: $repoDir"
 }
 
 try {
@@ -60,9 +51,9 @@ $env:VOXCPM_TOKENIZER_PATH = $tokenizerPath
 $env:VOXCPM_PROFILE_DIR = $profileDir
 $env:VOXCPM_OUTPUT_DIR = $outputDir
 $env:VOXCPM_EXPECTED_ARCHITECTURE = $expectedArchitecture
-$env:VOXCPM_HOST = $host
+$env:VOXCPM_HOST = $bindHost
 $env:VOXCPM_PORT = $port
-$env:VOXCPM_PRELOAD_ON_STARTUP = if ($env:VOXCPM_PRELOAD_ON_STARTUP) { $env:VOXCPM_PRELOAD_ON_STARTUP } else { "true" }
+$env:VOXCPM_PRELOAD_ON_STARTUP = if ($env:VOXCPM_PRELOAD_ON_STARTUP) { $env:VOXCPM_PRELOAD_ON_STARTUP } else { "false" }
 $env:VOXCPM_LOAD_DENOISER = if ($env:VOXCPM_LOAD_DENOISER) { $env:VOXCPM_LOAD_DENOISER } else { "false" }
 $env:VOXCPM_OPTIMIZE = if ($env:VOXCPM_OPTIMIZE) { $env:VOXCPM_OPTIMIZE } else { "false" }
 
@@ -71,6 +62,6 @@ Write-Host "REPO: $env:VOXCPM_REPO_DIR"
 Write-Host "MODEL: $env:VOXCPM_MODEL_DIR"
 Write-Host "Architecture: $env:VOXCPM_EXPECTED_ARCHITECTURE"
 Write-Host "PYTHONPATH: $env:PYTHONPATH"
-Write-Host "Starting voxcpm-service on http://${host}:$port"
+Write-Host "Starting voxcpm-service on http://${bindHost}:$port"
 
-& $pythonExe -m uvicorn app.main:create_app --factory --host $host --port $port
+& $pythonExe -m uvicorn app.main:create_app --factory --host $bindHost --port $port

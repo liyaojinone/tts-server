@@ -6,7 +6,7 @@ Protocol-compliant `IndexTTS2` service built on top of the shared local TTS pack
 
 - `models/index-tts/repo` must exist
 - `models/index-tts/checkpoints` must contain the downloaded model files
-- `models/index-tts/repo/.venv` must be available
+- `services/index-tts-service/.venv` must be available
 
 ## Run
 
@@ -16,7 +16,7 @@ Use the bundled script:
 .\start.ps1
 ```
 
-The service now preloads `IndexTTS2` during startup and keeps the model resident in memory for later requests.
+The service starts without loading `IndexTTS2` by default. Profile registration only writes the reference asset; the model is loaded lazily on the first synthesis request. Set `INDEXTTS_PRELOAD_ON_STARTUP=true` when a warm startup is explicitly required.
 
 Or run directly:
 
@@ -45,7 +45,7 @@ Health check:
 - serves `/v1/clone/{task_id}/status`
 - supports cloned reusable voice profiles
 - supports independent emotion reference audio through `parameters.extra.emotion_reference_audio`
-- preloads the model on startup and reuses the same loaded instance across requests
+- loads the model lazily on synthesis and reuses the same loaded instance across requests
 - writes generated audio into `models/index-tts/outputs`
 
 ## Gateway provider

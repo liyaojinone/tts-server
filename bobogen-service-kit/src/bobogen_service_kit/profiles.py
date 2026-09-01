@@ -10,6 +10,17 @@ def slugify_voice_id(name: str) -> str:
     return normalized or "voice"
 
 
+def resolve_voice_id(request) -> str:
+    """Return the explicit shared ID, or preserve the legacy name-based ID."""
+    requested = getattr(request, "voice_id", None)
+    if requested:
+        normalized = str(requested).strip()
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", normalized):
+            raise ValueError("voice_id must contain only letters, numbers, '-' or '_' and start with a letter or number")
+        return normalized
+    return slugify_voice_id(request.name or "voice")
+
+
 class ProfileStore:
     def __init__(self, root: Path):
         self.root = root
@@ -31,7 +42,7 @@ class ProfileStore:
         return profiles
 
     async def create(self, request, audio) -> dict:
-        voice_id = slugify_voice_id(request.name or "voice")
+        voice_id = resolve_voice_id(request)
         profile_root = self.root / voice_id
         profile_root.mkdir(parents=True, exist_ok=True)
 

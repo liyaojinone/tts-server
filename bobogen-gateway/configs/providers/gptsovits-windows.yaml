@@ -27,6 +27,7 @@ runtime:
     GPTSOVITS_PORT: "5103"
     GPTSOVITS_DEVICE: cuda
     GPTSOVITS_IS_HALF: "true"
+    GPTSOVITS_PRELOAD_ON_STARTUP: "false"
   startup_timeout_ms: 120000
   request_timeout_ms: 180000
   idle_shutdown_seconds: 0

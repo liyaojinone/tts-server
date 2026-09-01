@@ -79,6 +79,7 @@ Clone and synthesize smoke test:
 - requires the configured, version-matched local model bundle
 - stores cloned voice profiles under `services/gptsovits-service/data/profiles/gpt_sovits_v2pro` by default
 - writes transient synthesis output under `models/gpt-sovits/outputs/gpt_sovits_v2pro`
+- registers clone profiles without loading the model by default; set `GPTSOVITS_PRELOAD_ON_STARTUP=true` for an explicit warm startup
 
 Protocol endpoint overview:
 - [bobogen-api-reference.md](..\..\docs\services\bobogen-api-reference.md)
@@ -88,6 +89,8 @@ Protocol endpoint overview:
 `/v1/clone` creates a reusable voice profile from one reference audio file. The created `voice_id`
 will appear in `/v1/voices` and can be used in `/v1/synthesize` without passing
 `parameters.reference_audio` again.
+
+Clients may provide an explicit `voice_id` to share one logical voice across multiple BoboGen model services. If omitted, the service keeps the legacy name-based ID behavior.
 
 Example:
 

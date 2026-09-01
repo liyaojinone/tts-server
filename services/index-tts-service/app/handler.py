@@ -55,7 +55,7 @@ class IndexTTSHandler:
         if not self.ready:
             self.last_error = "IndexTTS repository or checkpoints directory is missing"
             return
-        if env_flag("INDEXTTS_PRELOAD_ON_STARTUP", True):
+        if env_flag("INDEXTTS_PRELOAD_ON_STARTUP", False):
             self._ensure_tts()
 
     async def health(self):
