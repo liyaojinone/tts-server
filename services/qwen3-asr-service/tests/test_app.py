@@ -1,6 +1,19 @@
 from fastapi.testclient import TestClient
 
 
+def test_qwen3_asr_defaults_to_official_model_id_without_rewriting_paths(monkeypatch, tmp_path):
+    repo_dir = tmp_path / "qwen3-asr-repo"
+    monkeypatch.setenv("QWEN3_ASR_REPO_DIR", str(repo_dir))
+    monkeypatch.setenv("QWEN3_ASR_MODEL_ID", "qwen3_asr_0_6b")
+    monkeypatch.delenv("QWEN3_ASR_MODEL_DIR", raising=False)
+    monkeypatch.delenv("QWEN3_ASR_HF_REPO_ID", raising=False)
+
+    from app.handler import Qwen3ASRHandler
+
+    handler = Qwen3ASRHandler(test_mode=True)
+
+
+
 def test_qwen3_asr_service_health_and_test_mode_transcription(monkeypatch):
     monkeypatch.setenv("QWEN3_ASR_MODEL_ID", "qwen3_asr_0_6b")
     monkeypatch.setenv("QWEN3_ASR_HF_REPO_ID", "Qwen/Qwen3-ASR-0.6B")
@@ -182,11 +195,61 @@ def test_qwen3_forced_aligner_normalizes_forced_align_result_items():
     ]
 
 
-def test_qwen3_forced_aligner_uses_native_processor_and_token_classifier():
-    from types import SimpleNamespace
+def test_qwen3_forced_aligner_uses_transformers_native_backend(monkeypatch):
+    import sys
+    import types
 
     from app.handler import Qwen3ASRHandler
-    from bobogen_protocol.models import GenerateRequest
+
+    loaded = {}
+    fake_processor = object()
+    fake_model = object()
+
+    class FakeAutoProcessor:
+        @staticmethod
+        def from_pretrained(model_path):
+            loaded["processor"] = model_path
+            return fake_processor
+
+    class FakeAutoModelForTokenClassification:
+        @staticmethod
+        def from_pretrained(model_path, **kwargs):
+            loaded["model"] = (model_path, kwargs)
+            return fake_model
+
+    fake_torch = types.SimpleNamespace(
+        cuda=types.SimpleNamespace(is_available=lambda: True),
+        bfloat16="bfloat16",
+    )
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+    monkeypatch.setitem(
+        sys.modules,
+        "transformers",
+        types.SimpleNamespace(
+            AutoProcessor=FakeAutoProcessor,
+            AutoModelForTokenClassification=FakeAutoModelForTokenClassification,
+        ),
+    )
+
+    handler = Qwen3ASRHandler(test_mode=False)
+    aligner = handler._load_aligner()
+
+    assert aligner.processor is fake_processor
+    assert aligner.model is fake_model
+    assert loaded == {
+        "processor": handler.hf_repo_id,
+        "model": (
+            handler.hf_repo_id,
+            {"device_map": handler.device, "dtype": "bfloat16"},
+        )
+    }
+
+
+def test_native_forced_aligner_uses_official_processor_contract():
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+
+    from app.handler import _NativeForcedAligner
 
     class FakeBatch(dict):
         def to(self, device, dtype):
@@ -195,47 +258,60 @@ def test_qwen3_forced_aligner_uses_native_processor_and_token_classifier():
             return self
 
     class FakeProcessor:
-        def prepare_forced_aligner_inputs(self, *, audio, transcript, language):
-            assert audio == "E:/audio/line.wav"
-            assert transcript == "你好"
-            assert language == "Chinese"
+        def prepare_forced_aligner_inputs(self, **kwargs):
+            assert kwargs == {
+                "audio": "E:/audio/line.wav",
+                "transcript": "你好",
+                "language": "Chinese",
+            }
             return FakeBatch(input_ids="input-ids"), [["你", "好"]]
 
-        def decode_forced_alignment(
-            self,
-            *,
-            logits,
-            input_ids,
-            word_lists,
-            timestamp_token_id,
-            timestamp_segment_time,
-        ):
-            assert logits == "token-classification-logits"
-            assert input_ids == "input-ids"
-            assert word_lists == [["你", "好"]]
-            assert timestamp_token_id == 151705
-            assert timestamp_segment_time == 80
-            return [
-                [
-                    {"text": "你", "start_time": 0.1, "end_time": 0.3},
-                    {"text": "好", "start_time": 0.3, "end_time": 0.6},
-                ]
-            ]
+        def decode_forced_alignment(self, **kwargs):
+            assert kwargs == {
+                "logits": "token-classification-logits",
+                "input_ids": "input-ids",
+                "word_lists": [["你", "好"]],
+                "timestamp_token_id": 151705,
+            }
+            return [[{"text": "你", "start_time": 0.1, "end_time": 0.3}]]
 
     class FakeModel:
         device = "cuda:0"
         dtype = "bfloat16"
-        config = SimpleNamespace(timestamp_token_id=151705, timestamp_segment_time=80)
+        config = SimpleNamespace(timestamp_token_id=151705)
 
         def __call__(self, **inputs):
             assert inputs == {"input_ids": "input-ids"}
             return SimpleNamespace(logits="token-classification-logits")
 
+    torch_module = SimpleNamespace(inference_mode=nullcontext)
+    aligner = _NativeForcedAligner(FakeModel(), FakeProcessor(), torch_module)
+
+    assert aligner.align(audio="E:/audio/line.wav", text="你好", language="Chinese") == [
+        [{"text": "你", "start_time": 0.1, "end_time": 0.3}]
+    ]
+
+
+def test_qwen3_forced_aligner_delegates_alignment_to_adapter(monkeypatch):
+    from app.handler import Qwen3ASRHandler
+    from bobogen_protocol.models import GenerateRequest
+
+    monkeypatch.setenv("QWEN3_ASR_MODEL_ID", "qwen3_forced_aligner_0_6b")
+    captured = {}
+
+    class FakeAligner:
+        def align(self, *, audio, text, language):
+            captured.update(audio=audio, text=text, language=language)
+            return [[
+                {"text": "你", "start_time": 0.1, "end_time": 0.3},
+                {"text": "好", "start_time": 0.3, "end_time": 0.6},
+            ]]
+
     handler = Qwen3ASRHandler(test_mode=False)
-    handler._aligner = (FakeModel(), FakeProcessor())
+    handler._aligner = FakeAligner()
     request = GenerateRequest.model_validate(
         {
-            "model": "qwen3_asr_0_6b",
+            "model": "qwen3_forced_aligner_0_6b",
             "task": "audio.align",
             "input": {
                 "audio": "E:/audio/line.wav",
@@ -250,6 +326,7 @@ def test_qwen3_forced_aligner_uses_native_processor_and_token_classifier():
 
     payload = handler.align(request)
 
+    assert captured == {"audio": "E:/audio/line.wav", "text": "你好", "language": "Chinese"}
     assert payload["segments"] == [
         {
             "index": 0,
@@ -270,39 +347,23 @@ def test_qwen3_forced_aligner_uses_native_processor_and_token_classifier():
     ]
 
 
-def test_qwen3_forced_aligner_passes_no_language_hint_when_request_is_auto():
-    from types import SimpleNamespace
-
+def test_qwen3_forced_aligner_passes_auto_language_to_adapter(monkeypatch):
     from app.handler import Qwen3ASRHandler
     from bobogen_protocol.models import GenerateRequest
 
+    monkeypatch.setenv("QWEN3_ASR_MODEL_ID", "qwen3_forced_aligner_0_6b")
     captured = {}
 
-    class FakeBatch(dict):
-        def to(self, _device, _dtype):
-            return self
-
-    class FakeProcessor:
-        def prepare_forced_aligner_inputs(self, *, audio, transcript, language):
+    class FakeAligner:
+        def align(self, *, audio, text, language):
             captured["language"] = language
-            return FakeBatch(input_ids="input-ids"), [["你"]]
-
-        def decode_forced_alignment(self, **_kwargs):
             return [[{"text": "你", "start_time": 0.0, "end_time": 0.1}]]
 
-    class FakeModel:
-        device = "cuda:0"
-        dtype = "bfloat16"
-        config = SimpleNamespace(timestamp_token_id=151705, timestamp_segment_time=80)
-
-        def __call__(self, **_inputs):
-            return SimpleNamespace(logits="token-classification-logits")
-
     handler = Qwen3ASRHandler(test_mode=False)
-    handler._aligner = (FakeModel(), FakeProcessor())
+    handler._aligner = FakeAligner()
     request = GenerateRequest.model_validate(
         {
-            "model": "qwen3_asr_0_6b",
+            "model": "qwen3_forced_aligner_0_6b",
             "task": "audio.align",
             "input": {
                 "audio": "E:/audio/line.wav",
@@ -316,57 +377,7 @@ def test_qwen3_forced_aligner_passes_no_language_hint_when_request_is_auto():
 
     handler.align(request)
 
-    assert captured["language"] is None
-
-
-def test_qwen3_forced_aligner_loads_native_hf_backend_without_legacy_fallback(monkeypatch):
-    import sys
-    import types
-
-    from app.handler import Qwen3ASRHandler
-
-    loaded = {}
-    fake_processor = object()
-    fake_model = object()
-
-    class FakeAutoProcessor:
-        @staticmethod
-        def from_pretrained(model_path):
-            loaded["processor"] = model_path
-            return fake_processor
-
-    class FakeAutoModelForTokenClassification:
-        @staticmethod
-        def from_pretrained(model_path, *, dtype, device_map):
-            loaded["model"] = (model_path, dtype, device_map)
-            return fake_model
-
-    class LegacyAligner:
-        @staticmethod
-        def from_pretrained(*_args, **_kwargs):
-            raise AssertionError("legacy Qwen3ForcedAligner must not be used")
-
-    fake_torch = types.SimpleNamespace(
-        cuda=types.SimpleNamespace(is_available=lambda: True),
-        bfloat16="bfloat16",
-    )
-    fake_transformers = types.SimpleNamespace(
-        AutoProcessor=FakeAutoProcessor,
-        AutoModelForTokenClassification=FakeAutoModelForTokenClassification,
-    )
-    fake_qwen_asr = types.SimpleNamespace(Qwen3ForcedAligner=LegacyAligner)
-    monkeypatch.setitem(sys.modules, "torch", fake_torch)
-    monkeypatch.setitem(sys.modules, "transformers", fake_transformers)
-    monkeypatch.setitem(sys.modules, "qwen_asr", fake_qwen_asr)
-
-    handler = Qwen3ASRHandler(test_mode=False)
-    aligner = handler._load_aligner()
-
-    assert aligner == (fake_model, fake_processor)
-    assert loaded == {
-        "processor": handler.hf_repo_id,
-        "model": (handler.hf_repo_id, "bfloat16", handler.device),
-    }
+    assert captured["language"] == "auto"
 
 
 def test_qwen3_forced_aligner_health_is_ready_after_native_model_load(monkeypatch):
@@ -374,40 +385,25 @@ def test_qwen3_forced_aligner_health_is_ready_after_native_model_load(monkeypatc
 
     monkeypatch.setenv("QWEN3_ASR_MODEL_ID", "qwen3_forced_aligner_0_6b")
     handler = Qwen3ASRHandler(test_mode=False)
-    handler._aligner = (object(), object())
+    handler._aligner = object()
 
     assert handler.health()["ready"] is True
 
 
-def test_qwen3_forced_aligner_serializes_gpu_inference():
+def test_qwen3_forced_aligner_serializes_gpu_inference(monkeypatch):
     import threading
     import time
-    from types import SimpleNamespace
 
     from app.handler import Qwen3ASRHandler
     from bobogen_protocol.models import GenerateRequest
 
+    monkeypatch.setenv("QWEN3_ASR_MODEL_ID", "qwen3_forced_aligner_0_6b")
     active_calls = 0
     max_active_calls = 0
     counter_lock = threading.Lock()
 
-    class FakeBatch(dict):
-        def to(self, _device, _dtype):
-            return self
-
-    class FakeProcessor:
-        def prepare_forced_aligner_inputs(self, **_kwargs):
-            return FakeBatch(input_ids="input-ids"), [[]]
-
-        def decode_forced_alignment(self, **_kwargs):
-            return [[]]
-
-    class FakeModel:
-        device = "cuda:0"
-        dtype = "bfloat16"
-        config = SimpleNamespace(timestamp_token_id=151705, timestamp_segment_time=80)
-
-        def __call__(self, **_inputs):
+    class FakeAligner:
+        def align(self, **_kwargs):
             nonlocal active_calls, max_active_calls
             with counter_lock:
                 active_calls += 1
@@ -415,13 +411,13 @@ def test_qwen3_forced_aligner_serializes_gpu_inference():
             time.sleep(0.05)
             with counter_lock:
                 active_calls -= 1
-            return SimpleNamespace(logits="logits")
+            return [[]]
 
     handler = Qwen3ASRHandler(test_mode=False)
-    handler._aligner = (FakeModel(), FakeProcessor())
+    handler._aligner = FakeAligner()
     request = GenerateRequest.model_validate(
         {
-            "model": "qwen3_asr_0_6b",
+            "model": "qwen3_forced_aligner_0_6b",
             "task": "audio.align",
             "input": {"audio": "line.wav", "text": "你好", "language": "Chinese"},
             "output": {"format": "json"},
@@ -437,55 +433,53 @@ def test_qwen3_forced_aligner_serializes_gpu_inference():
     assert max_active_calls == 1
 
 
-def test_qwen3_forced_aligner_releases_unused_cuda_cache_after_inference(monkeypatch):
+def test_qwen3_forced_aligner_warmup_loads_transformers_native_backend(monkeypatch):
     import sys
     import types
-    from contextlib import nullcontext
-    from types import SimpleNamespace
 
     from app.handler import Qwen3ASRHandler
-    from bobogen_protocol.models import GenerateRequest
 
-    released = []
+    monkeypatch.setenv("QWEN3_ASR_MODEL_ID", "qwen3_forced_aligner_0_6b")
+    calls = {"processor": [], "model": []}
 
-    class FakeBatch(dict):
-        def to(self, _device, _dtype):
-            return self
+    class FakeAutoProcessor:
+        @staticmethod
+        def from_pretrained(model_path):
+            calls["processor"].append(model_path)
+            return object()
 
-    class FakeProcessor:
-        def prepare_forced_aligner_inputs(self, **_kwargs):
-            return FakeBatch(input_ids="input-ids"), [[]]
-
-        def decode_forced_alignment(self, **_kwargs):
-            return [[]]
-
-    class FakeModel:
-        device = "cuda:0"
-        dtype = "bfloat16"
-        config = SimpleNamespace(timestamp_token_id=151705, timestamp_segment_time=80)
-
-        def __call__(self, **_inputs):
-            return SimpleNamespace(logits="logits")
+    class FakeAutoModelForTokenClassification:
+        @staticmethod
+        def from_pretrained(model_path, **kwargs):
+            calls["model"].append((model_path, kwargs))
+            return object()
 
     fake_torch = types.SimpleNamespace(
-        inference_mode=nullcontext,
-        cuda=types.SimpleNamespace(empty_cache=lambda: released.append(True)),
+        cuda=types.SimpleNamespace(is_available=lambda: True),
+        bfloat16="bfloat16",
     )
     monkeypatch.setitem(sys.modules, "torch", fake_torch)
-    handler = Qwen3ASRHandler(test_mode=False)
-    handler._aligner = (FakeModel(), FakeProcessor())
-    request = GenerateRequest.model_validate(
-        {
-            "model": "qwen3_asr_0_6b",
-            "task": "audio.align",
-            "input": {"audio": "line.wav", "text": "你好", "language": "Chinese"},
-            "output": {"format": "json"},
-        }
+    monkeypatch.setitem(
+        sys.modules,
+        "transformers",
+        types.SimpleNamespace(
+            AutoProcessor=FakeAutoProcessor,
+            AutoModelForTokenClassification=FakeAutoModelForTokenClassification,
+        ),
     )
 
-    handler.align(request)
+    handler = Qwen3ASRHandler(test_mode=False)
+    handler.warmup()
 
-    assert released == [True]
+    assert calls == {
+        "processor": [handler.hf_repo_id],
+        "model": [
+            (
+                handler.hf_repo_id,
+                {"device_map": handler.device, "dtype": "bfloat16"},
+            )
+        ],
+    }
 
 
 def test_qwen3_asr_service_rejects_unsupported_task():

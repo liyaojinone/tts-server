@@ -88,6 +88,13 @@ def create_app(test_mode: bool | None = None) -> FastAPI:
     async def health():
         return handler.health()
 
+    @app.post("/v1/warmup")
+    async def warmup():
+        try:
+            return await run_in_threadpool(handler.warmup)
+        except Exception as exc:
+            return _error(500, "WARMUP_FAILED", str(exc))
+
     @app.post("/v1/jobs", status_code=202)
     async def create_job(envelope: CreateJobEnvelope):
         if not _SAFE_JOB_ID.fullmatch(envelope.job_id):

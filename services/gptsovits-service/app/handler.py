@@ -111,6 +111,17 @@ def env_flag(name: str, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _configure_ffmpeg_runtime() -> None:
+    """Load the project-local FFmpeg shared libraries before TorchCodec starts."""
+    if os.name != "nt":
+        return
+    ffmpeg_dir = ROOT_DIR / "services" / "gptsovits-service" / "ffmpeg"
+    if not ffmpeg_dir.is_dir():
+        return
+    os.add_dll_directory(str(ffmpeg_dir))
+    os.environ["PATH"] = f"{ffmpeg_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+
+
 GPTSOVITS_ROOT = get_repo_dir()
 
 if str(GPTSOVITS_ROOT) not in sys.path:
@@ -174,6 +185,19 @@ class GPTSoVITSHandler:
             self.last_error = str(exc)
             raise
 
+    async def warmup(self):
+        if self.test_mode:
+            return {"status": "ok", "mode": "test"}
+        self._ensure_pipeline()
+        self.ready = True
+        self.last_error = None
+        return {
+            "status": "ready",
+            "model": "GPT-SoVITS",
+            "version": self.model_id,
+            "upstream_version": self.upstream_version,
+        }
+
     def _ensure_pipeline(self):
         if self.test_mode:
             return None
@@ -185,6 +209,7 @@ class GPTSoVITSHandler:
             original_cwd = os.getcwd()
             os.chdir(str(self.repo_dir))
             try:
+                _configure_ffmpeg_runtime()
                 # The upstream TTS module imports ``sv.py`` during module loading.
                 # ``sv.py`` resolves ``GPT_SoVITS/eres2net`` relative to the current
                 # working directory, so this must happen before either upstream
@@ -376,15 +401,20 @@ class GPTSoVITSHandler:
             "repetition_penalty": float(request.parameters.extra.get("repetition_penalty", 1.35)),
         }
 
-        result = pipeline.run(req)
-        if hasattr(result, "__iter__") and not isinstance(result, (bytes, bytearray)):
-            chunks = list(result)
-            if chunks and isinstance(chunks[-1], tuple):
-                sample_rate, audio_data = chunks[-1]
+        original_cwd = os.getcwd()
+        os.chdir(str(self.repo_dir))
+        try:
+            result = pipeline.run(req)
+            if hasattr(result, "__iter__") and not isinstance(result, (bytes, bytearray)):
+                chunks = list(result)
+                if chunks and isinstance(chunks[-1], tuple):
+                    sample_rate, audio_data = chunks[-1]
+                else:
+                    sample_rate, audio_data = chunks[0]
             else:
-                sample_rate, audio_data = chunks[0]
-        else:
-            sample_rate, audio_data = result
+                sample_rate, audio_data = result
+        finally:
+            os.chdir(original_cwd)
 
         import soundfile as sf
 

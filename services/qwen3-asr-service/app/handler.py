@@ -23,12 +23,37 @@ def _read_int_env(name: str, default: int) -> int:
     return int(value) if value else default
 
 
+class _NativeForcedAligner:
+    """Adapter for the Transformers-native Qwen3 ForcedAligner API."""
+
+    def __init__(self, model: Any, processor: Any, torch_module: Any):
+        self.model = model
+        self.processor = processor
+        self._torch = torch_module
+
+    def align(self, *, audio: str, text: str, language: str):
+        aligner_inputs, word_lists = self.processor.prepare_forced_aligner_inputs(
+            audio=audio,
+            transcript=text,
+            language=language,
+        )
+        aligner_inputs = aligner_inputs.to(self.model.device, self.model.dtype)
+        with self._torch.inference_mode():
+            outputs = self.model(**aligner_inputs)
+        return self.processor.decode_forced_alignment(
+            logits=outputs.logits,
+            input_ids=aligner_inputs["input_ids"],
+            word_lists=word_lists,
+            timestamp_token_id=self.model.config.timestamp_token_id,
+        )
+
+
 class Qwen3ASRHandler:
     def __init__(self, test_mode: bool = False):
         self.test_mode = test_mode or _truthy(os.environ.get("QWEN3_ASR_TEST_MODE"))
         self.model_id = os.environ.get("QWEN3_ASR_MODEL_ID", DEFAULT_MODEL_ID)
-        self.model_dir = os.environ.get("QWEN3_ASR_MODEL_DIR")
-        self.hf_repo_id = self.model_dir or os.environ.get("QWEN3_ASR_HF_REPO_ID") or HF_REPO_ID_BY_MODEL_ID.get(
+        self.repo_dir = os.environ.get("QWEN3_ASR_REPO_DIR")
+        self.hf_repo_id = os.environ.get("QWEN3_ASR_HF_REPO_ID") or HF_REPO_ID_BY_MODEL_ID.get(
             self.model_id,
             DEFAULT_HF_REPO_ID,
         )
@@ -40,12 +65,19 @@ class Qwen3ASRHandler:
         self._aligner = None
         self._inference_lock = Lock()
 
+    def warmup(self) -> None:
+        if self.test_mode:
+            return
+        if self.model_id == "qwen3_forced_aligner_0_6b":
+            self._load_aligner()
+        else:
+            self._load_model()
+
     def health(self) -> dict[str, Any]:
         return {
             "status": "ok",
             "model": self.model_id,
             "hfRepoId": self.hf_repo_id,
-            "modelDir": self.model_dir,
             "device": self.device,
             "gpuRequired": True,
             "ready": self.test_mode or self._model is not None or self._aligner is not None,
@@ -166,34 +198,13 @@ class Qwen3ASRHandler:
                 "model": self.model_id,
             }
 
-        model, processor = self._load_aligner()
-        try:
-            import torch
-        except ImportError as exc:
-            raise RuntimeError("CUDA GPU is required, but PyTorch is not installed") from exc
+        aligner = self._load_aligner()
         with self._inference_lock:
-            inputs = None
-            outputs = None
-            try:
-                inputs, word_lists = processor.prepare_forced_aligner_inputs(
-                    audio=str(audio),
-                    transcript=str(text),
-                    language=None if str(language).lower() == "auto" else str(language),
-                )
-                inputs = inputs.to(model.device, model.dtype)
-                with torch.inference_mode():
-                    outputs = model(**inputs)
-                result = processor.decode_forced_alignment(
-                    logits=outputs.logits,
-                    input_ids=inputs["input_ids"],
-                    word_lists=word_lists,
-                    timestamp_token_id=model.config.timestamp_token_id,
-                    timestamp_segment_time=model.config.timestamp_segment_time,
-                )
-            finally:
-                del outputs
-                del inputs
-                torch.cuda.empty_cache()
+            result = aligner.align(
+                audio=str(audio),
+                text=str(text),
+                language=str(language),
+            )
         return self._normalize_alignment_result(
             result,
             text=str(text),
@@ -242,8 +253,8 @@ class Qwen3ASRHandler:
                 from transformers import AutoModelForTokenClassification, AutoProcessor
             except ImportError as exc:
                 raise RuntimeError(
-                    "Native Qwen3 ForcedAligner requires a Transformers version with "
-                    "Qwen3ASRForTokenClassification support"
+                    "Transformers with Qwen3 ForcedAligner support is not installed. "
+                    "Run the qwen3-asr-service setup first."
                 ) from exc
 
             processor = AutoProcessor.from_pretrained(self.hf_repo_id)
@@ -252,7 +263,7 @@ class Qwen3ASRHandler:
                 dtype=torch.bfloat16,
                 device_map=self.device,
             )
-            self._aligner = (model, processor)
+            self._aligner = _NativeForcedAligner(model=model, processor=processor, torch_module=torch)
         return self._aligner
 
     def _normalize_transcription_result(self, result, fallback_language: str) -> dict[str, Any]:

@@ -459,3 +459,42 @@ def test_launch_process_redirects_provider_output_to_single_combined_log(monkeyp
     assert "--- started at " in combined_log.read_text(encoding="utf-8")
     assert popen_args["stdout"].name == str(combined_log)
     assert popen_args["stderr"] == subprocess.STDOUT
+
+
+def test_launch_process_injects_huggingface_token_only_for_gated_model(monkeypatch, tmp_path):
+    import app.services.process_manager as process_manager
+    from app.services.process_manager import ProcessManager
+    from app.schemas.provider import CapabilityConfig, NetworkConfig, ProviderConfig, RuntimeConfig
+
+    provider = ProviderConfig(
+        provider_id="stable-audio-provider",
+        model_id="stable_audio_3_small_sfx",
+        provider_type="stableaudio3",
+        display_name="Stable Audio",
+        enabled=True,
+        runtime=RuntimeConfig(
+            root_dir=str(tmp_path), cwd=str(tmp_path), command=["python", "service.py"], env={},
+            startup_timeout_ms=1000, request_timeout_ms=1000, idle_shutdown_seconds=0,
+        ),
+        network=NetworkConfig(host="127.0.0.1", port=5106, base_url="http://127.0.0.1:5106", healthcheck_path="/health"),
+        capabilities=CapabilityConfig(voices=False, synthesize=False, clone=False, stream=False),
+    )
+    popen_args = {}
+
+    class TokenStore:
+        def get(self):
+            return "hf_example_secret_1234"
+
+    class FakeProcess:
+        pid = 4321
+
+    def fake_popen(command, cwd, env, stdout, stderr):
+        popen_args["env"] = env
+        return FakeProcess()
+
+    monkeypatch.setattr(process_manager, "LOG_DIR", tmp_path / "logs")
+    monkeypatch.setattr(process_manager.subprocess, "Popen", fake_popen)
+
+    manager = ProcessManager({provider.provider_id: provider}, huggingface_token_store=TokenStore())
+    assert asyncio.run(manager._launch_process(provider)) == 4321
+    assert popen_args["env"]["HF_TOKEN"] == "hf_example_secret_1234"

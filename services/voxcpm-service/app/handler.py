@@ -187,6 +187,14 @@ class VoxCPMHandler:
             payload["last_error"] = self.last_error
         return payload
 
+    async def warmup(self):
+        if self.test_mode:
+            return {"status": "ok", "mode": "test"}
+        self._ensure_model()
+        self.ready = True
+        self.last_error = None
+        return {"status": "ready", "model": "VoxCPM2", "version": self.model_id}
+
     async def list_voices(self, language=None, page=1, page_size=100):
         voices = [
             Voice(

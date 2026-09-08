@@ -1,0 +1,445 @@
+from fastapi.testclient import TestClient
+import time
+
+
+class _FakeTokenProtector:
+    def protect(self, plaintext: bytes) -> bytes:
+        return b"encrypted:" + plaintext[::-1]
+
+    def unprotect(self, ciphertext: bytes) -> bytes:
+        return ciphertext.removeprefix(b"encrypted:")[::-1]
+
+
+def test_management_page_is_served_by_gateway():
+    from app.main import create_app
+
+    client = TestClient(create_app())
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/html")
+    assert "模型服务" in response.text
+    assert "http://127.0.0.1:6006/" in response.text
+    assert "model-list" in response.text
+    assert "版本 / 规模" in response.text
+    assert "官方来源" in response.text
+    assert 'data-operation="download"' in response.text
+    assert 'data-operation="repair"' in response.text
+    assert "安装器将在下一阶段接入" not in response.text
+    assert "Hugging Face 授权" in response.text
+    assert "/api/model-credentials/huggingface" in response.text
+    assert "https://huggingface.co/settings/tokens" in response.text
+
+
+def test_management_catalog_contains_all_configured_local_models_and_repository_links():
+    from app.main import create_app
+    from app.config import load_provider_configs
+    from app.routers.management import MODEL_CATALOG
+
+    client = TestClient(create_app())
+
+    response = client.get("/api/model-services/catalog")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["service"]["name"] == "模型服务"
+    models = payload["models"]
+    configured_ids = {provider.model_id or provider.provider_id for provider in load_provider_configs()}
+    assert {model["id"] for model in MODEL_CATALOG} == configured_ids
+    assert {model["id"] for model in models} == {
+        "cosyvoice2",
+        "f5_tts",
+        "gpt_sovits_v2pro",
+        "index_tts_2",
+        "voxcpm2",
+        "stable_audio_3_small_sfx",
+        "stable_audio_3_small_music",
+        "stable_audio_3_medium",
+        "qwen3_asr_0_6b",
+        "qwen3_asr_1_7b",
+        "qwen3_forced_aligner_0_6b",
+        "campplus_speaker_diarization",
+        "tiger-dnr",
+    }
+    for model in models:
+        assert model["official_repo"].startswith("https://")
+        assert model["purpose"]
+        assert model["task"]
+        assert model["version"]
+        assert model["weight_size"]
+        assert model["disk_estimate"]
+        assert model["resource_root"]
+        assert isinstance(model["service_port"], int)
+        assert isinstance(model["source_platforms"], list)
+        assert model["source_support"] in {"full", "mixed", "partial", "conditional", "unknown"}
+
+    qwen = next(model for model in MODEL_CATALOG if model["id"] == "qwen3_asr_0_6b")
+    assert qwen["resource_root"] == "models/qwen3-asr/repo"
+    assert qwen["runtime_weight_policy"] == "upstream_managed"
+    assert qwen["required_paths"] == [
+        "models/qwen3-asr/repo",
+    ]
+
+    aligner = next(model for model in MODEL_CATALOG if model["id"] == "qwen3_forced_aligner_0_6b")
+    assert aligner["resource_root"] == "models/qwen3-asr/repo"
+    assert aligner["runtime_weight_policy"] == "upstream_managed"
+    assert aligner["required_paths"] == [
+        "models/qwen3-asr/repo",
+    ]
+
+    f5 = next(model for model in MODEL_CATALOG if model["id"] == "f5_tts")
+    assert f5["resource_root"] == "models/f5-tts/repo"
+    assert f5["runtime_weight_policy"] == "upstream_managed"
+    assert f5["required_paths"] == [
+        "models/f5-tts/repo",
+    ]
+
+
+def test_model_source_config_route_defaults_to_off_and_updates_project_config(tmp_path):
+    from app.main import create_app
+    from app.services.model_source import ModelSourceConfigStore
+
+    app = create_app()
+    store = ModelSourceConfigStore(tmp_path / "model-source-config.json")
+    app.state.model_source_config_store = store
+    app.state.process_manager.source_config_store = store
+    app.state.model_install_manager._source_config_store = store
+    client = TestClient(app)
+
+    initial = client.get("/api/model-source-config")
+    assert initial.status_code == 200
+    assert initial.json()["config"] == {
+        "enabled": False,
+        "hf_endpoint": None,
+        "modelscope_domain": None,
+    }
+
+    updated = client.put(
+        "/api/model-source-config",
+        json={
+            "enabled": True,
+            "hf_endpoint": "https://hf-mirror.com/",
+            "modelscope_domain": "www.modelscope.cn",
+        },
+    )
+    assert updated.status_code == 200
+    assert updated.json()["config"]["hf_endpoint"] == "https://hf-mirror.com"
+    assert updated.json()["config"]["enabled"] is True
+    assert updated.json()["restart_required"] is True
+
+    invalid = client.put(
+        "/api/model-source-config",
+        json={"enabled": True, "hf_endpoint": None, "modelscope_domain": None},
+    )
+    assert invalid.status_code == 400
+
+    disabled = client.put("/api/model-source-config", json={"enabled": False})
+    assert disabled.status_code == 200
+    assert disabled.json()["config"]["enabled"] is False
+
+
+def test_huggingface_credential_routes_only_expose_masked_token_metadata(tmp_path):
+    from app.main import create_app
+    from app.services.huggingface_token import HuggingFaceTokenStore
+
+    app = create_app()
+    app.state.huggingface_token_store = HuggingFaceTokenStore(
+        tmp_path / "huggingface-token.bin", protector=_FakeTokenProtector()
+    )
+    client = TestClient(app)
+
+    initial = client.get("/api/model-credentials/huggingface")
+    assert initial.status_code == 200
+    assert initial.json()["credential"] == {"configured": False, "token_suffix": None}
+
+    token = "hf_example_secret_1234"
+    saved = client.put("/api/model-credentials/huggingface", json={"token": token})
+    assert saved.status_code == 200
+    assert saved.json()["credential"] == {"configured": True, "token_suffix": "1234"}
+    assert token not in saved.text
+
+    fetched = client.get("/api/model-credentials/huggingface")
+    assert fetched.status_code == 200
+    assert fetched.json()["credential"] == {"configured": True, "token_suffix": "1234"}
+    assert token not in fetched.text
+
+    deleted = client.delete("/api/model-credentials/huggingface")
+    assert deleted.status_code == 200
+    assert deleted.json()["credential"] == {"configured": False, "token_suffix": None}
+
+
+def test_gated_model_download_requires_saved_huggingface_token(tmp_path):
+    from app.main import create_app
+    from app.services.huggingface_token import HuggingFaceTokenStore
+
+    app = create_app()
+    app.state.huggingface_token_store = HuggingFaceTokenStore(
+        tmp_path / "huggingface-token.bin", protector=_FakeTokenProtector()
+    )
+    app.state.model_install_manager._huggingface_token_store = app.state.huggingface_token_store
+    client = TestClient(app)
+
+    response = client.post("/api/model-services/stable_audio_3_small_sfx/download")
+
+    assert response.status_code == 400
+    assert "Hugging Face Token" in response.json()["detail"]
+
+
+
+
+def test_management_status_exposes_detection_and_console_data():
+    from app.main import create_app
+
+    client = TestClient(create_app())
+
+    status_response = client.get("/api/model-services/status")
+    logs_response = client.get("/api/model-services/logs?lines=5")
+
+    assert status_response.status_code == 200
+    status_payload = status_response.json()
+    assert status_payload["service"]["status"] in {"running", "ready"}
+    assert status_payload["models"]
+    for model in status_payload["models"]:
+        assert model["status"] in {"ready", "partial", "missing"}
+        assert isinstance(model["missing_paths"], list)
+
+    assert logs_response.status_code == 200
+    logs_payload = logs_response.json()
+    assert logs_payload["lines"] == 5
+    assert isinstance(logs_payload["content"], str)
+
+
+def test_management_model_download_is_an_idempotent_background_job():
+    from app.main import create_app
+
+    client = TestClient(create_app())
+
+    response = client.post("/api/model-services/index_tts_2/download")
+
+    assert response.status_code == 202
+    job = response.json()["job"]
+    assert job["model_id"] == "index_tts_2"
+    assert job["operation"] == "download"
+
+    deadline = time.monotonic() + 5
+    final_job = job
+    while time.monotonic() < deadline:
+        final_job = client.get(f"/api/model-services/jobs/{job['id']}").json()["job"]
+        if final_job["state"] in {"succeeded", "failed"}:
+            break
+        time.sleep(0.05)
+
+    assert final_job["state"] == "succeeded"
+    assert "无需重复下载" in "\n".join(final_job["logs"])
+
+
+def test_management_model_actions_reject_unknown_models():
+    from app.main import create_app
+
+    client = TestClient(create_app())
+
+    response = client.post("/api/model-services/not-a-model/repair")
+
+    assert response.status_code == 404
+
+
+def test_resource_detection_rejects_empty_files_and_directories(tmp_path):
+    from app.services.model_installer import is_resource_path_ready
+
+    empty_file = tmp_path / "empty.bin"
+    empty_file.touch()
+    empty_directory = tmp_path / "empty-directory"
+    empty_directory.mkdir()
+    metadata_only_directory = tmp_path / "metadata-only-directory"
+    metadata_only_directory.mkdir()
+    (metadata_only_directory / ".cache").mkdir()
+    (metadata_only_directory / ".cache" / "partial.metadata").write_text("partial", encoding="utf-8")
+    ready_file = tmp_path / "ready.bin"
+    ready_file.write_bytes(b"weights")
+    ready_directory = tmp_path / "ready-directory"
+    ready_directory.mkdir()
+    (ready_directory / "config.json").write_text("{}", encoding="utf-8")
+
+    assert not is_resource_path_ready(tmp_path, "empty.bin")
+    assert not is_resource_path_ready(tmp_path, "empty-directory")
+    assert not is_resource_path_ready(tmp_path, "metadata-only-directory")
+    assert is_resource_path_ready(tmp_path, "ready.bin")
+    assert is_resource_path_ready(tmp_path, "ready-directory")
+
+
+def test_model_installer_repair_refills_zero_length_manifest_file(tmp_path, monkeypatch):
+    from app.services.model_installer import ModelInstaller
+
+    required_path = "models/gpt-sovits/checkpoints/gpt_sovits_v2pro/s1v3.ckpt"
+    target = tmp_path / required_path
+    target.parent.mkdir(parents=True)
+    target.touch()
+    installer = ModelInstaller(tmp_path)
+    monkeypatch.setattr(installer, "_ensure_source", lambda source, progress: None)
+    calls = []
+
+    def refill(resource, progress):
+        calls.append(resource["kind"])
+        target.write_bytes(b"weights")
+
+    monkeypatch.setattr(installer, "_download_resource", refill)
+
+    installer.run(
+        {"id": "gpt_sovits_v2pro", "required_paths": [required_path]},
+        "repair",
+        lambda progress: None,
+    )
+
+    assert calls[0] == "hf_files"
+    assert target.read_bytes() == b"weights"
+
+
+def test_model_install_manifest_pins_huggingface_resources():
+    from app.services.model_installer import MODEL_INSTALL_PLANS
+
+    for plan in MODEL_INSTALL_PLANS.values():
+        for resource in plan.get("resources", []):
+            if resource["kind"].startswith(("hf_", "modelscope_")):
+                revision = resource.get("revision")
+                assert isinstance(revision, str)
+                assert revision
+                if resource["kind"].startswith("hf_"):
+                    assert len(revision) == 40
+
+
+def test_management_warmup_endpoint_rejects_unknown_models():
+    from app.main import create_app
+
+    client = TestClient(create_app())
+    response = client.post("/api/model-services/unknown_model_123/warmup")
+    assert response.status_code == 404
+    assert "未知模型服务" in response.json()["detail"]
+
+
+def test_management_warmup_endpoint_triggers_provider_warmup(monkeypatch):
+    import httpx
+    from unittest.mock import AsyncMock
+    from app.main import create_app
+
+    app = create_app()
+    client = TestClient(app)
+
+    async def mock_ensure_started(model_id):
+        return True
+
+    monkeypatch.setattr(app.state.process_manager, "ensure_started", mock_ensure_started)
+
+    class MockResponse:
+        status_code = 200
+
+        def json(self):
+            return {"status": "ready", "model": "qwen3_asr_0_6b"}
+
+    class MockAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            pass
+
+        async def post(self, url, **kwargs):
+            return MockResponse()
+
+    monkeypatch.setattr(httpx, "AsyncClient", MockAsyncClient)
+
+    response = client.post("/api/model-services/qwen3_asr_0_6b/warmup")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "succeeded"
+    assert payload["model_id"] == "qwen3_asr_0_6b"
+
+
+def test_management_warmup_endpoint_surfaces_provider_errors(monkeypatch):
+    import httpx
+    from app.main import create_app
+
+    app = create_app()
+    client = TestClient(app)
+
+    async def mock_ensure_started(model_id):
+        return True
+
+    monkeypatch.setattr(app.state.process_manager, "ensure_started", mock_ensure_started)
+
+    class MockResponse:
+        status_code = 500
+
+        def json(self):
+            return {
+                "error": {
+                    "code": "WARMUP_FAILED",
+                    "message": "The checkpoint architecture is not recognized",
+                }
+            }
+
+        @property
+        def text(self):
+            return "warmup failed"
+
+    class MockAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            pass
+
+        async def post(self, url, **kwargs):
+            return MockResponse()
+
+        async def get(self, url, **kwargs):
+            raise AssertionError("provider errors must not fall back to a health-only success")
+
+    monkeypatch.setattr(httpx, "AsyncClient", MockAsyncClient)
+
+    response = client.post("/api/model-services/qwen3_forced_aligner_0_6b/warmup")
+
+    assert response.status_code == 500
+    assert "architecture is not recognized" in response.json()["detail"]
+
+
+def test_management_warmup_endpoint_surfaces_provider_connection_errors(monkeypatch):
+    import httpx
+    from app.main import create_app
+
+    app = create_app()
+    client = TestClient(app)
+
+    async def mock_ensure_started(model_id):
+        return True
+
+    monkeypatch.setattr(app.state.process_manager, "ensure_started", mock_ensure_started)
+
+    class MockAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            pass
+
+        async def post(self, url, **kwargs):
+            raise httpx.ReadError("")
+
+        async def get(self, url, **kwargs):
+            raise AssertionError("connection errors must not be converted into health-only success")
+
+    monkeypatch.setattr(httpx, "AsyncClient", MockAsyncClient)
+
+    response = client.post("/api/model-services/qwen3_asr_0_6b/warmup")
+
+    assert response.status_code == 502
+    assert "ReadError" in response.json()["detail"]

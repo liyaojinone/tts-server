@@ -27,18 +27,6 @@ class CosyVoiceHandler:
             Path(profile_dir) if profile_dir else ROOT_DIR / "services" / "cosyvoice-service" / "data" / "profiles"
         )
 
-    def _load_sft_model(self):
-        if self.sft_model is None:
-            from cosyvoice.cli.cosyvoice import CosyVoice2
-
-            self.sft_model = CosyVoice2(
-                model_dir=str(COSYVOICE_ROOT / "pretrained_models" / "CosyVoice2-0.5B"),
-                load_jit=False,
-                load_trt=False,
-                fp16=True,
-            )
-        return self.sft_model
-
     def _load_zero_shot_model(self):
         if self.zero_shot_model is None:
             from cosyvoice.cli.cosyvoice import CosyVoice2
@@ -50,6 +38,12 @@ class CosyVoiceHandler:
                 fp16=True,
             )
         return self.zero_shot_model
+
+    async def warmup(self):
+        if self.test_mode:
+            return {"status": "ok", "mode": "test"}
+        self._load_zero_shot_model()
+        return {"status": "ready", "model": "CosyVoice2", "mode": "zero_shot"}
 
     async def health(self):
         return HealthResponse(status="ok", model="CosyVoice", version="local").model_dump()
@@ -83,15 +77,6 @@ class CosyVoiceHandler:
 
     async def list_voices(self, language=None, page=1, page_size=100):
         voices = [
-            Voice(
-                voice_id="中文女",
-                name="中文女",
-                language=["zh"],
-                gender="female",
-                description="CosyVoice preset mode",
-                tags=["preset"],
-                metadata={"mode": "sft"},
-            ),
             Voice(
                 voice_id="clone",
                 name="Zero-shot Clone",
@@ -129,35 +114,26 @@ class CosyVoiceHandler:
         speed = request.parameters.speed
         profile = None
         has_reference_audio = request.parameters.reference_audio or reference_audio is not None
-        if request.voice_id not in {"clone", "中文女"} and not has_reference_audio:
+        if request.voice_id != "clone" and not has_reference_audio:
             profile = self.profile_store.load(request.voice_id)
-        mode = "zero_shot" if request.voice_id == "clone" or profile or has_reference_audio else "sft"
+        profile_reference_audio = (profile or {}).get("reference_audio")
+        if request.voice_id != "clone" and not profile and not has_reference_audio:
+            raise ValueError("CosyVoice2 requires reference audio for zero-shot synthesis")
+        if reference_audio is None and not request.parameters.reference_audio and not profile_reference_audio:
+            raise ValueError("CosyVoice2 clone mode requires reference audio")
 
-        if mode == "sft":
-            model = self._load_sft_model()
-            audio_chunks = []
-            for item in model.inference_sft(text, request.voice_id, stream=False, speed=speed):
-                audio_chunks.append(item["tts_speech"])
+        if reference_audio is not None:
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_ref:
+                temp_ref.write(await reference_audio.read())
+                reference_audio_path = temp_ref.name
         else:
-            profile_reference_audio = (profile or {}).get("reference_audio")
-            if reference_audio is None and not request.parameters.reference_audio and not profile_reference_audio:
-                raise ValueError("CosyVoice clone mode requires reference audio")
+            reference_audio_path = request.parameters.reference_audio or profile_reference_audio
 
-            if reference_audio is not None:
-                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_ref:
-                    temp_ref.write(await reference_audio.read())
-                    reference_audio_path = temp_ref.name
-            else:
-                reference_audio_path = request.parameters.reference_audio or (profile or {}).get("reference_audio")
-
-            from cosyvoice.utils.file_utils import load_wav
-
-            model = self._load_zero_shot_model()
-            prompt_speech_16k = load_wav(str(reference_audio_path), 16000)
-            prompt_text = reference_text or request.parameters.reference_text or (profile or {}).get("reference_text") or ""
-            audio_chunks = []
-            for item in model.inference_zero_shot(text, prompt_text, prompt_speech_16k, stream=False, speed=speed):
-                audio_chunks.append(item["tts_speech"])
+        model = self._load_zero_shot_model()
+        prompt_text = reference_text or request.parameters.reference_text or (profile or {}).get("reference_text") or ""
+        audio_chunks = []
+        for item in model.inference_zero_shot(text, prompt_text, str(reference_audio_path), stream=False, speed=speed):
+            audio_chunks.append(item["tts_speech"])
 
         import torch
         import torchaudio

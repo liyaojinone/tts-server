@@ -58,6 +58,14 @@ class IndexTTSHandler:
         if env_flag("INDEXTTS_PRELOAD_ON_STARTUP", False):
             self._ensure_tts()
 
+    async def warmup(self):
+        if self.test_mode:
+            return {"status": "ok", "mode": "test"}
+        self._ensure_tts()
+        self.ready = True
+        self.last_error = None
+        return {"status": "ready", "model": "IndexTTS2"}
+
     async def health(self):
         payload = HealthResponse(status="ok", model="IndexTTS2", version="local").model_dump()
         payload["ready"] = self.ready

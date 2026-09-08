@@ -24,6 +24,36 @@ if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
 
 
+def _patch_torchaudio_load_fallback() -> None:
+    try:
+        import torch
+        import torchaudio
+        import soundfile as sf
+    except ImportError:
+        return
+
+    original_load = getattr(torchaudio, "load", None)
+    if original_load is None:
+        return
+
+    def _safe_load(uri, *args, **kwargs):
+        try:
+            return original_load(uri, *args, **kwargs)
+        except Exception:
+            data, sr = sf.read(str(uri), dtype="float32")
+            tensor = torch.from_numpy(data)
+            if tensor.ndim == 1:
+                tensor = tensor.unsqueeze(0)
+            elif tensor.ndim == 2:
+                tensor = tensor.t()
+            return tensor, sr
+
+    torchaudio.load = _safe_load
+
+
+_patch_torchaudio_load_fallback()
+
+
 def find_local_vocoder_path() -> Optional[str]:
     snapshot_root = Path(HF_CACHE_DIR) / "models--charactr--vocos-mel-24khz" / "snapshots"
     if not snapshot_root.exists():
@@ -69,19 +99,13 @@ class F5TTSHandler:
         if self.tts is None:
             from f5_tts.api import F5TTS
 
-            ckpt_file = find_local_ckpt_file()
-            if ckpt_file is None:
-                raise FileNotFoundError(
-                    f"Local F5-TTS checkpoint not found for {MODEL_NAME}. "
-                    "Set F5_CKPT_FILE or place the official checkpoint under ckpts/{model}."
-                )
-            if not Path(VOCAB_FILE).exists():
-                raise FileNotFoundError(f"Local F5-TTS vocabulary not found: {VOCAB_FILE}")
+            ckpt_file = find_local_ckpt_file() or ""
+            vocab_file = VOCAB_FILE if Path(VOCAB_FILE).exists() else ""
 
             self.tts = F5TTS(
                 model=MODEL_NAME,
                 hf_cache_dir=HF_CACHE_DIR,
-                vocab_file=VOCAB_FILE,
+                vocab_file=vocab_file,
                 ckpt_file=ckpt_file,
                 vocoder_local_path=find_local_vocoder_path(),
             )
@@ -89,6 +113,12 @@ class F5TTSHandler:
 
     async def health(self):
         return HealthResponse(status="ok", model="F5-TTS", version=MODEL_NAME).model_dump()
+
+    async def warmup(self):
+        if self.test_mode:
+            return {"status": "ok", "mode": "test"}
+        self._ensure_tts()
+        return {"status": "ready", "model": MODEL_NAME}
 
     async def clone(self, request, audio):
         profile = await self.profile_store.create(request, audio)

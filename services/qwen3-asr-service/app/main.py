@@ -64,4 +64,15 @@ def create_app(test_mode: bool = False):
         except RuntimeError as exc:
             return _error_response(503, "MODEL_UNAVAILABLE", str(exc))
 
+    @app.post("/v1/warmup")
+    async def warmup(request: Request):
+        unauthorized = await ensure_authorized(request)
+        if unauthorized is not None:
+            return unauthorized
+        try:
+            handler.warmup()
+            return {"status": "ready", "model": handler.model_id, "hfRepoId": handler.hf_repo_id}
+        except Exception as exc:
+            return _error_response(500, "WARMUP_FAILED", str(exc))
+
     return app

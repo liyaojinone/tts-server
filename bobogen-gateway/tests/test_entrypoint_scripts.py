@@ -40,6 +40,17 @@ def test_start_scripts_stop_tiger_dnr_native_provider():
     assert "tiger_dnr" in windows_start_script
 
 
+def test_qwen3_asr_uses_official_repo_working_directory_and_native_model_id():
+    service_script = (ROOT / "services" / "qwen3-asr-service" / "start.ps1").read_text(
+        encoding="utf-8"
+    )
+    provider_config = (
+        ROOT / "bobogen-gateway" / "configs" / "providers" / "qwen3-asr-0_6b-windows.yaml"
+    ).read_text(encoding="utf-8")
+
+    assert "Set-Location $repoDir" in service_script
+
+
 def test_windows_start_script_uses_single_gateway_log_file():
     start_script = (ROOT / "start.ps1").read_text(encoding="utf-8")
 

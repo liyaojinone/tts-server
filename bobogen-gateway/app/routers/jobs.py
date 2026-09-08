@@ -204,7 +204,65 @@ async def _cleanup_failed_creation(
     return True
 
 
-@router.post("/v1/jobs", status_code=202, tags=["02 Generate 新统一接口"])
+@router.post(
+    "/v1/jobs",
+    status_code=202,
+    tags=["02 Generate 新统一接口"],
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "required": ["model", "task", "input"],
+                        "properties": {
+                            "model": {"type": "string"},
+                            "task": {"type": "string"},
+                            "input": {"type": "object"},
+                            "parameters": {"type": "object"},
+                            "output": {"type": "object"},
+                        },
+                    },
+                    "examples": {
+                        "tigerDnr": {
+                            "summary": "TIGER-DnR upload job",
+                            "value": {
+                                "model": "tiger-dnr",
+                                "task": "audio.separate",
+                                "input": {
+                                    "audio": {
+                                        "kind": "upload",
+                                        "field": "audio",
+                                    }
+                                },
+                                "parameters": {},
+                                "output": {"format": "wav"},
+                            },
+                        }
+                    },
+                },
+                "multipart/form-data": {
+                    "schema": {
+                        "type": "object",
+                        "required": ["request", "audio"],
+                        "properties": {
+                            "request": {
+                                "type": "string",
+                                "description": "JSON 字符串，结构同 application/json 请求体。",
+                            },
+                            "audio": {
+                                "type": "string",
+                                "format": "binary",
+                            },
+                        },
+                    },
+                    "encoding": {"audio": {"contentType": "audio/*"}},
+                },
+            },
+        }
+    },
+)
 async def create_job(
     http_request: Request,
     registry=Depends(get_provider_registry),

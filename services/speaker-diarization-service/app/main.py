@@ -2,6 +2,7 @@ import os
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 from pydantic import ValidationError
 
 from app.handler import SpeakerDiarizationHandler
@@ -33,6 +34,16 @@ def create_app(test_mode: bool = False):
         if unauthorized is not None:
             return unauthorized
         return handler.health()
+
+    @app.post("/v1/warmup")
+    async def warmup(request: Request):
+        unauthorized = await ensure_authorized(request)
+        if unauthorized is not None:
+            return unauthorized
+        try:
+            return await run_in_threadpool(handler.warmup)
+        except Exception as exc:
+            return _error_response(503, "MODEL_UNAVAILABLE", str(exc))
 
     @app.post("/v1/diarize")
     async def diarize(http_request: Request):

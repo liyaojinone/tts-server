@@ -13,13 +13,22 @@ from app.core.exceptions import (
     ProviderStartTimeoutError,
 )
 from app.core.state import ProviderRuntimeState
+from app.services.model_source import ModelSourceConfigStore
+from app.services.huggingface_token import HuggingFaceTokenStore, requires_huggingface_token
 
 LOG_DIR = Path("logs")
 
 
 class ProcessManager:
-    def __init__(self, providers: dict):
+    def __init__(
+        self,
+        providers: dict,
+        source_config_store: ModelSourceConfigStore | None = None,
+        huggingface_token_store: HuggingFaceTokenStore | None = None,
+    ):
         self.providers = providers
+        self.source_config_store = source_config_store
+        self.huggingface_token_store = huggingface_token_store
         self._states: dict[str, ProviderRuntimeState] = {}
         self._processes: dict[str, subprocess.Popen] = {}
         self._locks = {provider_id: asyncio.Lock() for provider_id in providers}
@@ -196,6 +205,14 @@ class ProcessManager:
     async def _launch_process(self, provider) -> int:
         env = os.environ.copy()
         env.update(provider.runtime.env)
+        if self.source_config_store is not None:
+            model_id = provider.model_id or provider.provider_id
+            env.update(self.source_config_store.get().env_for(model_id))
+        model_id = provider.model_id or provider.provider_id
+        if self.huggingface_token_store is not None and requires_huggingface_token(model_id):
+            token = self.huggingface_token_store.get()
+            if token:
+                env["HF_TOKEN"] = token
         log_dir = LOG_DIR / provider.provider_id
         log_dir.mkdir(parents=True, exist_ok=True)
         combined_f = (log_dir / "combined.log").open("a", encoding="utf-8", errors="replace")

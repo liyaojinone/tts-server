@@ -248,6 +248,12 @@ class StableAudio3Handler:
             "testMode": self.test_mode,
         }
 
+    def warmup(self) -> dict:
+        if self.test_mode:
+            return {"status": "ok", "mode": "test"}
+        self._load_model()
+        return {"status": "ready", "model": self.model_id, "hfRepoId": self.hf_repo_id}
+
     def generate(self, request: GenerateRequest) -> dict:
         if request.model != self.model_id:
             raise ValueError(f"Unsupported model: {request.model}")
@@ -364,16 +370,174 @@ class StableAudio3Handler:
                 config.pop("repo_id", None)
                 config.pop("subfolder", None)
 
-        model = load_diffusion_cond(
-            model_config,
-            checkpoint_path,
-            device=device,
-            model_half=model_half,
-        )
+        if self.model_name == "medium" and _truthy(
+            os.environ.get("STABLE_AUDIO3_LOW_MEMORY_LOAD", "1")
+        ):
+            model = self._load_diffusion_cond_low_memory(
+                model_config,
+                checkpoint_path,
+                device=device,
+                model_half=model_half,
+            )
+        else:
+            model = load_diffusion_cond(
+                model_config,
+                checkpoint_path,
+                device=device,
+                model_half=model_half,
+            )
         model.use_lora = False
         model.lora_names = []
         self._model = StableAudioModel(model, model_config, device, model_half)
         return self._model
+
+    def _load_diffusion_cond_low_memory(
+        self,
+        model_config: dict,
+        checkpoint_path: Path,
+        *,
+        device: str,
+        model_half: bool,
+    ):
+        """Load the official model graph without duplicating its full FP32 state dict.
+
+        Stable Audio 3's upstream loader creates the complete graph, reads the
+        complete safetensors file into a second CPU-side state dict, then moves
+        the graph to the target device. That transient peak is larger than the
+        available RAM/VRAM on common 6 GB Windows GPUs. The graph and model
+        configuration remain upstream; this adapter only streams each checkpoint
+        tensor, casts it before the device transfer, and assigns it to the graph.
+        """
+        import torch
+        from torch import nn
+        from safetensors import safe_open
+        from stable_audio_3.factory import (
+            create_multi_conditioner_from_conditioning_config,
+            create_pretransform_from_config,
+        )
+        from stable_audio_3.models.diffusion import (
+            ConditionedDiffusionModelWrapper,
+            DiTWrapper,
+        )
+
+        root_model_config = model_config["model"]
+        diffusion_config = root_model_config.get("diffusion")
+        diffusion_model_config = diffusion_config.get("config")
+        diffusion_objective = diffusion_config.get("diffusion_objective", "v")
+        modular_local_cond_configs = diffusion_config.get("modular_local_cond_configs", [])
+
+        # Keep the large diffusion graph and autoencoder on meta while the
+        # conditioner is constructed on CPU (its official T5 weights are loaded
+        # lazily from the already-resolved tokenizer directory).
+        with torch.device("meta"):
+            diffusion_model = DiTWrapper(
+                diffusion_objective=diffusion_objective,
+                modular_local_cond_configs=modular_local_cond_configs,
+                **diffusion_model_config,
+            )
+            pretransform = create_pretransform_from_config(
+                root_model_config,
+                model_config.get("sample_rate"),
+            )
+
+        io_channels = root_model_config.get("io_channels")
+        sample_rate = model_config.get("sample_rate")
+        cross_attention_ids = diffusion_config.get("cross_attention_cond_ids", [])
+        global_cond_ids = diffusion_config.get("global_cond_ids", [])
+        input_concat_ids = diffusion_config.get("input_concat_ids", [])
+        local_add_cond_ids = diffusion_config.get("local_add_cond_ids", [])
+        modular_local_cond_ids = [c["id"] for c in modular_local_cond_configs]
+        prepend_cond_ids = diffusion_config.get("prepend_cond_ids", [])
+        distribution_shift_options = diffusion_config.get("distribution_shift_options")
+        sampling_distribution_shift_options = diffusion_config.get("sampling_distribution_shift_options")
+        mask_padding_attention = diffusion_config.get("mask_padding_attention", False)
+        use_effective_length_for_schedule = diffusion_config.get(
+            "use_effective_length_for_schedule", False
+        )
+        conditioning = root_model_config.get("conditioning")
+        conditioner = create_multi_conditioner_from_conditioning_config(conditioning)
+        min_input_length = pretransform.downsampling_ratio * diffusion_model.model.patch_size
+
+        model = ConditionedDiffusionModelWrapper(
+            diffusion_model,
+            conditioner,
+            min_input_length=min_input_length,
+            sample_rate=sample_rate,
+            cross_attn_cond_ids=cross_attention_ids,
+            global_cond_ids=global_cond_ids,
+            input_concat_ids=input_concat_ids,
+            local_add_cond_ids=local_add_cond_ids,
+            modular_local_cond_ids=modular_local_cond_ids,
+            prepend_cond_ids=prepend_cond_ids,
+            pretransform=pretransform,
+            io_channels=io_channels,
+            distribution_shift_options=distribution_shift_options,
+            sampling_distribution_shift_options=sampling_distribution_shift_options,
+            mask_padding_attention=mask_padding_attention,
+            diffusion_objective=diffusion_objective,
+            use_effective_length_for_schedule=use_effective_length_for_schedule,
+        )
+
+        target_state = model.state_dict()
+        matched = 0
+        with safe_open(str(checkpoint_path), framework="pt", device="cpu") as source:
+            for source_key in source.keys():
+                target_key = self._remap_checkpoint_key(source_key, target_state)
+                if target_key not in target_state:
+                    logger.warning("Checkpoint key not found in Stable Audio 3 graph: %s", source_key)
+                    continue
+
+                expected = target_state[target_key]
+                tensor = source.get_tensor(source_key)
+                if tuple(tensor.shape) != tuple(expected.shape):
+                    logger.warning(
+                        "Skipping Stable Audio 3 checkpoint key with shape mismatch: %s (%s != %s)",
+                        source_key,
+                        tuple(tensor.shape),
+                        tuple(expected.shape),
+                    )
+                    continue
+                if model_half:
+                    tensor = tensor.to(dtype=torch.float16)
+                tensor = tensor.to(device)
+                self._assign_checkpoint_tensor(model, target_key, tensor, nn)
+                matched += 1
+
+        if matched == 0:
+            raise RuntimeError(f"Stable Audio 3 checkpoint contains no matching tensors: {checkpoint_path}")
+        meta_keys = [
+            name
+            for name, value in model.state_dict().items()
+            if getattr(value, "device", None) is not None and value.device.type == "meta"
+        ]
+        if meta_keys:
+            raise RuntimeError(
+                "Stable Audio 3 low-memory load left uninitialized tensors: "
+                + ", ".join(meta_keys[:5])
+            )
+        return model.eval().requires_grad_(False)
+
+    @staticmethod
+    def _remap_checkpoint_key(source_key: str, target_state: dict) -> str:
+        if source_key in target_state:
+            return source_key
+        parts = source_key.split(".")
+        for index in range(1, len(parts)):
+            candidate = ".".join(parts[:index]) + "." + ".".join(parts[index + 1 :])
+            if candidate in target_state:
+                return candidate
+        return source_key
+
+    @staticmethod
+    def _assign_checkpoint_tensor(model, target_key: str, tensor, nn_module) -> None:
+        parent_path, _, attribute = target_key.rpartition(".")
+        parent = model.get_submodule(parent_path) if parent_path else model
+        if attribute in parent._parameters:
+            parent._parameters[attribute] = nn_module.Parameter(tensor, requires_grad=False)
+        elif attribute in parent._buffers:
+            parent._buffers[attribute] = tensor
+        else:
+            raise RuntimeError(f"Stable Audio 3 checkpoint target is not a parameter or buffer: {target_key}")
 
     def _resolve_model_files(self, hf_hub_download) -> StableAudio3ModelFiles:
         if self.model_dir is not None and self.model_dir.exists():

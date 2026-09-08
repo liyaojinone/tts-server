@@ -34,6 +34,18 @@ class SpeakerDiarizationHandler:
             "testMode": self.test_mode,
         }
 
+    def warmup(self) -> dict[str, Any]:
+        """Load the official ModelScope pipeline without processing audio."""
+        if self.test_mode:
+            return {"status": "ok", "mode": "test"}
+        self._load_pipeline()
+        return {
+            "status": "ready",
+            "model": self.model_name,
+            "revision": self.model_revision,
+            "device": self.device,
+        }
+
     def diarize(self, request: GenerateRequest) -> dict[str, Any]:
         if request.model != self.model_id:
             raise ValueError(f"Unsupported model: {request.model}")
@@ -80,6 +92,7 @@ class SpeakerDiarizationHandler:
     def _load_pipeline(self):
         if self._pipeline is not None:
             return self._pipeline
+        self._ensure_torchaudio_sox_compat()
         try:
             from modelscope.pipelines import pipeline
         except ImportError as exc:
@@ -101,6 +114,39 @@ class SpeakerDiarizationHandler:
             kwargs.pop("device", None)
             self._pipeline = pipeline(**kwargs)
         return self._pipeline
+
+    @staticmethod
+    def _ensure_torchaudio_sox_compat() -> None:
+        """Keep ModelScope's rate-effect call working with modern torchaudio."""
+        import torchaudio
+
+        if hasattr(torchaudio, "sox_effects"):
+            return
+
+        class _SoxEffectsCompat:
+            @staticmethod
+            def apply_effects_tensor(waveform, sample_rate, effects):
+                current_rate = int(sample_rate)
+                current = waveform
+                for effect in effects:
+                    if not effect:
+                        continue
+                    if effect[0] != "rate" or len(effect) < 2:
+                        raise RuntimeError(
+                            "Unsupported ModelScope audio effect: "
+                            f"{effect!r}"
+                        )
+                    target_rate = int(effect[1])
+                    if target_rate != current_rate:
+                        current = torchaudio.functional.resample(
+                            current,
+                            current_rate,
+                            target_rate,
+                        )
+                        current_rate = target_rate
+                return current, current_rate
+
+        torchaudio.sox_effects = _SoxEffectsCompat()
 
     def _normalize_segments(self, result, clip_start: float, min_duration: float) -> list[dict[str, Any]]:
         raw_segments = self._extract_raw_segments(result)

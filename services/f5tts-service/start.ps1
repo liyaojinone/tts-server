@@ -24,11 +24,11 @@ if (-not (Test-Path $repoDir)) {
 }
 
 if (-not (Test-Path $ckptFile)) {
-    throw "F5-TTS checkpoint not found for ${modelName}: $ckptFile"
+    Write-Host "Local F5-TTS checkpoint not found for ${modelName}: $ckptFile. Official SDK will automatically download it on startup."
 }
 
 if (-not (Test-Path $vocabFile)) {
-    throw "F5-TTS vocabulary not found for ${modelName}: $vocabFile"
+    Write-Host "Local F5-TTS vocabulary not found for ${modelName}: $vocabFile. Official SDK will automatically download it on startup."
 }
 
 New-Item -ItemType Directory -Force -Path $profileDir | Out-Null

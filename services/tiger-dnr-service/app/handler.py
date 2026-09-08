@@ -930,6 +930,18 @@ class TigerDNRHandler:
             },
         }
 
+    def warmup(self) -> dict:
+        """Load the official TIGER-DnR model without running an audio job."""
+        if self.test_mode:
+            return {"status": "ok", "mode": "test"}
+        self._load_model()
+        return {
+            "status": "ready",
+            "model": self.hf_repo_id,
+            "revision": self.hf_revision,
+            "device": self.device,
+        }
+
     def estimate_dialogue(
         self,
         source: np.ndarray,

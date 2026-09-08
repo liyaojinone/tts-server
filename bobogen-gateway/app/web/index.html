@@ -1,0 +1,731 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>模型服务</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+        background: #101216;
+        color: #e9edf3;
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #101216; }
+      button, a { font: inherit; }
+      button { cursor: pointer; }
+      button:disabled { cursor: not-allowed; opacity: .35; }
+
+      .shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 34px 0 52px; }
+      .eyebrow { color: #8d97a8; font-size: 13px; letter-spacing: .08em; }
+      h1 { margin: 8px 0 4px; font-size: 30px; font-weight: 650; }
+      .subtitle { margin: 0; color: #9da7b8; }
+
+      .topbar, .service-card, .panel, .model-list {
+        border: 1px solid #2a303b;
+        border-radius: 12px;
+        background: #171a20;
+      }
+
+      .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 22px 24px; }
+      .top-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+      .button { border: 1px solid #3a4352; border-radius: 8px; padding: 8px 13px; color: #e9edf3; background: #202630; }
+      .button:hover:not(:disabled) { background: #2b3341; border-color: #4f5b6e; }
+      .button.ghost { background: transparent; }
+
+      .section { margin-top: 24px; }
+      .section-header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+      .section-header h2 { margin: 0; font-size: 18px; }
+      .muted { color: #8f99aa; font-size: 13px; }
+
+      .service-card { display: grid; grid-template-columns: 1.35fr 1fr; gap: 20px; padding: 20px 22px; }
+      .service-title { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
+      .status { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 9px; color: #a9e6c0; background: #183426; font-size: 12px; }
+      .status::before { width: 7px; height: 7px; border-radius: 50%; background: #55cf83; content: ""; }
+      .service-copy { margin: 11px 0 0; color: #9da7b8; line-height: 1.6; }
+      .service-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      .meta { padding: 11px 13px; border-radius: 8px; background: #20242c; }
+      .meta label { display: block; color: #828da0; font-size: 12px; }
+      .meta strong { display: block; margin-top: 5px; color: #e9edf3; font-size: 14px; overflow-wrap: anywhere; }
+
+      .notice { padding: 13px 15px; border: 1px solid #4b432c; border-radius: 9px; background: #252117; color: #d5c7a0; line-height: 1.6; }
+      .connection-notice { border-color: #5d3b3b; background: #2a1d20; color: #e8b4b4; }
+      .connection-notice code { color: #ffd0d0; }
+      .source-card { padding: 18px 20px; border: 1px solid #2a303b; border-radius: 12px; background: #171a20; }
+      .source-options { display: flex; gap: 18px; flex-wrap: wrap; margin: 8px 0 14px; color: #dfe5ef; font-size: 13px; }
+      .source-options label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+      .source-options input { accent-color: #8192ff; }
+      .source-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+      .source-field { display: flex; flex-direction: column; gap: 6px; color: #8f99aa; font-size: 12px; }
+      .source-field input { width: 100%; padding: 9px 10px; border: 1px solid #343d4d; border-radius: 7px; color: #e9edf3; background: #101319; }
+      .source-field input:focus { outline: 1px solid #7181e8; border-color: #7181e8; }
+      .source-copy { margin: 13px 0; color: #9da7b8; font-size: 12px; line-height: 1.6; }
+      .source-status { color: #a9e6c0; font-size: 12px; }
+      .source-status.error { color: #e8b4b4; }
+      .model-list { overflow-x: auto; }
+      .model-list-header, .model-row {
+        display: grid;
+        grid-template-columns: minmax(180px, 1.25fr) minmax(140px, 1fr) minmax(140px, .9fr) minmax(180px, 1.2fr) minmax(135px, .9fr) 150px;
+        min-width: 1040px;
+        align-items: center;
+      }
+      .model-list-header {
+        padding: 9px 14px;
+        border-bottom: 1px solid #2a303b;
+        color: #778295;
+        background: #14171c;
+        font-size: 11px;
+        letter-spacing: .04em;
+      }
+      .model-row { min-height: 68px; padding: 9px 14px; border-bottom: 1px solid #252b35; }
+      .model-row:last-child { border-bottom: 0; }
+      .model-row:hover { background: #1b1f27; }
+      .model-cell { min-width: 0; padding-right: 14px; }
+      .model-cell:last-child { padding-right: 0; }
+      .model-head { display: flex; align-items: center; gap: 7px; min-width: 0; }
+      .model-name { min-width: 0; overflow: hidden; color: #eef1f7; font-size: 13px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+      .model-id { display: block; margin-top: 4px; overflow: hidden; color: #788497; font: 11px Consolas, "Courier New", monospace; text-overflow: ellipsis; white-space: nowrap; }
+      .model-task { display: inline-flex; width: fit-content; margin-bottom: 4px; padding: 2px 6px; border: 1px solid #343e51; border-radius: 4px; color: #b8c3ff; background: #20273a; font-size: 10px; }
+      .model-purpose { display: -webkit-box; overflow: hidden; margin: 0; color: #a7b0bf; font-size: 12px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+      .model-version { color: #e0e5ef; font-size: 12px; font-weight: 550; }
+      .meta-line { display: block; overflow: hidden; margin-top: 4px; color: #7f8a9d; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+      .resource-root { display: block; overflow: hidden; margin-top: 4px; color: #6f7a8c; font: 10px Consolas, "Courier New", monospace; text-overflow: ellipsis; white-space: nowrap; }
+      .links { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+      .links a { padding: 3px 5px; border: 1px solid #343d4d; border-radius: 4px; color: #afbbff; background: #202531; font-size: 11px; text-decoration: none; }
+      .links a:hover { text-decoration: underline; }
+
+      .model-actions { display: flex; gap: 6px; align-items: center; position: relative; }
+      .model-actions .action-btn { padding: 6px 11px; font-size: 12px; font-weight: 500; text-align: center; }
+      .more-container { position: relative; }
+      .more-btn { width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; letter-spacing: 1px; }
+      .dropdown-menu {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: calc(100% + 4px);
+        background: #191e26;
+        border: 1px solid #333d4e;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+        z-index: 100;
+        min-width: 155px;
+        padding: 4px;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .dropdown-menu.show {
+        display: flex;
+      }
+      .model-row:last-child .dropdown-menu {
+        bottom: calc(100% + 4px);
+        top: auto;
+      }
+      .dropdown-item {
+        display: flex;
+        align-items: center;
+        padding: 7px 10px;
+        background: transparent;
+        border: none;
+        color: #c5d0e0;
+        font-size: 12px;
+        text-align: left;
+        border-radius: 5px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .dropdown-item:hover:not(:disabled) {
+        background: #273142;
+        color: #fff;
+      }
+      .dropdown-item:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .model-state { display: inline-flex; align-items: center; border-radius: 4px; padding: 3px 5px; background: #252b35; color: #aeb8c8; font-size: 10px; white-space: nowrap; }
+      .model-state.ready { color: #a9e6c0; background: #183426; }
+      .model-state.partial { color: #e2cb8e; background: #332b1b; }
+      .model-state.missing { color: #e5a5a5; background: #382124; }
+      .model-state.running { color: #b8c3ff; background: #20273a; }
+
+      .panel { padding: 18px 20px; }
+      .console { min-height: 150px; max-height: 300px; overflow: auto; margin: 0; padding: 14px; border-radius: 8px; background: #0d0f13; color: #c4ccd8; font: 12px/1.6 Consolas, "Courier New", monospace; white-space: pre-wrap; }
+      .empty { padding: 40px 20px; border: 1px dashed #343b48; border-radius: 10px; color: #8f99aa; text-align: center; }
+
+      @media (max-width: 900px) { .service-card { grid-template-columns: 1fr; } }
+
+      @media (max-width: 600px) {
+        .shell { width: min(100% - 24px, 1180px); padding-top: 22px; }
+        .topbar { flex-direction: column; }
+        .top-actions { width: 100%; }
+        .top-actions .button { flex: 1; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar">
+        <div>
+          <div class="eyebrow">本地模型资源</div>
+          <h1>模型服务</h1>
+          <p class="subtitle">管理本地模型的准备状态、资源和运行信息</p>
+        </div>
+        <div class="top-actions">
+          <button class="button ghost" id="refresh">刷新状态</button>
+          <button class="button" id="check">检测资源</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="service-card">
+          <div>
+            <div class="service-title"><span id="service-name">模型服务</span><span class="status" id="service-status">检测中</span></div>
+            <p class="service-copy">模型服务的安装、模型资源和运行日志集中显示在这里。普通用户只需选择模型，具体安装流程由服务端负责。</p>
+          </div>
+          <div class="service-meta">
+            <div class="meta"><label>服务位置</label><strong id="service-root">读取中…</strong></div>
+            <div class="meta"><label>管理方式</label><strong>按模型准备</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="notice">建议为模型服务预留至少 20 GB 空间；如果准备多个模型，建议预留 100 GB 以上。下载会按固定清单补齐官方源码和模型资源；修复只检查并补齐缺失项，不会自动升级已经锁定的版本。</div>
+      </section>
+
+      <section class="section">
+        <div class="source-card">
+          <div class="section-header"><h2>模型下载源</h2><span class="source-status" id="source-status">读取中…</span></div>
+          <div class="source-options">
+            <label><input type="radio" name="model-source-mode" value="off" checked />不启用镜像（默认）</label>
+            <label><input type="radio" name="model-source-mode" value="mirror" />启用镜像</label>
+          </div>
+          <div class="source-fields" id="source-fields" hidden>
+            <label class="source-field">Hugging Face Endpoint<input id="hf-endpoint" type="url" placeholder="https://hf-mirror.com" /></label>
+            <label class="source-field">ModelScope Domain<input id="modelscope-domain" type="text" placeholder="www.modelscope.cn" /></label>
+          </div>
+          <p class="source-copy" id="source-copy">关闭时不注入任何模型源变量，沿用官方默认地址和用户已有环境变量。</p>
+          <button class="button" id="save-source">保存下载源配置</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="source-card" id="huggingface-credential-card">
+          <div class="section-header"><h2>Hugging Face 授权</h2><span class="source-status" id="hf-token-status">读取中…</span></div>
+          <p class="source-copy">Stable Audio 3 等受限模型需要先在其 Hugging Face 模型页接受条款，再创建只读 Token。Token 仅加密保存在当前 Windows 用户的本机项目运行目录，不会写入下载源配置、日志或模型源码。</p>
+          <p class="source-copy"><a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">打开 Hugging Face Token 页面</a>；接受条款时请从对应模型行的“Hugging Face 权重”链接打开官方页面。</p>
+          <div class="source-fields">
+            <label class="source-field">Read / Fine-grained Read Token<input id="hf-token" type="password" autocomplete="off" placeholder="hf_..." /></label>
+          </div>
+          <div class="top-actions">
+            <button class="button" id="save-hf-token">加密保存 Token</button>
+            <button class="button ghost" id="delete-hf-token" hidden>删除 Token</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="connection-notice" hidden>
+        <div class="notice connection-notice">
+          当前是直接打开 HTML 文件，页面无法访问模型服务接口。请先启动 Gateway，然后通过
+          <code>http://127.0.0.1:6006/</code> 打开此页面。
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header"><h2>模型列表</h2><span class="muted" id="model-count">读取中…</span></div>
+        <div class="model-list" id="models">
+          <div class="model-list-header" aria-hidden="true">
+            <span>模型</span><span>用途</span><span>版本 / 规模</span><span>本地资源</span><span>官方来源</span><span>操作</span>
+          </div>
+          <div class="empty">正在读取模型目录…</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header"><h2>控制台</h2><button class="button ghost" id="refresh-logs">刷新日志</button></div>
+        <div class="panel"><pre class="console" id="console">正在读取服务日志…</pre></div>
+      </section>
+    </main>
+
+    <script>
+      const modelsElement = document.getElementById('models');
+      const consoleElement = document.getElementById('console');
+      const serviceStatusElement = document.getElementById('service-status');
+      const serviceRootElement = document.getElementById('service-root');
+      const modelCountElement = document.getElementById('model-count');
+      const connectionNoticeElement = document.getElementById('connection-notice');
+      const sourceStatusElement = document.getElementById('source-status');
+      const sourceFieldsElement = document.getElementById('source-fields');
+      const sourceCopyElement = document.getElementById('source-copy');
+      const hfEndpointElement = document.getElementById('hf-endpoint');
+      const modelscopeDomainElement = document.getElementById('modelscope-domain');
+      const saveSourceElement = document.getElementById('save-source');
+      const hfTokenStatusElement = document.getElementById('hf-token-status');
+      const hfTokenElement = document.getElementById('hf-token');
+      const saveHfTokenElement = document.getElementById('save-hf-token');
+      const deleteHfTokenElement = document.getElementById('delete-hf-token');
+      let currentModels = [];
+      let currentHuggingFaceCredential = { configured: false, token_suffix: null };
+      const activeJobs = new Map();
+      const pendingServiceActions = new Map();
+      const terminalJobStates = new Set(['succeeded', 'failed']);
+
+      function escapeText(value) {
+        return String(value ?? '');
+      }
+
+      function selectedSourceMode() {
+        return document.querySelector('input[name="model-source-mode"]:checked')?.value || 'off';
+      }
+
+      function updateSourceForm() {
+        const enabled = selectedSourceMode() === 'mirror';
+        if (enabled && !hfEndpointElement.value && !modelscopeDomainElement.value) {
+          hfEndpointElement.value = 'https://hf-mirror.com';
+          modelscopeDomainElement.value = 'www.modelscope.cn';
+        }
+        sourceFieldsElement.hidden = !enabled;
+        sourceCopyElement.textContent = enabled
+          ? '启用后只对新的模型下载任务和新的服务进程注入配置；只作用于模型实际使用的 Hugging Face / ModelScope 客户端，GitHub/raw 固定地址、缓存目录和上游源码不改，已运行的服务需要重启。'
+          : '关闭时不注入任何模型源变量，沿用官方默认地址和用户已有环境变量。';
+      }
+
+      function renderSourceConfig(payload) {
+        const config = payload.config || {};
+        document.querySelector(`input[name="model-source-mode"][value="${config.enabled ? 'mirror' : 'off'}"]`).checked = true;
+        hfEndpointElement.value = config.hf_endpoint || '';
+        modelscopeDomainElement.value = config.modelscope_domain || '';
+        sourceStatusElement.textContent = config.enabled ? '镜像已启用' : '默认官方源';
+        sourceStatusElement.classList.remove('error');
+        updateSourceForm();
+      }
+
+      async function loadSourceConfig() {
+        const response = await fetch('/api/model-source-config', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`下载源配置请求失败：${response.status}`);
+        renderSourceConfig(await response.json());
+      }
+
+      async function saveSourceConfig() {
+        saveSourceElement.disabled = true;
+        sourceStatusElement.classList.remove('error');
+        sourceStatusElement.textContent = '保存中…';
+        const payload = {
+          enabled: selectedSourceMode() === 'mirror',
+          hf_endpoint: hfEndpointElement.value.trim() || null,
+          modelscope_domain: modelscopeDomainElement.value.trim() || null,
+        };
+        try {
+          const response = await fetch('/api/model-source-config', {
+            method: 'PUT',
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(result.detail || `保存下载源配置失败：${response.status}`);
+          renderSourceConfig(result);
+          sourceStatusElement.textContent += ' · 新任务生效';
+        } catch (error) {
+          sourceStatusElement.classList.add('error');
+          sourceStatusElement.textContent = error instanceof Error ? error.message : '保存下载源配置失败';
+        } finally {
+          saveSourceElement.disabled = false;
+        }
+      }
+
+      function renderHuggingFaceCredential(payload) {
+        currentHuggingFaceCredential = payload.credential || { configured: false, token_suffix: null };
+        const suffix = currentHuggingFaceCredential.token_suffix;
+        hfTokenStatusElement.classList.remove('error');
+        hfTokenStatusElement.textContent = currentHuggingFaceCredential.configured
+          ? `已配置 · ****${escapeText(suffix)}`
+          : '尚未配置';
+        deleteHfTokenElement.hidden = !currentHuggingFaceCredential.configured;
+        hfTokenElement.value = '';
+      }
+
+      async function loadHuggingFaceCredential() {
+        const response = await fetch('/api/model-credentials/huggingface', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`Hugging Face Token 状态请求失败：${response.status}`);
+        renderHuggingFaceCredential(await response.json());
+      }
+
+      async function saveHuggingFaceCredential() {
+        const token = hfTokenElement.value.trim();
+        if (!token) {
+          hfTokenStatusElement.classList.add('error');
+          hfTokenStatusElement.textContent = '请先输入 Hugging Face Token';
+          hfTokenElement.focus();
+          return;
+        }
+        saveHfTokenElement.disabled = true;
+        try {
+          const response = await fetch('/api/model-credentials/huggingface', {
+            method: 'PUT',
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token }),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(payload.detail || `保存 Token 失败：${response.status}`);
+          renderHuggingFaceCredential(payload);
+        } catch (error) {
+          hfTokenStatusElement.classList.add('error');
+          hfTokenStatusElement.textContent = error instanceof Error ? error.message : '保存 Token 失败';
+        } finally {
+          saveHfTokenElement.disabled = false;
+        }
+      }
+
+      async function deleteHuggingFaceCredential() {
+        deleteHfTokenElement.disabled = true;
+        try {
+          const response = await fetch('/api/model-credentials/huggingface', { method: 'DELETE' });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(payload.detail || `删除 Token 失败：${response.status}`);
+          renderHuggingFaceCredential(payload);
+        } catch (error) {
+          hfTokenStatusElement.classList.add('error');
+          hfTokenStatusElement.textContent = error instanceof Error ? error.message : '删除 Token 失败';
+        } finally {
+          deleteHfTokenElement.disabled = false;
+        }
+      }
+
+      function renderModels(models) {
+        currentModels = models;
+        const listHeader = '<div class="model-list-header" aria-hidden="true"><span>模型</span><span>用途</span><span>版本 / 规模</span><span>本地资源</span><span>官方来源</span><span>操作</span></div>';
+        const activeCount = activeJobs.size;
+        modelCountElement.textContent = `${models.length} 个模型 · 按服务配置${activeCount ? ` · ${activeCount} 个任务进行中` : ''}`;
+        if (!models.length) {
+          modelsElement.innerHTML = `${listHeader}<div class="empty">暂无模型目录</div>`;
+          return;
+        }
+        modelsElement.innerHTML = listHeader + models.map((model) => {
+          const links = [
+            `<a href="${escapeText(model.official_repo)}" title="${escapeText(model.official_repo)}" target="_blank" rel="noopener">官方仓库</a>`,
+            ...(model.other_links || []).map((link) => `<a href="${escapeText(link.url)}" title="${escapeText(link.url)}" target="_blank" rel="noopener">${escapeText(link.label)}</a>`)
+          ].join('');
+          const state = model.status || 'missing';
+          const job = activeJobs.get(model.id);
+          const isUpstream = model.runtime_weight_policy === 'upstream_managed';
+
+          const pendingAction = pendingServiceActions.get(model.id);
+          const isStarting = (pendingAction === 'start' && model.runtime_state !== 'running') || model.runtime_state === 'starting' || model.process_status === 'starting';
+          const isStopping = (pendingAction === 'stop' && model.runtime_state !== 'stopped') || model.runtime_state === 'stopping' || model.process_status === 'stopping';
+          const isRunning = (model.runtime_state === 'running' || model.process_status === 'running') && !isStopping;
+
+          let stateText = '未准备';
+          let stateClass = 'missing';
+
+          if (job) {
+            stateText = job.operation === 'repair' ? '修复中' : '安装中';
+            stateClass = 'running';
+          } else if (isStarting) {
+            stateText = '启动中';
+            stateClass = 'running';
+          } else if (isStopping) {
+            stateText = '停止中';
+            stateClass = 'running';
+          } else if (isRunning) {
+            stateText = '运行中';
+            stateClass = 'running';
+          } else {
+            stateText = { ready: '已就绪', partial: '不完整', missing: '未准备' }[state] || '未检测';
+            stateClass = state;
+          }
+
+          const hasActiveJob = Boolean(job || activeJobs.size);
+          const jobTitle = job ? `任务进行中：${escapeText(job.message || '')}` : '';
+
+          // 1. 启动 / 停止 按钮（支持启动中、停止中即时反馈）
+          let serviceBtn = '';
+          if (isStarting) {
+            serviceBtn = `<button class="button action-btn" disabled>启动中...</button>`;
+          } else if (isStopping) {
+            serviceBtn = `<button class="button action-btn" disabled>停止中...</button>`;
+          } else if (isRunning) {
+            serviceBtn = `<button class="button action-btn" data-model-id="${escapeText(model.id)}" data-service-action="stop" title="停止服务">停止</button>`;
+          } else if (state === 'ready') {
+            serviceBtn = `<button class="button action-btn" data-model-id="${escapeText(model.id)}" data-service-action="start"${hasActiveJob ? ' disabled' : ''} title="启动模型服务">启动</button>`;
+          } else {
+            serviceBtn = `<button class="button action-btn" disabled title="模型未安装，请先点击右侧“安装”按钮">启动</button>`;
+          }
+
+          // 2. 安装 按钮（未准备时可点击安装；已就绪或运行中时置灰，重装须从右侧···菜单触发）
+          let installBtn = '';
+          if (job) {
+            installBtn = `<button class="button action-btn" disabled title="${jobTitle}">安装中...</button>`;
+          } else if (state === 'ready' || isRunning || isStarting) {
+            installBtn = `<button class="button action-btn" disabled title="模型环境已就绪；若需重新安装请点击右侧“···”菜单中的“重新安装”">安装</button>`;
+          } else {
+            installBtn = `<button class="button action-btn" data-model-id="${escapeText(model.id)}" data-operation="download"${hasActiveJob ? ' disabled' : ''} title="安装并准备模型环境与资源">安装</button>`;
+          }
+
+          // 3. 更多操作下拉菜单（···）
+          const canTest = (state === 'ready' || isRunning) && !isStarting && !isStopping;
+          const moreButton = `
+            <div class="more-container">
+              <button class="button more-btn" data-toggle-menu="${escapeText(model.id)}" title="更多操作">···</button>
+              <div class="dropdown-menu" id="menu-${escapeText(model.id)}">
+                <button class="dropdown-item" data-model-id="${escapeText(model.id)}" data-service-action="warmup"${!canTest || hasActiveJob ? ' disabled' : ''} title="发起一次测试调用，主动触发官方SDK下载模型权重并载入显存">🧪 测试调用（触发下载）</button>
+                <button class="dropdown-item" data-model-id="${escapeText(model.id)}" data-operation="repair"${hasActiveJob ? ' disabled' : ''} title="检查并修复缺失文件与环境">🛠️ 修复资源</button>
+                <button class="dropdown-item" data-model-id="${escapeText(model.id)}" data-operation="download"${hasActiveJob ? ' disabled' : ''} title="重新安装环境与资源">🔄 重新安装</button>
+                ${isRunning ? `<button class="dropdown-item" data-model-id="${escapeText(model.id)}" data-service-action="restart"${hasActiveJob ? ' disabled' : ''} title="重启当前服务">⚡ 重启服务</button>` : ''}
+              </div>
+            </div>`;
+
+          const descText = isUpstream && !isRunning && state === 'ready'
+            ? '环境已就绪。服务启动后，模型权重将在首次发起调用时由官方 SDK 自动下载并缓存，后续无需重复下载。'
+            : (job ? job.message : model.disk_estimate);
+
+          return `
+            <article class="model-row">
+              <div class="model-cell">
+                <div class="model-head"><div class="model-name" title="${escapeText(model.name)}">${escapeText(model.name)}</div><span class="model-state ${stateClass}">${stateText}</span></div>
+                <code class="model-id" title="${escapeText(model.id)}">${escapeText(model.id)} · :${escapeText(model.service_port)}</code>
+              </div>
+              <div class="model-cell"><span class="model-task">${escapeText(model.task)}</span><p class="model-purpose" title="${escapeText(model.purpose)}">${escapeText(model.purpose)}</p></div>
+              <div class="model-cell"><div class="model-version">${escapeText(model.version)}</div><span class="meta-line">${escapeText(model.weight_size)}</span></div>
+              <div class="model-cell" title="${escapeText(model.resource_root)}"><span class="model-state ${stateClass}">${stateText}</span><span class="meta-line">${escapeText(descText)}</span><code class="resource-root">${escapeText(model.resource_root)}</code></div>
+              <div class="model-cell"><div class="links">${links}</div></div>
+              <div class="model-cell"><div class="model-actions">${serviceBtn}${installBtn}${moreButton}</div></div>
+            </article>`;
+        }).join('');
+      }
+
+      function renderJobInProgress(job) {
+        activeJobs.set(job.model_id, job);
+        renderModels(currentModels);
+      }
+
+      function closeAllMenus() {
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+          menu.classList.remove('show');
+        });
+      }
+
+      document.addEventListener('click', (event) => {
+        if (!event.target.closest('.more-container')) {
+          closeAllMenus();
+        }
+      });
+
+      async function toggleServiceAction(modelId, action) {
+        closeAllMenus();
+        const model = currentModels.find(m => m.id === modelId);
+        const isUpstream = model && model.runtime_weight_policy === 'upstream_managed';
+
+        if (action === 'warmup') {
+          consoleElement.textContent = `[系统提示] 正在发起测试调用 ${modelId}... 首次调用将由官方 SDK 原生下载模型权重并载入显存，请留意下方控制台日志...`;
+          try {
+            const response = await fetch(`/api/model-services/${encodeURIComponent(modelId)}/warmup`, {
+              method: 'POST',
+              headers: { 'Accept': 'application/json' }
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+              throw new Error(payload.detail || `测试调用失败：${response.status}`);
+            }
+            consoleElement.textContent += `\n\n[系统提示] 测试调用成功！模型权重已完成下载与预热，随时可投入业务使用。`;
+            await Promise.all([loadStatus(), loadLogs()]);
+          } catch (error) {
+            consoleElement.textContent += `\n\n[系统提示] 测试调用失败：${error instanceof Error ? error.message : '未知错误'}`;
+          }
+          return;
+        }
+
+        if (action === 'restart') {
+          consoleElement.textContent = `[系统提示] 正在重启服务 ${modelId}...`;
+          try {
+            await fetch(`/api/model-services/${encodeURIComponent(modelId)}/stop`, { method: 'POST' });
+            await new Promise(r => setTimeout(r, 800));
+            await toggleServiceAction(modelId, 'start');
+          } catch (error) {
+            consoleElement.textContent = error instanceof Error ? error.message : `重启服务失败`;
+          }
+          return;
+        }
+
+        // 记录即时 pending 状态并立即重新渲染，给用户瞬时响应
+        pendingServiceActions.set(modelId, action);
+        renderModels(currentModels);
+
+        consoleElement.textContent = action === 'start'
+          ? `[系统提示] 正在启动服务 ${modelId}... 服务启动后，模型权重将在首次发起调用时由官方 SDK 自动下载并缓存，后续调用无需重复下载。`
+          : `正在停止服务 ${modelId}...`;
+        try {
+          const response = await fetch(`/api/model-services/${encodeURIComponent(modelId)}/${action}`, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' }
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(payload.detail || `${action} 服务失败：${response.status}`);
+          }
+          await Promise.all([loadStatus(), loadLogs()]);
+          if (action === 'start') {
+            let count = 0;
+            const timer = setInterval(async () => {
+              count++;
+              await Promise.all([loadStatus(), loadLogs()]).catch(() => {});
+              const curr = currentModels.find(m => m.id === modelId);
+              if ((curr && (curr.runtime_state === 'running' || curr.process_status === 'running')) || count >= 30) {
+                clearInterval(timer);
+              }
+            }, 1000);
+          }
+        } catch (error) {
+          consoleElement.textContent = error instanceof Error ? error.message : `${action} 服务失败`;
+        } finally {
+          pendingServiceActions.delete(modelId);
+          renderModels(currentModels);
+        }
+      }
+
+      async function startModelAction(modelId, operation) {
+        closeAllMenus();
+        if (activeJobs.size) return;
+        const model = currentModels.find(item => item.id === modelId);
+        if (model?.huggingface_token_required && !currentHuggingFaceCredential.configured) {
+          const card = document.getElementById('huggingface-credential-card');
+          hfTokenStatusElement.classList.add('error');
+          hfTokenStatusElement.textContent = '此模型需要先配置 Hugging Face Token';
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          hfTokenElement.focus({ preventScroll: true });
+          throw new Error('请先接受模型条款并保存 Hugging Face Token');
+        }
+        const response = await fetch(`/api/model-services/${encodeURIComponent(modelId)}/${operation}`, {
+          method: 'POST',
+          headers: { 'Accept': 'application/json' }
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (response.status === 409 && payload.detail && payload.detail.job) {
+          renderJobInProgress(payload.detail.job);
+          pollJob(payload.detail.job.id);
+          return;
+        }
+        if (!response.ok) {
+          throw new Error(payload.detail || `资源任务启动失败：${response.status}`);
+        }
+        renderJobInProgress(payload.job);
+        pollJob(payload.job.id);
+      }
+
+      async function pollJob(jobId) {
+        try {
+          const response = await fetch(`/api/model-services/jobs/${encodeURIComponent(jobId)}`, { cache: 'no-store' });
+          if (!response.ok) throw new Error(`任务状态请求失败：${response.status}`);
+          const payload = await response.json();
+          const job = payload.job;
+          if (!terminalJobStates.has(job.state)) {
+            renderJobInProgress(job);
+            await loadLogs().catch(() => {});
+            window.setTimeout(() => pollJob(jobId), 1000);
+            return;
+          }
+          activeJobs.delete(job.model_id);
+          renderModels(currentModels);
+          await Promise.all([loadStatus(), loadLogs()]);
+          if (job.state === 'failed') {
+            consoleElement.textContent += `\n\n[任务失败] ${job.message || job.error || '未知错误'}`;
+          }
+        } catch (error) {
+          consoleElement.textContent = error instanceof Error ? error.message : '读取任务状态失败';
+          activeJobs.clear();
+          renderModels(currentModels);
+        }
+      }
+
+      async function loadJobs() {
+        const response = await fetch('/api/model-services/jobs?limit=20', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`任务请求失败：${response.status}`);
+        const payload = await response.json();
+        for (const job of payload.jobs || []) {
+          if (!terminalJobStates.has(job.state)) {
+            renderJobInProgress(job);
+            pollJob(job.id);
+          }
+        }
+      }
+
+      async function loadStatus() {
+        const response = await fetch('/api/model-services/status', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`状态请求失败：${response.status}`);
+        const payload = await response.json();
+        serviceStatusElement.textContent = payload.service.status === 'running' ? '运行中' : '已准备';
+        serviceRootElement.textContent = payload.service.root;
+        renderModels(payload.models);
+      }
+
+      async function loadLogs() {
+        const response = await fetch('/api/model-services/logs?lines=120', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`日志请求失败：${response.status}`);
+        const payload = await response.json();
+        consoleElement.textContent = payload.content || '暂无服务日志。';
+        consoleElement.scrollTop = consoleElement.scrollHeight;
+      }
+
+      async function loadAll() {
+        if (window.location.protocol === 'file:') {
+          connectionNoticeElement.hidden = false;
+          serviceStatusElement.textContent = '未连接';
+          serviceRootElement.textContent = '请通过模型服务地址打开';
+          modelCountElement.textContent = '未连接';
+          modelsElement.innerHTML = '<div class="empty">当前是文件预览，无法读取服务器接口。</div>';
+          consoleElement.textContent = '请启动 Gateway，并访问 http://127.0.0.1:6006/。';
+          return;
+        }
+        try {
+          await Promise.all([loadStatus(), loadLogs(), loadJobs(), loadSourceConfig(), loadHuggingFaceCredential()]);
+        } catch (error) {
+          consoleElement.textContent = error instanceof Error ? error.message : '读取服务信息失败';
+          serviceStatusElement.textContent = '读取失败';
+        }
+      }
+
+      document.getElementById('refresh').addEventListener('click', loadAll);
+      document.getElementById('check').addEventListener('click', loadStatus);
+      document.getElementById('refresh-logs').addEventListener('click', loadLogs);
+      document.querySelectorAll('input[name="model-source-mode"]').forEach((input) => {
+        input.addEventListener('change', updateSourceForm);
+      });
+      saveSourceElement.addEventListener('click', saveSourceConfig);
+      saveHfTokenElement.addEventListener('click', saveHuggingFaceCredential);
+      deleteHfTokenElement.addEventListener('click', deleteHuggingFaceCredential);
+
+      modelsElement.addEventListener('click', (event) => {
+        const toggleBtn = event.target.closest('button[data-toggle-menu]');
+        if (toggleBtn) {
+          event.stopPropagation();
+          const modelId = toggleBtn.dataset.toggleMenu;
+          const menu = document.getElementById(`menu-${modelId}`);
+          if (menu) {
+            const isShown = menu.classList.contains('show');
+            closeAllMenus();
+            if (!isShown) {
+              menu.classList.add('show');
+            }
+          }
+          return;
+        }
+
+        const actionButton = event.target.closest('button[data-model-id][data-service-action]');
+        if (actionButton && !actionButton.disabled) {
+          closeAllMenus();
+          toggleServiceAction(actionButton.dataset.modelId, actionButton.dataset.serviceAction);
+          return;
+        }
+
+        const button = event.target.closest('button[data-model-id][data-operation]');
+        if (!button || button.disabled) return;
+        closeAllMenus();
+        startModelAction(button.dataset.modelId, button.dataset.operation).catch((error) => {
+          consoleElement.textContent = error instanceof Error ? error.message : '资源任务启动失败';
+        });
+      });
+
+      loadAll();
+    </script>
+  </body>
+</html>

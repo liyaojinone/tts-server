@@ -91,6 +91,16 @@ def test_stable_audio3_service_health_and_test_mode_generation():
     assert response.content.startswith(b"RIFF")
 
 
+def test_stable_audio3_service_warmup_route_is_available_in_test_mode():
+    from app.main import create_app
+
+    client = TestClient(create_app(test_mode=True))
+    warmup = client.post("/v1/warmup")
+
+    assert warmup.status_code == 200
+    assert warmup.json() == {"status": "ok", "mode": "test"}
+
+
 def test_stable_audio3_service_rejects_unsupported_task():
     from app.main import create_app
 

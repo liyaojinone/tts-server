@@ -7,7 +7,7 @@ tasks:
   - asr.transcribe
 runtime:
   root_dir: ${BOBOGEN_ROOT}\services\qwen3-asr-service
-  cwd: ${BOBOGEN_ROOT}\services\qwen3-asr-service
+  cwd: ${BOBOGEN_ROOT}\models\qwen3-asr\repo
   command:
     - powershell
     - -File
@@ -15,7 +15,6 @@ runtime:
   env:
     QWEN3_ASR_MODEL_ID: qwen3_asr_0_6b
     QWEN3_ASR_HF_REPO_ID: Qwen/Qwen3-ASR-0.6B
-    QWEN3_ASR_MODEL_DIR: "${BOBOGEN_ROOT}\\models\\qwen3-asr\\Qwen3-ASR-0.6B"
     QWEN3_ASR_PORT: "5110"
     QWEN3_ASR_DEVICE: cuda:0
   startup_timeout_ms: 300000

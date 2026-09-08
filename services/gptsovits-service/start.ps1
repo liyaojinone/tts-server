@@ -23,6 +23,7 @@ $preloadOnStartup = if ($env:GPTSOVITS_PRELOAD_ON_STARTUP) { $env:GPTSOVITS_PREL
 $sharedProtocolSrc = Join-Path $workspaceRoot "bobogen-protocol\src"
 $sharedKitSrc = Join-Path $workspaceRoot "bobogen-service-kit\src"
 $gptPackageDir = Join-Path $repoDir "GPT_SoVITS"
+$torchcodecFfmpegDir = Join-Path $serviceRoot "ffmpeg"
 
 if (-not (Test-Path $pythonExe)) {
     throw "Python executable not found: $pythonExe"
@@ -36,8 +37,11 @@ New-Item -ItemType Directory -Force -Path $profileDir | Out-Null
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $runtimeConfigPath) | Out-Null
 
-Set-Location $serviceRoot
+Set-Location $repoDir
 $env:PYTHONPATH = "$serviceRoot;$sharedProtocolSrc;$sharedKitSrc;$repoDir;$gptPackageDir"
+if (Test-Path $torchcodecFfmpegDir) {
+    $env:PATH = "$torchcodecFfmpegDir;$env:PATH"
+}
 $env:GPTSOVITS_MODEL_ID = $modelId
 $env:GPTSOVITS_UPSTREAM_VERSION = $upstreamVersion
 $env:GPTSOVITS_REPO_DIR = $repoDir
@@ -45,6 +49,7 @@ $env:GPTSOVITS_MODEL_DIR = $modelDir
 $env:GPTSOVITS_GPT_WEIGHTS_PATH = $gptWeightsPath
 $env:GPTSOVITS_SOVITS_WEIGHTS_PATH = $sovitsWeightsPath
 $env:GPTSOVITS_BERT_BASE_PATH = $bertBasePath
+$env:bert_path = $bertBasePath
 $env:GPTSOVITS_CNHUBERT_BASE_PATH = $cnhuhbertBasePath
 $env:GPTSOVITS_SV_WEIGHTS_PATH = $svWeightsPath
 $env:GPTSOVITS_PROFILE_DIR = $profileDir

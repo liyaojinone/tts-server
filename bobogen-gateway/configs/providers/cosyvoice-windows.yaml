@@ -29,10 +29,10 @@ capabilities:
   clone: true
   stream: false
 voices:
-  - voice_id: 中文女
-    name: 中文女
-    language: [zh]
-    gender: female
-    description: CosyVoice 预置音色
-    tags: [preset]
-    metadata: {}
+  - voice_id: clone
+    name: Zero-shot Clone
+    language: [zh, en, ja, yue, ko]
+    description: CosyVoice2 官方零样本参考音频克隆
+    tags: [reference, clone]
+    metadata:
+      mode: zero_shot

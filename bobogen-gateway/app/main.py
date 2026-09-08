@@ -1,13 +1,18 @@
 from fastapi import FastAPI
 
+from app.config import REPO_ROOT
 from app.routers.clone import router as clone_router
 from app.routers.generate import router as generate_router
 from app.routers.health import router as health_router
 from app.routers.jobs import router as jobs_router
+from app.routers.management import MODEL_CATALOG, INSTALLER_LOG, router as management_router
 from app.routers.providers import router as providers_router
 from app.routers.synthesize import router as synthesize_router
 from app.services.process_manager import ProcessManager
 from app.services.job_store import GatewayJobStore
+from app.services.model_installer import ModelInstallManager
+from app.services.huggingface_token import HuggingFaceTokenStore
+from app.services.model_source import ModelSourceConfigStore
 from app.services.provider_registry import ProviderRegistry
 
 try:
@@ -27,6 +32,7 @@ def create_app() -> FastAPI:
         {"name": "03 Provider 管理", "description": "Provider 列表、状态、生命周期和日志。"},
         {"name": "04 Legacy Provider 旧接口", "description": "兼容旧客户端的 provider 直连风格接口。"},
         {"name": "05 Stable Audio 3 调参", "description": "Stable Audio 3 参数可通过模型详情和统一生成示例查看。"},
+        {"name": "06 模型服务管理", "description": "查看本地模型目录、资源检测和服务控制台。"},
     ]
     app = FastAPI(
         title="BoboGen Gateway",
@@ -35,15 +41,33 @@ def create_app() -> FastAPI:
         openapi_tags=tags_metadata,
     )
     registry = ProviderRegistry.from_directory()
-    manager = ProcessManager(registry.provider_map)
+    source_config_store = ModelSourceConfigStore(REPO_ROOT / "runtime" / "model-source-config.json")
+    huggingface_token_store = HuggingFaceTokenStore(
+        REPO_ROOT / "runtime" / "secrets" / "huggingface-token.bin"
+    )
+    manager = ProcessManager(
+        registry.provider_map,
+        source_config_store=source_config_store,
+        huggingface_token_store=huggingface_token_store,
+    )
     app.state.provider_registry = registry
     app.state.process_manager = manager
+    app.state.model_source_config_store = source_config_store
+    app.state.huggingface_token_store = huggingface_token_store
     app.state.job_store = GatewayJobStore()
+    app.state.model_install_manager = ModelInstallManager(
+        REPO_ROOT,
+        MODEL_CATALOG,
+        log_path=INSTALLER_LOG,
+        source_config_store=source_config_store,
+        huggingface_token_store=huggingface_token_store,
+    )
 
     app.include_router(clone_router)
     app.include_router(generate_router)
     app.include_router(health_router)
     app.include_router(jobs_router)
+    app.include_router(management_router)
     app.include_router(providers_router)
     app.include_router(synthesize_router)
 

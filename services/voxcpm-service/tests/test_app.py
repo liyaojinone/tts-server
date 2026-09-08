@@ -29,6 +29,16 @@ def test_voxcpm_health_reports_versioned_model_id():
     assert health.json()["version"] == "voxcpm2"
 
 
+def test_voxcpm_warmup_route_is_available_in_test_mode():
+    from app.main import create_app
+
+    client = TestClient(create_app(test_mode=True))
+    warmup = client.post("/v1/warmup")
+
+    assert warmup.status_code == 200
+    assert warmup.json() == {"status": "ok", "mode": "test"}
+
+
 def test_voxcpm_defers_checkpoint_validation_until_synthesis(tmp_path, monkeypatch):
     repo_dir = tmp_path / "repo"
     (repo_dir / "src").mkdir(parents=True)

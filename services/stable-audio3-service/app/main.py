@@ -34,6 +34,16 @@ def create_app(test_mode: bool = False):
             return unauthorized
         return handler.health()
 
+    @app.post("/v1/warmup")
+    async def warmup(request: Request):
+        unauthorized = await ensure_authorized(request)
+        if unauthorized is not None:
+            return unauthorized
+        try:
+            return handler.warmup()
+        except RuntimeError as exc:
+            return _error_response(503, "MODEL_UNAVAILABLE", str(exc))
+
     @app.post("/v1/generate")
     async def generate(http_request: Request):
         unauthorized = await ensure_authorized(http_request)

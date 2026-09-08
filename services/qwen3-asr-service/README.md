@@ -28,7 +28,9 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e .
 ```
 
-Model weights download through Hugging Face on first real inference. Cache directories are placed under `models/qwen3-asr`.
+The official local model directory is `models/qwen3-asr/repo/Qwen3-ASR-0.6B`, matching the upstream manual download command when run from the repository root. If that directory is complete, the service loads it without downloading. If `QWEN3_ASR_MODEL_DIR` is unset, the official model ID is used and the upstream `qwen-asr` loader may download through its configured Hugging Face/ModelScope mechanism.
+
+For a Hugging Face mirror, set `QWEN3_ASR_HF_ENDPOINT` before starting the service. The start script passes it as the process-local `HF_ENDPOINT`; it does not change the user's persistent environment.
 
 Forced Aligner 使用官方原生 Transformers token-classification 实现和独立环境，避免升级
 Transformers 影响现有 ASR：
@@ -40,6 +42,7 @@ python -m venv .venv-aligner
 .\.venv-aligner\Scripts\python.exe -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 .\.venv-aligner\Scripts\python.exe -m pip install -e ..\..\bobogen-protocol
 .\.venv-aligner\Scripts\python.exe -m pip install -e ".[aligner]"
+.\.venv-aligner\Scripts\python.exe -m pip install git+https://github.com/huggingface/transformers
 ```
 
 ## Run
@@ -64,7 +67,6 @@ Run ForcedAligner:
 ```powershell
 $env:QWEN3_ASR_MODEL_ID = "qwen3_forced_aligner_0_6b"
 $env:QWEN3_ASR_HF_REPO_ID = "Qwen/Qwen3-ForcedAligner-0.6B-hf"
-$env:QWEN3_ASR_MODEL_DIR = "..\..\models\qwen3-asr\Qwen3-ForcedAligner-0.6B-hf"
 $env:QWEN3_ASR_PYTHON = ".\.venv-aligner\Scripts\python.exe"
 $env:QWEN3_ASR_PORT = "5112"
 .\start.ps1
