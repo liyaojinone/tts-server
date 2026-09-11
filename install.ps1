@@ -21,10 +21,12 @@ function Ensure-GatewayEnvironment {
     if (-not (Test-Path $gatewayPython)) {
         New-Item -ItemType Directory -Force -Path (Split-Path -Parent $gatewayVenv) | Out-Null
         python -m venv $gatewayVenv
+        if ($LASTEXITCODE -ne 0) { throw "Gateway Python 环境创建失败: $gatewayVenv" }
     }
     if (-not (Test-Path $gatewayPython)) { throw "Gateway Python 环境创建失败: $gatewayVenv" }
     Step "安装 Gateway 依赖"
     & $gatewayPython -m pip install $gatewayDir -i $pipIndex
+    if ($LASTEXITCODE -ne 0) { throw "Gateway 依赖安装失败" }
     Ok "Gateway Python 环境与依赖就绪: $gatewayVenv"
 }
 
