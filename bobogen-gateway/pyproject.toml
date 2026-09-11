@@ -6,7 +6,9 @@ requires-python = ">=3.10"
 dependencies = [
   "fastapi",
   "httpx",
+  "mcp",
   "pydantic",
+  "python-multipart",
   "pyyaml",
   "uvicorn",
 ]

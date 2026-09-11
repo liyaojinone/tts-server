@@ -74,6 +74,14 @@ def test_management_catalog_contains_all_configured_local_models_and_repository_
         assert isinstance(model["source_platforms"], list)
         assert model["source_support"] in {"full", "mixed", "partial", "conditional", "unknown"}
 
+    assert next(model for model in models if model["id"] == "voxcpm2")["parameter_size"] == "2B"
+    assert next(model for model in models if model["id"] == "stable_audio_3_small_sfx")["parameter_size"] == "0.6B"
+    assert next(model for model in models if model["id"] == "stable_audio_3_medium")["parameter_size"] == "2B"
+    assert next(model for model in models if model["id"] == "qwen3_asr_1_7b")["weight_size"] == "约 4.7 GB"
+    assert next(model for model in models if model["id"] == "gpt_sovits_v2pro")["parameter_size"] == "133M + 77M"
+    assert next(model for model in models if model["id"] == "campplus_speaker_diarization")["parameter_size"] == "7.2M"
+    assert next(model for model in models if model["id"] == "tiger-dnr")["parameter_size"] == "4.22M"
+
     qwen = next(model for model in MODEL_CATALOG if model["id"] == "qwen3_asr_0_6b")
     assert qwen["resource_root"] == "models/qwen3-asr/repo"
     assert qwen["runtime_weight_policy"] == "upstream_managed"

@@ -1,13 +1,32 @@
+param(
+    [switch]$GatewayOnly
+)
+
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $pipIndex = if ($env:PIP_INDEX) { $env:PIP_INDEX } else { "https://mirrors.aliyun.com/pypi/simple" }
+$gatewayDir = Join-Path $root "bobogen-gateway"
+$gatewayVenv = Join-Path $root "runtime\gateway\.venv"
+$gatewayPython = Join-Path $gatewayVenv "Scripts\python.exe"
 
 function Step($message) { Write-Host "`n>> $message" -ForegroundColor Cyan }
 function Ok($message) { Write-Host "   OK - $message" -ForegroundColor Green }
 function Warn($message) { Write-Host "   WARN - $message" -ForegroundColor Yellow }
 
 Set-Location $root
+
+function Ensure-GatewayEnvironment {
+    Step "Gateway Python 环境"
+    if (-not (Test-Path $gatewayPython)) {
+        New-Item -ItemType Directory -Force -Path (Split-Path -Parent $gatewayVenv) | Out-Null
+        python -m venv $gatewayVenv
+    }
+    if (-not (Test-Path $gatewayPython)) { throw "Gateway Python 环境创建失败: $gatewayVenv" }
+    Step "安装 Gateway 依赖"
+    & $gatewayPython -m pip install $gatewayDir -i $pipIndex
+    Ok "Gateway Python 环境与依赖就绪: $gatewayVenv"
+}
 
 Write-Host ""
 Write-Host "========================================"
@@ -20,9 +39,12 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) { throw "请先安装 
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) { throw "请先安装 Python 3.10+" }
 Ok "git & python 就绪"
 
-Step "Gateway 依赖"
-python -m pip install fastapi httpx pydantic pyyaml uvicorn python-multipart mcp -q -i $pipIndex
-Ok "Gateway 依赖就绪"
+Ensure-GatewayEnvironment
+
+if ($GatewayOnly) {
+    Write-Host "Gateway 安装完成。下一步：.\start.ps1 -Daemon"
+    return
+}
 
 Write-Host ""
 Write-Host "请选择要安装的模型："

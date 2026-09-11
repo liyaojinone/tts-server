@@ -13,7 +13,7 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $gatewayDir = Join-Path $root "bobogen-gateway"
-$pipIndex = if ($env:PIP_INDEX) { $env:PIP_INDEX } else { "https://mirrors.aliyun.com/pypi/simple" }
+$gatewayPython = Join-Path $root "runtime\gateway\.venv\Scripts\python.exe"
 
 function Show-Usage {
     Write-Host ""
@@ -96,20 +96,22 @@ function Invoke-NativeMode {
             return
         }
 
-        python -m pip install fastapi httpx pydantic pyyaml uvicorn python-multipart mcp -q -i $pipIndex
+        if (-not (Test-Path $gatewayPython)) {
+            throw "Gateway Python 环境不存在。请先运行 .\install.ps1 -GatewayOnly"
+        }
         New-Item -ItemType Directory -Force -Path (Join-Path $gatewayDir "logs") | Out-Null
 
         if ($Daemon) {
             $logPath = Join-Path $gatewayDir "logs\gateway.log"
             New-Item -ItemType File -Force -Path $logPath | Out-Null
-            $command = "python -m uvicorn app.main:create_app --factory --host 0.0.0.0 --port $Port >> `"$logPath`" 2>&1"
+            $command = "`"$gatewayPython`" -m uvicorn app.main:create_app --factory --host 0.0.0.0 --port $Port >> `"$logPath`" 2>&1"
             Start-Process cmd.exe -ArgumentList @("/d", "/c", $command) -WorkingDirectory $gatewayDir -WindowStyle Hidden
             Write-Host "Gateway 后台启动: http://127.0.0.1:$Port"
             Write-Host "日志: $logPath"
             return
         }
 
-        python -m uvicorn app.main:create_app --factory --host 0.0.0.0 --port $Port
+        & $gatewayPython -m uvicorn app.main:create_app --factory --host 0.0.0.0 --port $Port
     } finally {
         Pop-Location
     }
