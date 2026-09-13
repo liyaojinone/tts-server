@@ -112,14 +112,19 @@ def env_flag(name: str, default: bool) -> bool:
 
 
 def _configure_ffmpeg_runtime() -> None:
-    """Load the project-local FFmpeg shared libraries before TorchCodec starts."""
+    """Load the active virtual environment's FFmpeg shared libraries before TorchCodec starts."""
     if os.name != "nt":
         return
-    ffmpeg_dir = ROOT_DIR / "services" / "gptsovits-service" / "ffmpeg"
+    ffmpeg_dir = get_ffmpeg_runtime_dir()
     if not ffmpeg_dir.is_dir():
         return
     os.add_dll_directory(str(ffmpeg_dir))
     os.environ["PATH"] = f"{ffmpeg_dir}{os.pathsep}{os.environ.get('PATH', '')}"
+
+
+def get_ffmpeg_runtime_dir(python_executable: Optional[Path] = None) -> Path:
+    executable = python_executable or Path(sys.executable)
+    return executable.resolve().parent.parent / "ffmpeg"
 
 
 GPTSOVITS_ROOT = get_repo_dir()

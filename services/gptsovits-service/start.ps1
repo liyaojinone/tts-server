@@ -23,7 +23,7 @@ $preloadOnStartup = if ($env:GPTSOVITS_PRELOAD_ON_STARTUP) { $env:GPTSOVITS_PREL
 $sharedProtocolSrc = Join-Path $workspaceRoot "bobogen-protocol\src"
 $sharedKitSrc = Join-Path $workspaceRoot "bobogen-service-kit\src"
 $gptPackageDir = Join-Path $repoDir "GPT_SoVITS"
-$torchcodecFfmpegDir = Join-Path $serviceRoot "ffmpeg"
+$torchcodecFfmpegDir = Join-Path (Split-Path -Parent (Split-Path -Parent $pythonExe)) "ffmpeg"
 
 if (-not (Test-Path $pythonExe)) {
     throw "Python executable not found: $pythonExe"

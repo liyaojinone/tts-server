@@ -117,9 +117,12 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
         },
         "resources": [
             {
-                "kind": "torchcodec_pyav_ffmpeg",
-                "source": "services/gptsovits-service/.venv/Lib/site-packages/av.libs",
-                "target": "services/gptsovits-service/ffmpeg",
+                "kind": "ffmpeg_shared_zip",
+                "url": "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/assets/561416198",
+                "sha256": "0968af68d5b2009c62bf726d6a9530c234bd3e158102823a8e7ee7f799257460",
+                "cache_path": "runtime/model-download-cache/ffmpeg-win64-lgpl-shared-20260913.zip",
+                "target": "services/gptsovits-service/.venv/ffmpeg",
+                "package_glob": "ffmpeg-*-win64-lgpl-shared",
             },
             {
                 "kind": "url_zip_extract",
@@ -588,8 +591,8 @@ class ModelInstaller:
             self._download_hf_files(resource, progress)
         elif kind == "modelscope_cache":
             self._download_modelscope_cache(resource, progress)
-        elif kind == "torchcodec_pyav_ffmpeg":
-            self._prepare_torchcodec_pyav_ffmpeg(resource, progress)
+        elif kind == "ffmpeg_shared_zip":
+            self._download_ffmpeg_shared_zip(resource, progress)
         elif kind == "url_zip_extract":
             self._download_url_zip_extract(resource, progress)
         else:
@@ -642,80 +645,65 @@ class ModelInstaller:
         if not marker.exists() or (marker.is_file() and marker.stat().st_size == 0):
             raise ModelInstallError(f"官方压缩资源解压后缺少预期内容: {marker}")
 
-    def _prepare_torchcodec_pyav_ffmpeg(self, resource: dict, progress: ProgressCallback) -> None:
-        """Expose PyAV's bundled FFmpeg 8 DLLs under TorchCodec's names.
-
-        The Windows PyAV wheel keeps its FFmpeg DLLs in ``av.libs`` with
-        delvewheel hashes in their filenames.  TorchCodec loads the same
-        libraries by their un-hashed SONAMEs (for example ``avcodec-62.dll``),
-        so the adapter needs a project-local directory containing both the
-        original hashed files and stable aliases.  This keeps the dependency
-        inside the model service instead of relying on a machine-wide FFmpeg.
-        """
-        source = self._safe_path(resource["source"])
+    def _download_ffmpeg_shared_zip(self, resource: dict, progress: ProgressCallback) -> None:
         target = self._safe_path(resource["target"])
-        if not source.is_dir():
-            raise ModelInstallError(f"PyAV FFmpeg 资源目录不存在: {source}")
+        required_files = ("ffmpeg.exe", "ffprobe.exe")
+        if all((target / filename).is_file() for filename in required_files) and any(target.glob("avcodec-*.dll")):
+            progress(InstallProgress("weights", f"FFmpeg shared runtime 已存在，跳过: {target}"))
+            return
 
-        dlls = [path for path in source.glob("*.dll") if path.is_file() and path.stat().st_size > 0]
-        if not dlls:
-            raise ModelInstallError(f"PyAV FFmpeg 资源目录为空: {source}")
+        cache_path = self._safe_path(resource["cache_path"])
+        expected_sha256 = resource["sha256"].lower()
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        if not cache_path.is_file() or self._sha256(cache_path) != expected_sha256:
+            partial_path = cache_path.with_name(f".{cache_path.name}.part")
+            progress(InstallProgress("weights", "下载并校验 FFmpeg Windows shared runtime"))
+            from urllib.request import Request, urlopen
 
-        target.mkdir(parents=True, exist_ok=True)
-        progress(InstallProgress("weights", "准备项目内 TorchCodec FFmpeg 共享库"))
-        for source_path in dlls:
-            target_path = target / source_path.name
-            if not target_path.is_file() or target_path.stat().st_size != source_path.stat().st_size:
-                partial_path = target / f".{source_path.name}.part"
-                shutil.copyfile(source_path, partial_path)
-                partial_path.replace(target_path)
+            try:
+                request = Request(
+                    resource["url"],
+                    headers={
+                        "Accept": "application/octet-stream",
+                        "X-GitHub-Api-Version": "2022-11-28",
+                    },
+                )
+                with urlopen(request, timeout=120) as response, partial_path.open("wb") as output:
+                    shutil.copyfileobj(response, output)
+            except Exception as exc:
+                partial_path.unlink(missing_ok=True)
+                raise ModelInstallError(f"下载 FFmpeg shared runtime 失败: {resource['url']}: {exc}") from exc
+            if self._sha256(partial_path) != expected_sha256:
+                partial_path.unlink(missing_ok=True)
+                raise ModelInstallError("FFmpeg shared runtime SHA-256 校验失败")
+            partial_path.replace(cache_path)
 
-        aliases: dict[str, Path] = {}
-        for source_path in dlls:
-            parts = source_path.name.split("-")
-            if len(parts) < 3:
-                continue
-            library_name, major = parts[0], parts[1]
-            if library_name not in {"avcodec", "avformat", "avutil", "avfilter", "avdevice", "swscale", "swresample"}:
-                continue
-            aliases.setdefault(f"{library_name}-{major}.dll", source_path)
+        staging_dir = Path(tempfile.mkdtemp(prefix=".ffmpeg.install-", dir=target.parent))
+        try:
+            with zipfile.ZipFile(cache_path) as archive:
+                archive.extractall(staging_dir)
+            package_root = next(staging_dir.glob(resource["package_glob"]), None)
+            if package_root is None:
+                raise ModelInstallError("FFmpeg 压缩包不包含预期的 Windows shared runtime")
+            bin_dir = package_root / "bin"
+            if not all((bin_dir / filename).is_file() for filename in required_files) or not any(bin_dir.glob("avcodec-*.dll")):
+                raise ModelInstallError("FFmpeg shared runtime 缺少命令行程序或 avcodec DLL")
+            if target.exists():
+                shutil.rmtree(target)
+            bin_dir.replace(target)
+            progress(InstallProgress("weights", f"FFmpeg shared runtime 已安装: {target}"))
+        finally:
+            shutil.rmtree(staging_dir, ignore_errors=True)
 
-        required_aliases = {
-            alias: aliases[alias]
-            for alias in aliases
-            if alias in {
-                "avcodec-62.dll",
-                "avformat-62.dll",
-                "avutil-60.dll",
-                "avfilter-11.dll",
-                "swscale-9.dll",
-                "swresample-6.dll",
-            }
-        }
-        missing_aliases = {
-            alias
-            for alias in {
-                "avcodec-62.dll",
-                "avformat-62.dll",
-                "avutil-60.dll",
-                "avfilter-11.dll",
-                "swscale-9.dll",
-                "swresample-6.dll",
-            }
-            if alias not in required_aliases
-        }
-        if missing_aliases:
-            raise ModelInstallError(
-                "PyAV FFmpeg 资源版本不匹配，缺少 TorchCodec 需要的共享库: "
-                + "、".join(sorted(missing_aliases))
-            )
+    @staticmethod
+    def _sha256(path: Path) -> str:
+        import hashlib
 
-        for alias, source_path in required_aliases.items():
-            target_path = target / alias
-            if not target_path.is_file() or target_path.stat().st_size != source_path.stat().st_size:
-                partial_path = target / f".{alias}.part"
-                shutil.copyfile(source_path, partial_path)
-                partial_path.replace(target_path)
+        digest = hashlib.sha256()
+        with path.open("rb") as source:
+            for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
 
     def _hf_module(self):
         try:

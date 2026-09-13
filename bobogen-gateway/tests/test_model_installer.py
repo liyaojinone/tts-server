@@ -37,6 +37,16 @@ def test_qwen3_install_plan_has_no_weight_download_resources():
     assert f5_plan["runtime"]["hf_repo_id"] == "SWivid/F5-TTS"
 
 
+def test_gptsovits_install_plan_provisions_ffmpeg_inside_its_virtual_environment():
+    plan = MODEL_INSTALL_PLANS["gpt_sovits_v2pro"]
+    resource = next(resource for resource in plan["resources"] if resource["kind"] == "ffmpeg_shared_zip")
+
+    assert resource["target"] == "services/gptsovits-service/.venv/ffmpeg"
+    assert resource["url"] == "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/assets/561416198"
+    assert resource["sha256"] == "0968af68d5b2009c62bf726d6a9530c234bd3e158102823a8e7ee7f799257460"
+    assert resource["package_glob"] == "ffmpeg-*-win64-lgpl-shared"
+
+
 
 def test_install_request_operates_only_on_selected_model(tmp_path, monkeypatch):
     recorded_steps = []
