@@ -321,11 +321,13 @@ MODEL_CATALOG = [
         "version": "common",
         "parameter_size": "7.2M",
         "purpose": "识别一段音频里有几个人，以及每个人何时说话",
-        "weight_size": "官方包",
-        "disk_estimate": "需检测 ModelScope 缓存",
+        "weight_size": "约 400 MB",
+        "disk_estimate": "约 400 MB（含 ModelScope 缓存）",
         "service_port": 5113,
         "resource_root": "models/speaker-diarization/modelscope-cache/models/iic/speech_campplus_speaker-diarization_common",
         "official_repo": "https://github.com/modelscope/3D-Speaker",
+        "installation_environment": "services/speaker-diarization-service/.venv/Scripts/python.exe",
+        "installation_marker": "runtime/model-install-state/campplus_speaker_diarization.json",
         "other_links": [
             {
                 "label": "ModelScope 模型",
@@ -335,6 +337,9 @@ MODEL_CATALOG = [
         "required_paths": [
             "models/speaker-diarization/modelscope-cache/models/iic/speech_campplus_speaker-diarization_common/config.yaml",
             "models/speaker-diarization/modelscope-cache/models/iic/speech_campplus_speaker-diarization_common/onnx",
+            "models/speaker-diarization/modelscope-cache/models/damo/speech_campplus_sv_zh-cn_16k-common/campplus_cn_common.bin",
+            "models/speaker-diarization/modelscope-cache/models/damo/speech_campplus-transformer_scl_zh-cn_16k-common/transformer_backend.pt",
+            "models/speaker-diarization/modelscope-cache/models/damo/speech_fsmn_vad_zh-cn-16k-common-pytorch/model.pb",
         ],
     },
     {
@@ -345,10 +350,12 @@ MODEL_CATALOG = [
         "parameter_size": "4.22M",
         "purpose": "把影视混音拆成对白和背景声两个音轨",
         "weight_size": "约 17 MB",
-        "disk_estimate": "需检测 Hugging Face 缓存",
+        "disk_estimate": "约 17 MB（含 Hugging Face 缓存）",
         "service_port": 5114,
         "resource_root": "models/tiger/TIGER-DnR",
         "official_repo": "https://github.com/JusperLee/TIGER",
+        "installation_environment": "services/tiger-dnr-service/.venv/Scripts/python.exe",
+        "installation_marker": "runtime/model-install-state/tiger-dnr.json",
         "other_links": [
             {
                 "label": "Hugging Face 权重",
@@ -359,6 +366,7 @@ MODEL_CATALOG = [
             "models/tiger/repo",
             "models/tiger/TIGER-DnR/models--JusperLee--TIGER-DnR/snapshots/b7a59560bbca10febbcd46fb01600f868e587f57/config.json",
             "models/tiger/TIGER-DnR/models--JusperLee--TIGER-DnR/snapshots/b7a59560bbca10febbcd46fb01600f868e587f57/model.safetensors",
+            "services/tiger-dnr-service/.venv/ffmpeg/ffmpeg.exe",
         ],
     },
 ]

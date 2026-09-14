@@ -146,6 +146,34 @@ def test_cosyvoice_catalog_requires_install_receipt():
     )
     assert "services/gptsovits-service/.venv/ffmpeg" in gptsovits["required_paths"]
 
+    campplus = next(model for model in MODEL_CATALOG if model["id"] == "campplus_speaker_diarization")
+    assert campplus["weight_size"] == "约 400 MB"
+    assert campplus["installation_environment"].endswith(
+        "services/speaker-diarization-service/.venv/Scripts/python.exe"
+    )
+    assert campplus["installation_marker"].endswith(
+        "runtime/model-install-state/campplus_speaker_diarization.json"
+    )
+    assert (
+        "models/speaker-diarization/modelscope-cache/models/damo/speech_campplus_sv_zh-cn_16k-common/campplus_cn_common.bin"
+        in campplus["required_paths"]
+    )
+    assert (
+        "models/speaker-diarization/modelscope-cache/models/damo/speech_fsmn_vad_zh-cn-16k-common-pytorch/model.pb"
+        in campplus["required_paths"]
+    )
+
+    tiger = next(model for model in MODEL_CATALOG if model["id"] == "tiger-dnr")
+    assert tiger["installation_environment"].endswith(
+        "services/tiger-dnr-service/.venv/Scripts/python.exe"
+    )
+    assert tiger["installation_marker"].endswith(
+        "runtime/model-install-state/tiger-dnr.json"
+    )
+    assert (
+        "services/tiger-dnr-service/.venv/ffmpeg/ffmpeg.exe" in tiger["required_paths"]
+    )
+
 
 def test_qwen_shared_repository_does_not_mark_unselected_variants_as_installed(
     monkeypatch, tmp_path

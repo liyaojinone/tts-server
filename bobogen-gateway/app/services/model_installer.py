@@ -436,13 +436,44 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
         "resources": [],
     },
     "campplus_speaker_diarization": {
+        "environment": {
+            "venv_dir": "services/speaker-diarization-service/.venv",
+            "setup_commands": [
+                ["{python}", "-m", "pip", "install", "-U", "pip"],
+                ["{python}", "-m", "pip", "install", "torch", "torchaudio", "--index-url", "https://download.pytorch.org/whl/cu128"],
+                ["{python}", "-m", "pip", "install", "-e", "bobogen-protocol"],
+                ["{python}", "-m", "pip", "install", "-e", "services/speaker-diarization-service"],
+            ],
+        },
+        "installation_marker": "runtime/model-install-state/campplus_speaker_diarization.json",
         "resources": [
+            # 官方流水线由 configuration.json 引用以下 4 个包（说话人分离、
+            # 声纹、变化点检测、VAD），全部预置到同一个 ModelScope 缓存，
+            # 运行期直接命中本地缓存；revision 与运行期请求保持一致。
             {
                 "kind": "modelscope_cache",
                 "model_id": "iic/speech_campplus_speaker-diarization_common",
-                "revision": "v1.0.0",
+                "revision": "master",
                 "cache_dir": "models/speaker-diarization/modelscope-cache",
-            }
+            },
+            {
+                "kind": "modelscope_cache",
+                "model_id": "damo/speech_campplus_sv_zh-cn_16k-common",
+                "revision": "master",
+                "cache_dir": "models/speaker-diarization/modelscope-cache",
+            },
+            {
+                "kind": "modelscope_cache",
+                "model_id": "damo/speech_campplus-transformer_scl_zh-cn_16k-common",
+                "revision": "master",
+                "cache_dir": "models/speaker-diarization/modelscope-cache",
+            },
+            {
+                "kind": "modelscope_cache",
+                "model_id": "damo/speech_fsmn_vad_zh-cn-16k-common-pytorch",
+                "revision": "v2.0.2",
+                "cache_dir": "models/speaker-diarization/modelscope-cache",
+            },
         ],
     },
     "tiger-dnr": {
@@ -451,7 +482,48 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
             "target": "models/tiger/repo",
             "revision": "9f18d4a10a7137e1ce8052cfb62215179f1287b6",
         },
+        "environment": {
+            "venv_dir": "services/tiger-dnr-service/.venv",
+            "setup_commands": [
+                ["{python}", "-m", "pip", "install", "-U", "pip"],
+                ["{python}", "-m", "pip", "install", "torch", "torchaudio", "--index-url", "https://download.pytorch.org/whl/cu128"],
+                # 官方 requirements.txt 含 triton/wandb/speechbrain 等训练或
+                # Windows 不可用包；这里按服务声明的推理依赖安装最小集合
+                [
+                    "{python}",
+                    "-m",
+                    "pip",
+                    "install",
+                    "huggingface-hub",
+                    "librosa",
+                    "lightning-utilities",
+                    "numpy",
+                    "packaging",
+                    "pytorch-lightning",
+                    "rich",
+                    "safetensors",
+                    "scipy",
+                    "soundfile",
+                    "torch-complex",
+                    "torchmetrics",
+                    "typeguard",
+                ],
+                ["{python}", "-m", "pip", "install", "-e", "bobogen-protocol"],
+                ["{python}", "-m", "pip", "install", "-e", "services/tiger-dnr-service"],
+            ],
+        },
+        "installation_marker": "runtime/model-install-state/tiger-dnr.json",
         "resources": [
+            {
+                # 服务解码音频时调用 ffmpeg 命令行，必须随目录自带一份，
+                # 否则整目录拷贝到没有系统 ffmpeg 的机器上无法运行
+                "kind": "ffmpeg_shared_zip",
+                "url": "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/assets/561416198",
+                "sha256": "0968af68d5b2009c62bf726d6a9530c234bd3e158102823a8e7ee7f799257460",
+                "cache_path": "runtime/model-download-cache/ffmpeg-win64-lgpl-shared-20260913.zip",
+                "target": "services/tiger-dnr-service/.venv/ffmpeg",
+                "package_glob": "ffmpeg-*-win64-lgpl-shared",
+            },
             {
                 "kind": "hf_snapshot_cache",
                 "repo_id": "JusperLee/TIGER-DnR",

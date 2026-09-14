@@ -17,8 +17,14 @@ if (-not (Test-Path $repoDir)) {
     throw "TIGER source repository not found: $repoDir"
 }
 
+$vendoredFfmpeg = Join-Path $serviceRoot ".venv\ffmpeg\ffmpeg.exe"
+
 Set-Location $serviceRoot
 $env:PYTHONPATH = "$serviceRoot;$sharedProtocolSrc;$repoDir"
+if (Test-Path $vendoredFfmpeg) {
+    $env:FFMPEG_BINARY = $vendoredFfmpeg
+    $env:PATH = "$(Split-Path -Parent $vendoredFfmpeg);$env:PATH"
+}
 $env:TIGER_DNR_REPO_DIR = $repoDir
 $env:TIGER_DNR_MODEL_DIR = if ($env:TIGER_DNR_MODEL_DIR) { $env:TIGER_DNR_MODEL_DIR } else { $modelDir }
 $env:TIGER_DNR_JOB_ROOT = if ($env:TIGER_DNR_JOB_ROOT) { $env:TIGER_DNR_JOB_ROOT } else { Join-Path $modelRoot "runtime\jobs" }

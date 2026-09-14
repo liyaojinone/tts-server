@@ -70,6 +70,46 @@ def test_voxcpm_install_plan_avoids_heavy_packages():
     assert plan["installation_marker"].endswith("voxcpm2.json")
 
 
+def test_campplus_install_plan_provisions_environment_and_pipeline_packages():
+    plan = MODEL_INSTALL_PLANS["campplus_speaker_diarization"]
+    assert plan["environment"]["venv_dir"] == "services/speaker-diarization-service/.venv"
+    assert plan["installation_marker"].endswith(
+        "runtime/model-install-state/campplus_speaker_diarization.json"
+    )
+
+    resources = plan["resources"]
+    assert {resource["model_id"] for resource in resources} == {
+        "iic/speech_campplus_speaker-diarization_common",
+        "damo/speech_campplus_sv_zh-cn_16k-common",
+        "damo/speech_campplus-transformer_scl_zh-cn_16k-common",
+        "damo/speech_fsmn_vad_zh-cn-16k-common-pytorch",
+    }
+    assert {resource["cache_dir"] for resource in resources} == {
+        "models/speaker-diarization/modelscope-cache"
+    }
+    commands = " ".join(" ".join(command) for command in plan["environment"]["setup_commands"])
+    assert "services/speaker-diarization-service" in commands
+
+
+def test_tiger_install_plan_provisions_environment_and_inference_dependencies():
+    plan = MODEL_INSTALL_PLANS["tiger-dnr"]
+    assert plan["environment"]["venv_dir"] == "services/tiger-dnr-service/.venv"
+    assert plan["installation_marker"].endswith("runtime/model-install-state/tiger-dnr.json")
+    commands = " ".join(" ".join(command) for command in plan["environment"]["setup_commands"])
+    assert "services/tiger-dnr-service" in commands
+    assert "pytorch-lightning" in commands
+    # 官方 requirements 里的 triton 在 Windows 装不上，推理依赖必须显式列出
+    assert "triton" not in commands
+    assert "safetensors" in commands
+
+    # ffmpeg 必须随目录自带，否则拷到没有系统 ffmpeg 的机器无法解码
+    ffmpeg_resources = [
+        resource for resource in plan["resources"] if resource["kind"] == "ffmpeg_shared_zip"
+    ]
+    assert len(ffmpeg_resources) == 1
+    assert ffmpeg_resources[0]["target"] == "services/tiger-dnr-service/.venv/ffmpeg"
+
+
 def test_url_zip_extract_redownloads_corrupt_cache(tmp_path, monkeypatch):
     import io
     import zipfile as zipfile_module
@@ -350,10 +390,24 @@ def test_complete_repair_reuses_local_resources_without_downloading_again(tmp_pa
     target.parent.mkdir(parents=True)
     target.write_bytes(b"already downloaded")
 
+    marker_path = tmp_path / "runtime/model-install-state/tiger-dnr.json"
+    marker_path.parent.mkdir(parents=True)
+    marker_path.write_text("{}", encoding="utf-8")
+
+    venv_python = tmp_path / "services/tiger-dnr-service/.venv/Scripts/python.exe"
+    venv_python.parent.mkdir(parents=True)
+    venv_python.write_bytes(b"python")
+
     installer = ModelInstaller(tmp_path)
     calls = []
+    dependency_runs = []
     monkeypatch.setattr(installer, "_ensure_source", lambda source, progress: None)
     monkeypatch.setattr(installer, "_download_resource", lambda resource, progress: calls.append(resource))
+    monkeypatch.setattr(
+        installer,
+        "_install_dependencies",
+        lambda env_config, python_exe, progress, mirror=None: dependency_runs.append(mirror),
+    )
 
     events = []
     installer.run(
@@ -363,8 +417,10 @@ def test_complete_repair_reuses_local_resources_without_downloading_again(tmp_pa
         mirror="https://new-mirror.example.com",
     )
 
+    # 资源已完整：修复只重跑环境依赖（用于补齐运行期依赖），绝不再下载资源
     assert calls == []
-    assert any(event.step == "verify" and "无需重复下载" in event.message for event in events)
+    assert dependency_runs == ["https://new-mirror.example.com"]
+    assert any(event.step == "done" for event in events)
 
 
 def test_gated_stable_audio_download_passes_stored_token_to_huggingface(tmp_path, monkeypatch):
