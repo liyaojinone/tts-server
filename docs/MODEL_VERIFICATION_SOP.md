@@ -88,6 +88,29 @@
 - **结论**：通过。
 - **证据**：`verification/runs/run-20260914-093203/report.json`（含返回 JSON 与耗时）。
 
+### 从零验收通过清单（2026-09-14 汇总）
+
+| 模型 | 端口 | 检查项 | 结果 | 证据（verification/runs/） |
+|------|------|--------|------|---------------------------|
+| qwen3_asr_0_6b | 5110 | asr.transcribe | PASS 6.0s，中文文本正确 | run-20260914-122325 |
+| qwen3_asr_1_7b | 5111 | asr.transcribe | PASS 2.9s，中文文本正确 | run-20260914-122034 |
+| qwen3_forced_aligner_0_6b | 5112 | audio.align | PASS 1.1s，25 个片段 | run-20260914-123247 |
+| cosyvoice2 | 5101 | tts.speech | PASS 16.1s，22050Hz 8.14s | run-20260914-175731 |
+| f5_tts | 5102 | tts.speech | PASS 11.4s，24000Hz 6.43s | run-20260914-192137 |
+| voxcpm2 | 5105 | tts.speech | PASS 171.1s，48000Hz 4.64s | run-20260914-210200 |
+| gpt_sovits_v2pro | 5103 | tts.speech | PASS 95.6s，32000Hz 5.98s | run-20260914-214708 |
+
+### gpt_sovits_v2pro — 语音合成/克隆 · 从零验收通过（2026-09-14）
+
+- **安装**：客户端「下载/修复」完成：固定 revision 克隆 `models/gpt-sovits/repo` → 建立 `services/gptsovits-service/.venv` 并按官方 requirements 安装（额外**预装 `opencc` wheel**，规避官方 `--no-binary=opencc` 在 Windows 触发源码编译）→ 最后 `pip install -e services/gptsovits-service`。
+- **资源**：FFmpeg shared runtime 与 `nltk_data.zip` 由本地缓存复用（FFmpeg 缓存经 sha256 校验）；权重（s2Gv2Pro/s1v3/roberta/hubert/eres2net）与 `lid.176.bin` 就位；安装收据 `runtime/model-install-state/gpt_sovits_v2pro.json` 写入。
+- **修复项**：`required_paths` 的 ffmpeg 路径修正为 `.venv/ffmpeg`；缓存 zip 损坏（截断）时自动重新下载，避免解压失败卡死。
+- **启动**：客户端启动（端口 5103）后 `health` 正常。
+- **真实请求**：`POST /v1/generate`，`task="tts.speech"`，参考音频克隆 + 中文文本。
+- **结果**：32000Hz 单声道 5.98s，`peak=0.238`（非静音）。
+- **结论**：通过。
+- **证据**：`verification/runs/run-20260914-214708/report.json`。
+
 ---
 
 ## 三、Agent 接入新模型的五步标准化作业流（SOP 执行清单）
