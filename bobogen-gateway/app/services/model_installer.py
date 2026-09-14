@@ -545,13 +545,19 @@ class ModelInstaller:
         ]
         marker_path = plan.get("installation_marker")
         install_complete = marker_path is None or is_resource_path_ready(self.repo_root, marker_path)
-        # 修复操作强制重跑安装步骤（重装依赖可补齐缺失的运行期依赖）；下载保持幂等早退
-        if operation != "repair" and not missing_paths and env_ready and install_complete:
+        if not missing_paths and env_ready and install_complete:
+            if operation == "repair" and env_config:
+                # 修复：资源已就绪，只重跑环境依赖，补齐缺失的运行期依赖（不重下资源）
+                progress(InstallProgress("environment", "修复：重新安装依赖"))
+                python_path = self._ensure_environment(env_config, progress)
+                self._install_dependencies(env_config, python_path, progress, mirror=mirror)
+                self._write_installation_marker(model_id, plan)
+                progress(InstallProgress("done", "安装完成"))
+                return
             self._write_installation_marker(model_id, plan)
             progress(InstallProgress("verify", "资源已经完整，无需重复下载；固定版本保持不变"))
             return
         if not missing_paths and env_ready and not install_complete:
-            # 环境目录存在但上次安装未完成（无完成记录）：继续补装依赖，而不是误判为就绪
             progress(InstallProgress("environment", "检测到未完成的安装，继续准备依赖"))
 
         if env_config:
