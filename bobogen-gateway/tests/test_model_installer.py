@@ -123,6 +123,32 @@ def test_installer_retries_dependencies_when_environment_is_incomplete(tmp_path,
     assert (tmp_path / "runtime/model-install-state/cosyvoice2.json").is_file()
 
 
+def test_repair_reruns_setup_even_when_receipt_exists(tmp_path, monkeypatch):
+    from app.services.model_installer import ModelInstaller
+
+    installer = ModelInstaller(tmp_path)
+    venv_python = tmp_path / "services/cosyvoice-service/.venv/Scripts/python.exe"
+    venv_python.parent.mkdir(parents=True)
+    venv_python.write_bytes(b"python")
+    marker = tmp_path / "runtime/model-install-state/cosyvoice2.json"
+    marker.parent.mkdir(parents=True)
+    marker.write_text("{}", encoding="utf-8")
+    executed: list[list[str]] = []
+
+    monkeypatch.setattr(installer, "_ensure_source", lambda source, progress: None)
+    monkeypatch.setattr(installer, "_ensure_environment", lambda env, progress: venv_python)
+    monkeypatch.setattr(
+        installer,
+        "_run_command",
+        lambda args, cwd, progress, env=None: executed.append(args),
+    )
+    monkeypatch.setattr(installer, "_download_resource", lambda resource, progress: None)
+
+    installer.run({"id": "cosyvoice2", "required_paths": []}, "repair", lambda event: None)
+
+    assert executed, "修复操作应强制重跑安装步骤，以补齐缺失的依赖"
+
+
 def test_installer_early_returns_when_marker_already_present(tmp_path, monkeypatch):
     from app.services.model_installer import ModelInstaller
 

@@ -545,7 +545,8 @@ class ModelInstaller:
         ]
         marker_path = plan.get("installation_marker")
         install_complete = marker_path is None or is_resource_path_ready(self.repo_root, marker_path)
-        if not missing_paths and env_ready and install_complete:
+        # 修复操作强制重跑安装步骤（重装依赖可补齐缺失的运行期依赖）；下载保持幂等早退
+        if operation != "repair" and not missing_paths and env_ready and install_complete:
             self._write_installation_marker(model_id, plan)
             progress(InstallProgress("verify", "资源已经完整，无需重复下载；固定版本保持不变"))
             return
