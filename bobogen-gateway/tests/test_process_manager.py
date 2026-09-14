@@ -86,7 +86,7 @@ def test_ensure_started_restarts_stale_healthy_state():
         pid=27976,
         port=provider.network.port,
     )
-    health_results = [False, False]
+    health_results = [False, False, False]
     launched = []
 
     async def fake_healthcheck(provider_id):
@@ -96,7 +96,7 @@ def test_ensure_started_restarts_stale_healthy_state():
         launched.append(provider_config.provider_id)
         return 30001
 
-    async def fake_wait_until_healthy(provider_id):
+    async def fake_wait_until_healthy(provider_id, process=None):
         return True
 
     manager.healthcheck = fake_healthcheck
@@ -270,7 +270,7 @@ def test_ensure_started_starts_stopped_provider():
     async def fake_initial_healthcheck(provider_id):
         return False
 
-    async def fake_wait_until_healthy(provider_id):
+    async def fake_wait_until_healthy(provider_id, process=None):
         return True
 
     manager._launch_process = fake_launcher
@@ -498,3 +498,118 @@ def test_launch_process_injects_huggingface_token_only_for_gated_model(monkeypat
     manager = ProcessManager({provider.provider_id: provider}, huggingface_token_store=TokenStore())
     assert asyncio.run(manager._launch_process(provider)) == 4321
     assert popen_args["env"]["HF_TOKEN"] == "hf_example_secret_1234"
+
+
+def _make_idempotency_provider(provider_id: str, port: int = 5199):
+    from app.schemas.provider import CapabilityConfig, NetworkConfig, ProviderConfig, RuntimeConfig
+
+    return ProviderConfig(
+        provider_id=provider_id,
+        provider_type="qwen3-asr",
+        display_name="Idempotency Provider",
+        enabled=True,
+        runtime=RuntimeConfig(
+            root_dir="E:/services/qwen3-asr-service",
+            cwd="E:/services/qwen3-asr-service",
+            command=["python", "-m", "app.main"],
+            env={},
+            startup_timeout_ms=1000,
+            request_timeout_ms=1000,
+            idle_shutdown_seconds=0,
+        ),
+        network=NetworkConfig(
+            host="127.0.0.1",
+            port=port,
+            base_url=f"http://127.0.0.1:{port}",
+            healthcheck_path="/v1/health",
+        ),
+        capabilities=CapabilityConfig(voices=False, synthesize=False, clone=False, stream=False),
+    )
+
+
+def test_start_adopts_already_healthy_provider_without_launching():
+    from app.services.process_manager import ProcessManager
+
+    provider = _make_idempotency_provider("adopt-provider")
+    manager = ProcessManager({provider.provider_id: provider})
+    launched = []
+
+    async def fail_launcher(provider_config):
+        launched.append(provider_config.provider_id)
+        return 1
+
+    async def healthy(provider_id):
+        return True
+
+    manager._launch_process = fail_launcher
+    manager.healthcheck = healthy
+
+    state = asyncio.run(manager.start(provider.provider_id))
+
+    assert state.status == "healthy"
+    assert state.pid is None
+    assert launched == []
+
+
+def test_start_reuses_tracked_running_process_without_relaunching():
+    from app.services.process_manager import ProcessManager
+
+    provider = _make_idempotency_provider("reuse-provider")
+    manager = ProcessManager({provider.provider_id: provider})
+    launched = []
+
+    class RunningProcess:
+        pid = 777
+
+        def poll(self):
+            return None
+
+    async def launcher(provider_config):
+        launched.append(provider_config.provider_id)
+        return 777
+
+    async def healthy(provider_id):
+        return True
+
+    manager._launch_process = launcher
+    manager.healthcheck = healthy
+    manager._processes[provider.provider_id] = RunningProcess()
+
+    state = asyncio.run(manager.start(provider.provider_id))
+
+    assert state.status == "healthy"
+    assert state.pid == 777
+    assert launched == []
+
+
+def test_start_fails_fast_when_spawned_process_exits_before_health():
+    from app.core.exceptions import ProviderStartTimeoutError
+    from app.services.process_manager import ProcessManager
+
+    provider = _make_idempotency_provider("dead-provider", port=5198)
+    manager = ProcessManager({provider.provider_id: provider})
+    launched = []
+
+    class DeadProcess:
+        pid = 111
+
+        def poll(self):
+            return 1
+
+    async def launcher(provider_config):
+        launched.append(provider_config.provider_id)
+        manager._processes[provider_config.provider_id] = DeadProcess()
+        return 111
+
+    async def never_healthy(provider_id):
+        return False
+
+    manager._launch_process = launcher
+    manager.healthcheck = never_healthy
+
+    with pytest.raises(ProviderStartTimeoutError):
+        asyncio.run(manager.start(provider.provider_id))
+
+    assert launched == ["dead-provider"]
+    assert manager._processes == {}
+    assert manager.get_state(provider.provider_id).status == "failed"

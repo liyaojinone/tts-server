@@ -87,7 +87,7 @@ class ProcessManager:
                 return state
             if provider.runtime.launch_mode == "external":
                 return await self._require_external_start(provider_id)
-            return await self.start(provider_id)
+            return await self._start_locked(provider)
 
     async def start(self, provider_id: str) -> ProviderRuntimeState:
         provider = self.providers.get(provider_id)
@@ -95,36 +95,77 @@ class ProcessManager:
             raise ProviderNotFoundError(f"Provider not found: {provider_id}", {"provider_id": provider_id})
         if provider.runtime.launch_mode == "external":
             return await self._require_external_start(provider_id)
+        async with self._locks[provider_id]:
+            return await self._start_locked(provider)
+
+    async def _start_locked(self, provider) -> ProviderRuntimeState:
+        """启动 provider；调用方必须已持有该 provider 的锁。
+
+        幂等：已有本次启动且健康的进程就复用；端口已有健康进程就采用；
+        进程异常退出立即失败，避免“启动中”长时间卡住。
+        """
+        provider_id = provider.provider_id
         state = self.get_state(provider_id)
+        process = self._processes.get(provider_id)
+
+        if process is not None:
+            if process.poll() is None:
+                if await self._wait_until_healthy(provider_id, process):
+                    return self._mark_healthy(state, process.pid)
+                self._terminate_process(provider_id)
+                state.status = "failed"
+                state.last_error = "healthcheck timeout"
+                raise ProviderStartTimeoutError(
+                    f"Provider {provider_id} failed to become healthy within "
+                    f"{provider.runtime.startup_timeout_ms} ms",
+                    {"provider_id": provider_id},
+                )
+            self._processes.pop(provider_id, None)
+
+        # 端口已有健康进程（外部/手动启动）：直接采用，不重复启动
+        if await self._is_healthy(provider_id):
+            return self._mark_healthy(state, None)
+
         state.status = "starting"
         state.startup_attempts += 1
         state.pid = await self._launch_process(provider)
         state.started_at = datetime.now()
-        healthy = await self._wait_until_healthy(provider_id)
-        if not healthy:
+        spawned = self._processes.get(provider_id)
+        if not await self._wait_until_healthy(provider_id, spawned):
+            self._terminate_process(provider_id)
             state.status = "failed"
             state.last_error = "healthcheck timeout"
             raise ProviderStartTimeoutError(
-                f"Provider {provider_id} failed to become healthy within {provider.runtime.startup_timeout_ms} ms",
+                f"Provider {provider_id} failed to become healthy within "
+                f"{provider.runtime.startup_timeout_ms} ms",
                 {"provider_id": provider_id},
             )
+        state.last_health_at = datetime.now()
+        state.last_used_at = datetime.now()
+        return self._mark_healthy(state, state.pid)
+
+    def _mark_healthy(self, state: ProviderRuntimeState, pid: int | None) -> ProviderRuntimeState:
         state.status = "healthy"
+        state.pid = pid
         state.last_health_at = datetime.now()
         state.last_used_at = datetime.now()
         return state
 
+    def _terminate_process(self, provider_id: str) -> None:
+        process = self._processes.pop(provider_id, None)
+        if process is None or process.poll() is not None:
+            return
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                check=False,
+                capture_output=True,
+            )
+        else:
+            process.terminate()
+
     async def stop(self, provider_id: str) -> None:
-        process = self._processes.get(provider_id)
-        if process is not None and process.poll() is None:
-            if os.name == "nt":
-                subprocess.run(
-                    ["taskkill", "/PID", str(process.pid), "/T", "/F"],
-                    check=False,
-                    capture_output=True,
-                )
-            else:
-                process.terminate()
-        self._processes.pop(provider_id, None)
+        self._terminate_process(provider_id)
         state = self.get_state(provider_id)
         state.status = "stopped"
         state.pid = None
@@ -156,11 +197,18 @@ class ProcessManager:
             all_lines = f.readlines()
         return "".join(all_lines[-lines:])
 
-    async def _wait_until_healthy(self, provider_id: str) -> bool:
+    async def _wait_until_healthy(
+        self,
+        provider_id: str,
+        process: subprocess.Popen | None = None,
+    ) -> bool:
         provider = self.providers[provider_id]
         timeout_seconds = provider.runtime.startup_timeout_ms / 1000
         deadline = asyncio.get_event_loop().time() + timeout_seconds
         while asyncio.get_event_loop().time() < deadline:
+            # 刚拉起的进程若已退出（例如端口被占用），立即失败，不空等超时
+            if process is not None and process.poll() is not None:
+                return False
             try:
                 if await self.healthcheck(provider_id):
                     return True
