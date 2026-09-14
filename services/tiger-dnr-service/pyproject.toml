@@ -28,5 +28,8 @@ model = [
   "typeguard==2.13.3",
 ]
 
+[tool.setuptools.packages.find]
+include = ["app*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

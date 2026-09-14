@@ -42,6 +42,14 @@ def test_qwen3_install_plan_has_no_weight_download_resources():
     assert f5_plan["runtime"]["hf_repo_id"] == "SWivid/F5-TTS"
 
 
+def test_service_packages_declare_explicit_discovery():
+    service_pyprojects = sorted((REPO_ROOT / "services").glob("*/pyproject.toml"))
+    assert service_pyprojects
+    for pyproject in service_pyprojects:
+        text = pyproject.read_text(encoding="utf-8")
+        assert "[tool.setuptools.packages.find]" in text, pyproject
+
+
 def test_cosyvoice_install_plan_provisions_service_environment():
     plan = MODEL_INSTALL_PLANS["cosyvoice2"]
     assert plan["environment"]["venv_dir"] == "services/cosyvoice-service/.venv"

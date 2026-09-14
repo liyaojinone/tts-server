@@ -4,5 +4,8 @@ version = "0.1.0"
 requires-python = ">=3.9"
 dependencies = ["fastapi", "uvicorn", "pydantic"]
 
+[tool.setuptools.packages.find]
+include = ["app*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
