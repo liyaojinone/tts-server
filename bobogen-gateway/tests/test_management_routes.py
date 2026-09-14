@@ -130,6 +130,12 @@ def test_cosyvoice_catalog_requires_install_receipt():
     )
     assert f5["installation_marker"].endswith("runtime/model-install-state/f5_tts.json")
 
+    voxcpm = next(model for model in MODEL_CATALOG if model["id"] == "voxcpm2")
+    assert voxcpm["installation_environment"].endswith(
+        "services/voxcpm-service/.venv/Scripts/python.exe"
+    )
+    assert voxcpm["installation_marker"].endswith("runtime/model-install-state/voxcpm2.json")
+
 
 def test_qwen_shared_repository_does_not_mark_unselected_variants_as_installed(
     monkeypatch, tmp_path

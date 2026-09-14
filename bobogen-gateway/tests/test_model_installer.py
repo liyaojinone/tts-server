@@ -57,6 +57,19 @@ def test_f5tts_install_plan_avoids_heavy_training_packages():
     assert plan["installation_marker"].endswith("f5_tts.json")
 
 
+def test_voxcpm_install_plan_avoids_heavy_packages():
+    plan = MODEL_INSTALL_PLANS["voxcpm2"]
+    commands = plan["environment"]["setup_commands"]
+    joined = " ".join(" ".join(command) for command in commands)
+    assert "models/voxcpm/repo" in joined and "--no-deps" in joined
+    assert "gradio" not in joined
+    assert "torchcodec" not in joined
+    assert "funasr" not in joined
+    for dependency in ("transformers", "einops", "inflect", "wetext", "modelscope"):
+        assert dependency in joined
+    assert plan["installation_marker"].endswith("voxcpm2.json")
+
+
 def test_service_packages_declare_explicit_discovery():
     service_pyprojects = sorted((REPO_ROOT / "services").glob("*/pyproject.toml"))
     assert service_pyprojects

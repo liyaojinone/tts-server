@@ -149,6 +149,8 @@ MODEL_CATALOG = [
         "service_port": 5105,
         "resource_root": "models/voxcpm/checkpoints",
         "official_repo": "https://github.com/OpenBMB/VoxCPM",
+        "installation_environment": "services/voxcpm-service/.venv/Scripts/python.exe",
+        "installation_marker": "runtime/model-install-state/voxcpm2.json",
         "other_links": [
             {
                 "label": "ModelScope 权重",

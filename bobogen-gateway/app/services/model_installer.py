@@ -267,6 +267,39 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
             "target": "models/voxcpm/repo",
             "revision": "616d3d3e630a9c96c2853250eef91b0f39dcd5fa",
         },
+        "environment": {
+            "venv_dir": "services/voxcpm-service/.venv",
+            "setup_commands": [
+                ["{python}", "-m", "pip", "install", "-U", "pip"],
+                ["{python}", "-m", "pip", "install", "torch", "torchaudio", "--index-url", "https://download.pytorch.org/whl/cu128"],
+                # VoxCPM 推理运行期依赖；不装 gradio/torchcodec/datasets/funasr 等
+                # 训练与前端专用包（Windows 易构建失败），本体用 --no-deps 安装
+                [
+                    "{python}",
+                    "-m",
+                    "pip",
+                    "install",
+                    "transformers",
+                    "einops",
+                    "inflect",
+                    "librosa",
+                    "modelscope",
+                    "numpy",
+                    "pydantic",
+                    "regex",
+                    "safetensors",
+                    "soundfile",
+                    "tqdm",
+                    "huggingface_hub",
+                    "wetext",
+                ],
+                ["{python}", "-m", "pip", "install", "-e", "bobogen-protocol"],
+                ["{python}", "-m", "pip", "install", "-e", "bobogen-service-kit"],
+                ["{python}", "-m", "pip", "install", "-e", "models/voxcpm/repo", "--no-deps"],
+                ["{python}", "-m", "pip", "install", "-e", "services/voxcpm-service"],
+            ],
+        },
+        "installation_marker": "runtime/model-install-state/voxcpm2.json",
         "resources": [
             {
                 "kind": "hf_snapshot_local",
