@@ -45,9 +45,64 @@ def test_qwen3_install_plan_has_no_weight_download_resources():
 def test_cosyvoice_install_plan_provisions_service_environment():
     plan = MODEL_INSTALL_PLANS["cosyvoice2"]
     assert plan["environment"]["venv_dir"] == "services/cosyvoice-service/.venv"
-    joined = " ".join(" ".join(command) for command in plan["environment"]["setup_commands"])
+    commands = plan["environment"]["setup_commands"]
+    joined = " ".join(" ".join(command) for command in commands)
     assert "models/cosyvoice/repo/requirements.txt" in joined
     assert "services/cosyvoice-service" in joined
+    # openai-whisper 需在隔离环境外构建并跳过依赖，避免缺 pkg_resources
+    assert any(
+        "openai-whisper==20231117" in command and "--no-build-isolation" in command
+        for command in commands
+    )
+    assert plan["installation_marker"].endswith("cosyvoice2.json")
+
+
+def test_installer_retries_dependencies_when_environment_is_incomplete(tmp_path, monkeypatch):
+    from app.services.model_installer import ModelInstaller
+
+    installer = ModelInstaller(tmp_path)
+    venv_python = tmp_path / "services/cosyvoice-service/.venv/Scripts/python.exe"
+    venv_python.parent.mkdir(parents=True)
+    venv_python.write_bytes(b"python")
+    executed: list[list[str]] = []
+
+    monkeypatch.setattr(installer, "_ensure_source", lambda source, progress: None)
+    monkeypatch.setattr(installer, "_ensure_environment", lambda env, progress: venv_python)
+    monkeypatch.setattr(
+        installer,
+        "_run_command",
+        lambda args, cwd, progress, env=None: executed.append(args),
+    )
+    monkeypatch.setattr(installer, "_download_resource", lambda resource, progress: None)
+
+    installer.run({"id": "cosyvoice2", "required_paths": []}, "repair", lambda event: None)
+
+    assert executed, "缺少完成记录时应重新执行依赖安装"
+    assert (tmp_path / "runtime/model-install-state/cosyvoice2.json").is_file()
+
+
+def test_installer_early_returns_when_marker_already_present(tmp_path, monkeypatch):
+    from app.services.model_installer import ModelInstaller
+
+    installer = ModelInstaller(tmp_path)
+    venv_python = tmp_path / "services/cosyvoice-service/.venv/Scripts/python.exe"
+    venv_python.parent.mkdir(parents=True)
+    venv_python.write_bytes(b"python")
+    marker = tmp_path / "runtime/model-install-state/cosyvoice2.json"
+    marker.parent.mkdir(parents=True)
+    marker.write_text("{}", encoding="utf-8")
+    executed: list[list[str]] = []
+
+    monkeypatch.setattr(installer, "_ensure_source", lambda source, progress: None)
+    monkeypatch.setattr(
+        installer,
+        "_run_command",
+        lambda args, cwd, progress, env=None: executed.append(args),
+    )
+
+    installer.run({"id": "cosyvoice2", "required_paths": []}, "download", lambda event: None)
+
+    assert executed == [], "安装记录存在且资源就绪时应直接早退"
 
 
 def test_gptsovits_install_plan_provisions_ffmpeg_inside_its_virtual_environment():

@@ -67,12 +67,27 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
             "venv_dir": "services/cosyvoice-service/.venv",
             "setup_commands": [
                 ["{python}", "-m", "pip", "install", "-U", "pip"],
+                # setuptools<81 提供 pkg_resources，供 openai-whisper 的构建使用
+                ["{python}", "-m", "pip", "install", "setuptools<81", "wheel"],
+                ["{python}", "-m", "pip", "install", "tiktoken"],
+                # 先单独装 whisper 并跳过构建隔离，避免官方 requirements 里的
+                # openai-whisper 在隔离环境中因缺少 pkg_resources 而构建失败
+                [
+                    "{python}",
+                    "-m",
+                    "pip",
+                    "install",
+                    "openai-whisper==20231117",
+                    "--no-build-isolation",
+                    "--no-deps",
+                ],
                 ["{python}", "-m", "pip", "install", "-r", "models/cosyvoice/repo/requirements.txt"],
                 ["{python}", "-m", "pip", "install", "-e", "bobogen-protocol"],
                 ["{python}", "-m", "pip", "install", "-e", "bobogen-service-kit"],
                 ["{python}", "-m", "pip", "install", "-e", "services/cosyvoice-service"],
             ],
         },
+        "installation_marker": "runtime/model-install-state/cosyvoice2.json",
         "resources": [
             {
                 "kind": "hf_snapshot_local",
@@ -105,6 +120,7 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
             "cwd": "services/f5tts-service",
             "entrypoint": "services/f5tts-service/start.ps1",
         },
+        "installation_marker": "runtime/model-install-state/f5_tts.json",
         "resources": [],
     },
     "gpt_sovits_v2pro": {
@@ -126,6 +142,7 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
                 ["{python}", "-m", "pip", "install", "-e", "bobogen-service-kit"],
             ],
         },
+        "installation_marker": "runtime/model-install-state/gpt_sovits_v2pro.json",
         "resources": [
             {
                 "kind": "ffmpeg_shared_zip",
@@ -203,6 +220,7 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
                 ["uv", "pip", "install", "--python", "{python}", "python-multipart"],
             ],
         },
+        "installation_marker": "runtime/model-install-state/index_tts_2.json",
         "resources": [
             {
                 "kind": "hf_snapshot_local",
@@ -461,10 +479,15 @@ class ModelInstaller:
             for path in model.get("required_paths", [])
             if not is_resource_path_ready(self.repo_root, path)
         ]
-        if not missing_paths and env_ready:
+        marker_path = plan.get("installation_marker")
+        install_complete = marker_path is None or is_resource_path_ready(self.repo_root, marker_path)
+        if not missing_paths and env_ready and install_complete:
             self._write_installation_marker(model_id, plan)
             progress(InstallProgress("verify", "资源已经完整，无需重复下载；固定版本保持不变"))
             return
+        if not missing_paths and env_ready and not install_complete:
+            # 环境目录存在但上次安装未完成（无完成记录）：继续补装依赖，而不是误判为就绪
+            progress(InstallProgress("environment", "检测到未完成的安装，继续准备依赖"))
 
         if env_config:
             progress(InstallProgress("environment", "准备 Python 环境"))
