@@ -3,6 +3,7 @@ import os
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
+from starlette.concurrency import run_in_threadpool
 
 from app.handler import Qwen3ASRHandler
 from bobogen_protocol.models import GenerateRequest
@@ -41,7 +42,8 @@ def create_app(test_mode: bool = False):
             return unauthorized
         try:
             request = GenerateRequest.model_validate(await http_request.json())
-            return handler.transcribe(request)
+            # 重推理放到线程池，避免阻塞事件循环导致 /v1/health 无响应
+            return await run_in_threadpool(handler.transcribe, request)
         except ValidationError as exc:
             return _error_response(400, "INVALID_REQUEST", "Request validation failed", {"errors": exc.errors()})
         except ValueError as exc:
@@ -56,7 +58,8 @@ def create_app(test_mode: bool = False):
             return unauthorized
         try:
             request = GenerateRequest.model_validate(await http_request.json())
-            return handler.align(request)
+            # 重推理放到线程池，避免阻塞事件循环导致 /v1/health 无响应
+            return await run_in_threadpool(handler.align, request)
         except ValidationError as exc:
             return _error_response(400, "INVALID_REQUEST", "Request validation failed", {"errors": exc.errors()})
         except ValueError as exc:
@@ -70,7 +73,7 @@ def create_app(test_mode: bool = False):
         if unauthorized is not None:
             return unauthorized
         try:
-            handler.warmup()
+            await run_in_threadpool(handler.warmup)
             return {"status": "ready", "model": handler.model_id, "hfRepoId": handler.hf_repo_id}
         except Exception as exc:
             return _error_response(500, "WARMUP_FAILED", str(exc))

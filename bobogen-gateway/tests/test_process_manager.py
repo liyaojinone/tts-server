@@ -157,6 +157,29 @@ def test_refresh_state_marks_stale_healthy_provider_stopped():
     assert state.last_error == "healthcheck failed"
 
 
+def test_refresh_state_recovers_alive_provider_previously_marked_stopped():
+    from app.core.state import ProviderRuntimeState
+    from app.services.process_manager import ProcessManager
+
+    provider = _make_idempotency_provider("recover-provider", port=5197)
+    manager = ProcessManager({provider.provider_id: provider})
+    manager._states[provider.provider_id] = ProviderRuntimeState(
+        provider_id=provider.provider_id,
+        status="stopped",
+        pid=None,
+        port=provider.network.port,
+    )
+
+    async def healthy(provider_id):
+        return True
+
+    manager.healthcheck = healthy
+
+    state = asyncio.run(manager.refresh_state(provider.provider_id))
+
+    assert state.status == "healthy"
+
+
 def test_stop_terminates_windows_provider_process_tree_and_clears_runtime_state(monkeypatch):
     import app.services.process_manager as process_manager
     from app.core.state import ProviderRuntimeState

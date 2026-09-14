@@ -50,14 +50,15 @@ class ProcessManager:
 
     async def refresh_state(self, provider_id: str) -> ProviderRuntimeState:
         state = self.get_state(provider_id)
-        if state.status != "healthy":
-            return state
         if await self._is_healthy(provider_id):
+            # 引擎只要存活就恢复为 healthy，避免一次探活抖动后永久停在 stopped
+            state.status = "healthy"
             state.last_health_at = datetime.now()
             return state
-        state.status = "stopped"
-        state.pid = None
-        state.last_error = "healthcheck failed"
+        if state.status == "healthy":
+            state.status = "stopped"
+            state.pid = None
+            state.last_error = "healthcheck failed"
         return state
 
     async def list_states_refreshed(self) -> list[ProviderRuntimeState]:
