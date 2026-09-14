@@ -136,6 +136,16 @@ def test_cosyvoice_catalog_requires_install_receipt():
     )
     assert voxcpm["installation_marker"].endswith("runtime/model-install-state/voxcpm2.json")
 
+    gptsovits = next(model for model in MODEL_CATALOG if model["id"] == "gpt_sovits_v2pro")
+    assert gptsovits["weight_size"] == "约 3 GB"
+    assert gptsovits["installation_environment"].endswith(
+        "services/gptsovits-service/.venv/Scripts/python.exe"
+    )
+    assert gptsovits["installation_marker"].endswith(
+        "runtime/model-install-state/gpt_sovits_v2pro.json"
+    )
+    assert "services/gptsovits-service/.venv/ffmpeg" in gptsovits["required_paths"]
+
 
 def test_qwen_shared_repository_does_not_mark_unselected_variants_as_installed(
     monkeypatch, tmp_path

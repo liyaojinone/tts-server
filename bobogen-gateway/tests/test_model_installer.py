@@ -70,6 +70,16 @@ def test_voxcpm_install_plan_avoids_heavy_packages():
     assert plan["installation_marker"].endswith("voxcpm2.json")
 
 
+def test_gptsovits_install_plan_preinstalls_opencc_and_service():
+    plan = MODEL_INSTALL_PLANS["gpt_sovits_v2pro"]
+    commands = plan["environment"]["setup_commands"]
+    joined = " ".join(" ".join(command) for command in commands)
+    # 预装 opencc wheel，避免官方 requirements 的 --no-binary=opencc 在 Windows 上编译源码
+    assert any(command[:5] == ["{python}", "-m", "pip", "install", "opencc"] for command in commands)
+    assert "services/gptsovits-service" in joined
+    assert plan["installation_marker"].endswith("gpt_sovits_v2pro.json")
+
+
 def test_service_kit_declares_python_multipart():
     # service-kit 的 /v1/clone 使用 Form/File，缺少 python-multipart 会导致服务无法启动
     text = (REPO_ROOT / "bobogen-service-kit" / "pyproject.toml").read_text(encoding="utf-8")

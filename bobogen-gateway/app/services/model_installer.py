@@ -164,6 +164,9 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
             "venv_dir": "services/gptsovits-service/.venv",
             "setup_commands": [
                 ["{python}", "-m", "pip", "install", "-U", "pip"],
+                # 先装 opencc 的预编译 wheel，规避官方 requirements 中
+                # --no-binary=opencc 在 Windows 上触发源码编译
+                ["{python}", "-m", "pip", "install", "opencc"],
                 ["{python}", "-m", "pip", "install", "torch", "--index-url", "https://download.pytorch.org/whl/cu128"],
                 ["{python}", "-m", "pip", "install", "torchcodec"],
                 ["{python}", "-m", "pip", "install", "onnxruntime-gpu"],
@@ -171,6 +174,7 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
                 ["{python}", "-m", "pip", "install", "-r", "models/gpt-sovits/repo/requirements.txt"],
                 ["{python}", "-m", "pip", "install", "-e", "bobogen-protocol"],
                 ["{python}", "-m", "pip", "install", "-e", "bobogen-service-kit"],
+                ["{python}", "-m", "pip", "install", "-e", "services/gptsovits-service"],
             ],
         },
         "installation_marker": "runtime/model-install-state/gpt_sovits_v2pro.json",

@@ -88,10 +88,12 @@ MODEL_CATALOG = [
         "version": "V2Pro",
         "parameter_size": "133M + 77M",
         "purpose": "参考音频驱动的语音合成、声音克隆和多语言支持",
-        "weight_size": "多组件",
+        "weight_size": "约 3 GB",
         "disk_estimate": "约 3 GB（含环境和缓存）",
         "service_port": 5103,
         "resource_root": "models/gpt-sovits/checkpoints/gpt_sovits_v2pro",
+        "installation_environment": "services/gptsovits-service/.venv/Scripts/python.exe",
+        "installation_marker": "runtime/model-install-state/gpt_sovits_v2pro.json",
         "official_repo": "https://github.com/RVC-Boss/GPT-SoVITS",
         "other_links": [
             {
@@ -106,7 +108,7 @@ MODEL_CATALOG = [
             "models/gpt-sovits/checkpoints/gpt_sovits_v2pro/chinese-hubert-base",
             "models/gpt-sovits/checkpoints/gpt_sovits_v2pro/sv/pretrained_eres2netv2w24s4ep4.ckpt",
             "models/gpt-sovits/repo/GPT_SoVITS/pretrained_models/fast_langdetect/lid.176.bin",
-            "services/gptsovits-service/ffmpeg",
+            "services/gptsovits-service/.venv/ffmpeg",
             "services/gptsovits-service/.venv/nltk_data",
         ],
     },
