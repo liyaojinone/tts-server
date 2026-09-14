@@ -1,3 +1,4 @@
+import asyncio
 import os
 from pathlib import Path
 
@@ -644,7 +645,13 @@ async def delete_huggingface_credential(request: Request):
     return _huggingface_credential_payload(request)
 
 
-def _start_model_job(request: Request, model_id: str, operation: str, mirror: str | None = None) -> dict:
+def _start_model_job(
+    request: Request,
+    model_id: str,
+    operation: str,
+    mirror: str | None = None,
+    main_loop: asyncio.AbstractEventLoop | None = None,
+) -> dict:
     if requires_huggingface_token(model_id):
         try:
             token = _huggingface_token_store(request).get()
@@ -657,7 +664,7 @@ def _start_model_job(request: Request, model_id: str, operation: str, mirror: st
             )
     manager = _model_manager(request)
     try:
-        job = manager.start(model_id, operation, mirror=mirror)
+        job = manager.start(model_id, operation, mirror=mirror, main_loop=main_loop)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=f"未知模型: {model_id}") from exc
     except ModelInstallBusyError as exc:
@@ -677,7 +684,15 @@ def _start_model_job(request: Request, model_id: str, operation: str, mirror: st
     summary="下载模型源码和固定资源",
 )
 async def download_model(model_id: str, request: Request, mirror: str | None = Query(default=None)):
-    return {"job": _start_model_job(request, model_id, "download", mirror=mirror)}
+    return {
+        "job": _start_model_job(
+            request,
+            model_id,
+            "download",
+            mirror=mirror,
+            main_loop=asyncio.get_running_loop(),
+        )
+    }
 
 
 @router.post(
@@ -687,7 +702,15 @@ async def download_model(model_id: str, request: Request, mirror: str | None = Q
     summary="修复模型缺失资源",
 )
 async def repair_model(model_id: str, request: Request, mirror: str | None = Query(default=None)):
-    return {"job": _start_model_job(request, model_id, "repair", mirror=mirror)}
+    return {
+        "job": _start_model_job(
+            request,
+            model_id,
+            "repair",
+            mirror=mirror,
+            main_loop=asyncio.get_running_loop(),
+        )
+    }
 
 
 @router.get(

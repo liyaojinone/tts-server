@@ -1,3 +1,4 @@
+import httpx
 from fastapi import FastAPI
 
 from app.config import REPO_ROOT
@@ -55,12 +56,28 @@ def create_app() -> FastAPI:
     app.state.model_source_config_store = source_config_store
     app.state.huggingface_token_store = huggingface_token_store
     app.state.job_store = GatewayJobStore()
+    async def prefetch_model_weights(model_id: str) -> None:
+        """让引擎的官方运行时真正下载/加载权重（upstream_managed 模型）。"""
+        provider = registry.get_provider_by_model(model_id)
+        await manager.ensure_started(provider.provider_id)
+        base_url = provider.network.base_url.rstrip("/")
+        async with httpx.AsyncClient(timeout=1800.0) as client:
+            response = await client.post(f"{base_url}/v1/warmup")
+            if response.status_code == 404:
+                # 引擎未实现 warmup，权重仍会在首次实际使用时由官方机制加载。
+                return
+            if response.status_code >= 400:
+                raise RuntimeError(
+                    f"权重预取失败: HTTP {response.status_code} {response.text[:200]}"
+                )
+
     app.state.model_install_manager = ModelInstallManager(
         REPO_ROOT,
         MODEL_CATALOG,
         log_path=INSTALLER_LOG,
         source_config_store=source_config_store,
         huggingface_token_store=huggingface_token_store,
+        prefetch=prefetch_model_weights,
     )
 
     app.include_router(clone_router)

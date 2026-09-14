@@ -8,7 +8,8 @@ model repositories in this module.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Mapping
+import asyncio
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
@@ -889,12 +890,15 @@ class ModelInstallManager:
         log_path: Path | None = None,
         source_config_store: ModelSourceConfigStore | None = None,
         huggingface_token_store: HuggingFaceTokenStore | None = None,
+        prefetch: Callable[[str], Awaitable[None]] | None = None,
     ):
         self._catalog = {model["id"]: model for model in catalog}
         self._installer = ModelInstaller(repo_root)
         self._log_path = log_path
         self._source_config_store = source_config_store
         self._huggingface_token_store = huggingface_token_store
+        self._prefetch = prefetch
+        self._loop: asyncio.AbstractEventLoop | None = None
         self._lock = threading.RLock()
         self._jobs: dict[str, dict] = {}
         self._order: list[str] = []
@@ -906,6 +910,7 @@ class ModelInstallManager:
         operation: str,
         mirror: str | None = None,
         source_config: ModelSourceConfig | Mapping[str, object] | None = None,
+        main_loop: asyncio.AbstractEventLoop | None = None,
     ) -> dict:
         if operation not in {"download", "repair"}:
             raise ModelInstallError(f"不支持的资源操作: {operation}")
@@ -950,6 +955,7 @@ class ModelInstallManager:
             self._jobs[job_id] = job
             self._order.append(job_id)
             self._active_job_id = job_id
+            self._loop = main_loop
             self._trim_jobs()
 
         thread = threading.Thread(target=self._run_job, args=(job_id, hf_token), daemon=True)
@@ -996,6 +1002,7 @@ class ModelInstallManager:
                 source_config=source_config,
                 hf_token=hf_token,
             )
+            self._prefetch_weights_if_needed(job_id, model)
         except Exception as exc:  # keep the concrete error visible to the UI
             LOGGER.exception("模型资源任务失败: %s", job_id)
             self._update(
@@ -1020,6 +1027,27 @@ class ModelInstallManager:
             with self._lock:
                 if self._active_job_id == job_id:
                     self._active_job_id = None
+                self._loop = None
+
+    def _prefetch_weights_if_needed(self, job_id: str, model: dict) -> None:
+        """对 upstream_managed 模型，安装完成后立即预取官方权重。
+
+        权重由官方运行时在首次加载时下载；这里在安装任务内主动触发一次
+        warmup，让“下载”真的把权重拉下来，并让任务状态如实反映耗时。
+        """
+        if self._prefetch is None or self._loop is None:
+            return
+        if model.get("runtime_weight_policy") != "upstream_managed":
+            return
+        self._update(
+            job_id,
+            state="running",
+            step="weights",
+            message="正在预取官方权重，首次会下载并加载…",
+            append_log=True,
+        )
+        future = asyncio.run_coroutine_threadsafe(self._prefetch(model["id"]), self._loop)
+        future.result()
 
     def _update(self, job_id: str, append_log: bool = False, **values) -> None:
         with self._lock:

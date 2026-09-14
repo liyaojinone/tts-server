@@ -215,3 +215,72 @@ def test_gated_stable_audio_download_passes_stored_token_to_huggingface(tmp_path
 
     assert captured_kwargs["repo_id"] == "stabilityai/stable-audio-3-small-sfx"
     assert captured_kwargs["token"] == "hf_example_secret_1234"
+
+
+def _run_manager_job_with_loop(tmp_path, catalog, prefetch):
+    import asyncio
+    import threading
+    import time
+
+    loop = asyncio.new_event_loop()
+    thread = threading.Thread(target=loop.run_forever, daemon=True)
+    thread.start()
+    manager = ModelInstallManager(tmp_path, catalog, prefetch=prefetch)
+    manager._installer.run = lambda *args, **kwargs: None  # type: ignore[assignment]
+    try:
+        job = manager.start(catalog[0]["id"], "download", main_loop=loop)
+        deadline = time.monotonic() + 5
+        final = job
+        while time.monotonic() < deadline:
+            final = manager.get(job["id"])
+            if final["state"] in {"succeeded", "failed"}:
+                break
+            time.sleep(0.02)
+    finally:
+        loop.call_soon_threadsafe(loop.stop)
+    return final
+
+
+def test_upstream_managed_install_job_prefetches_official_weights(tmp_path):
+    prefetched: list[str] = []
+
+    async def prefetch(model_id: str) -> None:
+        prefetched.append(model_id)
+
+    final = _run_manager_job_with_loop(
+        tmp_path,
+        [
+            {
+                "id": "qwen_test",
+                "required_paths": ["models/qwen-test/repo"],
+                "runtime_weight_policy": "upstream_managed",
+            }
+        ],
+        prefetch,
+    )
+
+    assert final["state"] == "succeeded"
+    assert prefetched == ["qwen_test"]
+    assert any("正在预取官方权重" in line for line in final["logs"])
+
+
+def test_platform_managed_install_job_does_not_prefetch_weights(tmp_path):
+    prefetched: list[str] = []
+
+    async def prefetch(model_id: str) -> None:
+        prefetched.append(model_id)
+
+    final = _run_manager_job_with_loop(
+        tmp_path,
+        [
+            {
+                "id": "platform_test",
+                "required_paths": ["models/platform-test/repo"],
+                "runtime_weight_policy": "platform_managed",
+            }
+        ],
+        prefetch,
+    )
+
+    assert final["state"] == "succeeded"
+    assert prefetched == []
