@@ -74,6 +74,22 @@
 
 ---
 
+## 二·补、从零验收通过记录
+
+> 记录规则见「零、执行审计结论与"先冻结后验收"规则」：只有满足"最终代码和配置冻结 → 删除选中模型/服务 → 从零安装 → 官方运行时首次下载/加载权重 → 真实请求成功"，才算「从零验收通过」。
+> 复现命令：`python verification/verify_gateway.py --models <model_id> --phase l2`（脚本位于工作区 `verification/`）。
+
+### qwen3_asr_0_6b — 语音识别 · 从零验收通过（2026-09-14）
+
+- **安装**：删除 `BoboVoxClient/.data/services/BoboGenServer` 后，由客户端「更新服务」从 GitHub 全新克隆并安装依赖（已含 `mcp<2` 锁定，网关可正常启动）。
+- **启动**：客户端启动 Gateway 与 `qwen3_asr_0_6b`（端口 5110），`GET /v1/providers/status` 返回 `healthy`。
+- **真实请求**：`POST /v1/generate`，`task="asr.transcribe"`，输入一段中文语音（Windows SAPI 生成，8.09s、非静音）。
+- **结果**：`text="你好，这里是本地语音模型验证。今天天气很好，我们开始测试。"`，`language="Chinese"`。
+- **结论**：通过。
+- **证据**：`verification/runs/run-20260914-093203/report.json`（含返回 JSON 与耗时）。
+
+---
+
 ## 三、Agent 接入新模型的五步标准化作业流（SOP 执行清单）
 
 后续任何 Agent 接入或改造任何模型时，必须严格按照以下 5 个步骤执行：
