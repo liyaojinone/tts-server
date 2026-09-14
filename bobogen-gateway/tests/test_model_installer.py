@@ -70,6 +70,12 @@ def test_voxcpm_install_plan_avoids_heavy_packages():
     assert plan["installation_marker"].endswith("voxcpm2.json")
 
 
+def test_service_kit_declares_python_multipart():
+    # service-kit 的 /v1/clone 使用 Form/File，缺少 python-multipart 会导致服务无法启动
+    text = (REPO_ROOT / "bobogen-service-kit" / "pyproject.toml").read_text(encoding="utf-8")
+    assert "python-multipart" in text
+
+
 def test_service_packages_declare_explicit_discovery():
     service_pyprojects = sorted((REPO_ROOT / "services").glob("*/pyproject.toml"))
     assert service_pyprojects
