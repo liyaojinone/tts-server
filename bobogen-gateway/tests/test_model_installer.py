@@ -70,6 +70,53 @@ def test_voxcpm_install_plan_avoids_heavy_packages():
     assert plan["installation_marker"].endswith("voxcpm2.json")
 
 
+def test_url_zip_extract_redownloads_corrupt_cache(tmp_path, monkeypatch):
+    import io
+    import zipfile as zipfile_module
+
+    from app.services.model_installer import ModelInstaller
+
+    installer = ModelInstaller(tmp_path)
+    cache = tmp_path / "runtime/model-download-cache/nltk_data.zip"
+    cache.parent.mkdir(parents=True)
+    cache.write_bytes(b"PK\x03\x04truncated")
+
+    payload = io.BytesIO()
+    with zipfile_module.ZipFile(payload, "w") as archive:
+        archive.writestr("nltk_data/corpora/cmudict.zip", b"dict")
+    data = payload.getvalue()
+
+    class FakeResponse:
+        def __init__(self, body: bytes):
+            self._body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self, size: int = -1) -> bytes:
+            chunk = self._body[:size] if size and size > 0 else self._body
+            self._body = self._body[len(chunk):]
+            return chunk
+
+    monkeypatch.setattr("urllib.request.urlopen", lambda url, timeout=120: FakeResponse(data))
+
+    installer._download_url_zip_extract(
+        {
+            "url": "https://example.invalid/nltk_data.zip",
+            "cache_path": "runtime/model-download-cache/nltk_data.zip",
+            "target": "services/gptsovits-service/.venv",
+            "marker": "nltk_data/corpora/cmudict.zip",
+        },
+        lambda event: None,
+    )
+
+    marker = tmp_path / "services/gptsovits-service/.venv/nltk_data/corpora/cmudict.zip"
+    assert marker.is_file()
+
+
 def test_gptsovits_install_plan_preinstalls_opencc_and_service():
     plan = MODEL_INSTALL_PLANS["gpt_sovits_v2pro"]
     commands = plan["environment"]["setup_commands"]

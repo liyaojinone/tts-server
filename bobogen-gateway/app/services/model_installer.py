@@ -798,6 +798,11 @@ class ModelInstaller:
         cache_path = self._safe_path(resource["cache_path"])
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         partial_path = cache_path.with_name(f".{cache_path.name}.part")
+        cache_invalid = cache_path.is_file() and cache_path.stat().st_size > 0 and not zipfile.is_zipfile(cache_path)
+        if cache_invalid:
+            # 缓存被截断/损坏（例如拷贝中断）时删除后重新下载，避免永久卡在解压失败
+            progress(InstallProgress("weights", f"压缩资源缓存损坏，重新下载: {cache_path.name}"))
+            cache_path.unlink(missing_ok=True)
         if not cache_path.is_file() or cache_path.stat().st_size == 0:
             progress(InstallProgress("weights", f"下载官方压缩资源: {resource['url']}"))
             from urllib.request import urlopen
