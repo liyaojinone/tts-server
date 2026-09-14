@@ -429,6 +429,14 @@ def _detect_model(model: dict, process_manager=None) -> dict:
         if not marker_ready and not legacy_ready:
             missing_paths.append(installation_marker)
 
+    # upstream_managed 模型的权重不在安装清单里，必须等官方 warmup 成功、
+    # 写入权重标记后才算“已安装”，否则显示未安装。
+    if model.get("runtime_weight_policy") == "upstream_managed":
+        weights_marker = f"runtime/model-install-state/{model['id']}.weights.json"
+        expected_paths.append(weights_marker)
+        if not is_resource_path_ready(REPO_ROOT, weights_marker):
+            missing_paths.append(weights_marker)
+
     if not missing_paths:
         status = "ready"
     elif len(missing_paths) == len(expected_paths):

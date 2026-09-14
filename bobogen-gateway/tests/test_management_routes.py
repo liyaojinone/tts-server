@@ -132,6 +132,12 @@ def test_qwen_shared_repository_does_not_mark_unselected_variants_as_installed(
     small_python = tmp_path / "services/qwen3-asr-service/.venv/Scripts/python.exe"
     small_python.parent.mkdir(parents=True)
     small_python.write_bytes(b"python")
+    weights_dir = tmp_path / "runtime/model-install-state"
+    weights_dir.mkdir(parents=True)
+    (weights_dir / "qwen3_asr_0_6b.weights.json").write_text(
+        '{"model_id": "qwen3_asr_0_6b", "weights_prefetched": true}',
+        encoding="utf-8",
+    )
 
     models = {model["id"]: model for model in management.MODEL_CATALOG}
     small = _detect_model(models["qwen3_asr_0_6b"])
@@ -142,6 +148,7 @@ def test_qwen_shared_repository_does_not_mark_unselected_variants_as_installed(
     assert large["status"] != "ready"
     assert aligner["status"] != "ready"
     assert any("model-install-state/qwen3_asr_1_7b.json" in path for path in large["missing_paths"])
+    assert any("qwen3_asr_1_7b.weights.json" in path for path in large["missing_paths"])
     assert any(
         "qwen3-asr-service/.venv-aligner/Scripts/python.exe" in path
         for path in aligner["missing_paths"]

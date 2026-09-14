@@ -262,6 +262,9 @@ def test_upstream_managed_install_job_prefetches_official_weights(tmp_path):
     assert final["state"] == "succeeded"
     assert prefetched == ["qwen_test"]
     assert any("正在预取官方权重" in line for line in final["logs"])
+    weights_marker = tmp_path / "runtime/model-install-state/qwen_test.weights.json"
+    assert weights_marker.is_file()
+    assert '"weights_prefetched": true' in weights_marker.read_text(encoding="utf-8")
 
 
 def test_platform_managed_install_job_does_not_prefetch_weights(tmp_path):

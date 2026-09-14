@@ -507,6 +507,30 @@ class ModelInstaller:
             partial.unlink(missing_ok=True)
             raise ModelInstallError(f"无法写入模型安装记录: {marker}") from exc
 
+    def weights_marker_path(self, model_id: str) -> str:
+        return f"runtime/model-install-state/{model_id}.weights.json"
+
+    def write_weights_marker(self, model_id: str) -> None:
+        """记录“官方权重已成功预取/加载”。
+
+        只有 warmup 成功（权重确实存在且可用）后才会调用，因此该文件是
+        upstream_managed 模型“已安装”判定的必要依据。
+        """
+        marker = self._safe_path(self.weights_marker_path(model_id))
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "model_id": model_id,
+            "weights_prefetched": True,
+            "prefetched_at": _utc_now(),
+        }
+        partial = marker.with_name(f".{marker.name}.part")
+        try:
+            partial.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            partial.replace(marker)
+        except OSError as exc:
+            partial.unlink(missing_ok=True)
+            raise ModelInstallError(f"无法写入权重预取记录: {marker}") from exc
+
     @staticmethod
     def _resolve_source_config(
         mirror: str | None,
@@ -1002,7 +1026,8 @@ class ModelInstallManager:
                 source_config=source_config,
                 hf_token=hf_token,
             )
-            self._prefetch_weights_if_needed(job_id, model)
+            if model.get("runtime_weight_policy") == "upstream_managed":
+                self._prefetch_official_weights(job_id, model)
         except Exception as exc:  # keep the concrete error visible to the UI
             LOGGER.exception("模型资源任务失败: %s", job_id)
             self._update(
@@ -1029,16 +1054,15 @@ class ModelInstallManager:
                     self._active_job_id = None
                 self._loop = None
 
-    def _prefetch_weights_if_needed(self, job_id: str, model: dict) -> None:
+    def _prefetch_official_weights(self, job_id: str, model: dict) -> None:
         """对 upstream_managed 模型，安装完成后立即预取官方权重。
 
         权重由官方运行时在首次加载时下载；这里在安装任务内主动触发一次
         warmup，让“下载”真的把权重拉下来，并让任务状态如实反映耗时。
+        只有 warmup 成功后才写入权重标记；失败则不写，状态回落为未安装。
         """
         if self._prefetch is None or self._loop is None:
-            return
-        if model.get("runtime_weight_policy") != "upstream_managed":
-            return
+            raise ModelInstallError("缺少权重预取环境，无法确认模型权重是否可用")
         self._update(
             job_id,
             state="running",
@@ -1048,6 +1072,7 @@ class ModelInstallManager:
         )
         future = asyncio.run_coroutine_threadsafe(self._prefetch(model["id"]), self._loop)
         future.result()
+        self._installer.write_weights_marker(model["id"])
 
     def _update(self, job_id: str, append_log: bool = False, **values) -> None:
         with self._lock:
