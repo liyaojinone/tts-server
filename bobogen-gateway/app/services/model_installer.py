@@ -63,6 +63,16 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
             "target": "models/cosyvoice/repo",
             "revision": "074ca6dc9e80a2f424f1f74b48bdd7d3fea531cc",
         },
+        "environment": {
+            "venv_dir": "services/cosyvoice-service/.venv",
+            "setup_commands": [
+                ["{python}", "-m", "pip", "install", "-U", "pip"],
+                ["{python}", "-m", "pip", "install", "-r", "models/cosyvoice/repo/requirements.txt"],
+                ["{python}", "-m", "pip", "install", "-e", "bobogen-protocol"],
+                ["{python}", "-m", "pip", "install", "-e", "bobogen-service-kit"],
+                ["{python}", "-m", "pip", "install", "-e", "services/cosyvoice-service"],
+            ],
+        },
         "resources": [
             {
                 "kind": "hf_snapshot_local",
@@ -612,6 +622,7 @@ class ModelInstaller:
                     f"源码已存在但版本不匹配: {target} 当前 {current or '未知'}，清单要求 {revision}。"
                     "不会自动覆盖，请使用对应的服务版本清单处理。"
                 )
+            self._init_submodules(target, progress)
             progress(InstallProgress("source", f"官方源码已存在并匹配固定版本 {revision[:8]}"))
             return
 
@@ -625,6 +636,7 @@ class ModelInstaller:
         try:
             self._run_command(["git", "clone", source["url"], str(staging_target)], self.repo_root, progress)
             self._run_command(["git", "-C", str(staging_target), "checkout", "--detach", revision], self.repo_root, progress)
+            self._init_submodules(staging_target, progress)
             if target.exists():
                 # The target was verified empty above.  Leave a non-empty path
                 # untouched if something changed it while cloning.
@@ -634,6 +646,16 @@ class ModelInstaller:
             staging_target.replace(target)
         finally:
             shutil.rmtree(staging_parent, ignore_errors=True)
+
+    def _init_submodules(self, target: Path, progress: ProgressCallback) -> None:
+        if not (target / ".gitmodules").is_file():
+            return
+        progress(InstallProgress("source", "初始化官方子模块"))
+        self._run_command(
+            ["git", "-C", str(target), "submodule", "update", "--init", "--recursive"],
+            self.repo_root,
+            progress,
+        )
 
     def _git_revision(self, target: Path) -> str | None:
         completed = subprocess.run(

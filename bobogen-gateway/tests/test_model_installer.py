@@ -42,6 +42,14 @@ def test_qwen3_install_plan_has_no_weight_download_resources():
     assert f5_plan["runtime"]["hf_repo_id"] == "SWivid/F5-TTS"
 
 
+def test_cosyvoice_install_plan_provisions_service_environment():
+    plan = MODEL_INSTALL_PLANS["cosyvoice2"]
+    assert plan["environment"]["venv_dir"] == "services/cosyvoice-service/.venv"
+    joined = " ".join(" ".join(command) for command in plan["environment"]["setup_commands"])
+    assert "models/cosyvoice/repo/requirements.txt" in joined
+    assert "services/cosyvoice-service" in joined
+
+
 def test_gptsovits_install_plan_provisions_ffmpeg_inside_its_virtual_environment():
     plan = MODEL_INSTALL_PLANS["gpt_sovits_v2pro"]
     resource = next(resource for resource in plan["resources"] if resource["kind"] == "ffmpeg_shared_zip")
