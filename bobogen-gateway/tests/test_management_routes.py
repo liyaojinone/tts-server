@@ -113,6 +113,18 @@ def test_management_catalog_contains_all_configured_local_models_and_repository_
     ]
 
 
+def test_cosyvoice_catalog_requires_install_receipt():
+    from app.routers.management import MODEL_CATALOG
+
+    cosyvoice = next(model for model in MODEL_CATALOG if model["id"] == "cosyvoice2")
+    assert cosyvoice["installation_environment"].endswith(
+        "services/cosyvoice-service/.venv/Scripts/python.exe"
+    )
+    assert cosyvoice["installation_marker"].endswith(
+        "runtime/model-install-state/cosyvoice2.json"
+    )
+
+
 def test_qwen_shared_repository_does_not_mark_unselected_variants_as_installed(
     monkeypatch, tmp_path
 ):
@@ -287,27 +299,37 @@ def test_management_installation_logs_do_not_mix_gateway_request_logs(monkeypatc
 
 
 def test_management_model_download_is_an_idempotent_background_job():
+    from app.config import REPO_ROOT
     from app.main import create_app
 
-    client = TestClient(create_app())
+    # 幂等早退要求存在完成记录，避免把半成品环境当成就绪
+    marker = REPO_ROOT / "runtime/model-install-state/index_tts_2.json"
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    created_marker = not marker.exists()
+    marker.write_text("{}", encoding="utf-8")
+    try:
+        client = TestClient(create_app())
 
-    response = client.post("/api/model-services/index_tts_2/download")
+        response = client.post("/api/model-services/index_tts_2/download")
 
-    assert response.status_code == 202
-    job = response.json()["job"]
-    assert job["model_id"] == "index_tts_2"
-    assert job["operation"] == "download"
+        assert response.status_code == 202
+        job = response.json()["job"]
+        assert job["model_id"] == "index_tts_2"
+        assert job["operation"] == "download"
 
-    deadline = time.monotonic() + 5
-    final_job = job
-    while time.monotonic() < deadline:
-        final_job = client.get(f"/api/model-services/jobs/{job['id']}").json()["job"]
-        if final_job["state"] in {"succeeded", "failed"}:
-            break
-        time.sleep(0.05)
+        deadline = time.monotonic() + 5
+        final_job = job
+        while time.monotonic() < deadline:
+            final_job = client.get(f"/api/model-services/jobs/{job['id']}").json()["job"]
+            if final_job["state"] in {"succeeded", "failed"}:
+                break
+            time.sleep(0.05)
 
-    assert final_job["state"] == "succeeded"
-    assert "无需重复下载" in "\n".join(final_job["logs"])
+        assert final_job["state"] == "succeeded"
+        assert "无需重复下载" in "\n".join(final_job["logs"])
+    finally:
+        if created_marker:
+            marker.unlink(missing_ok=True)
 
 
 def test_management_model_actions_reject_unknown_models():

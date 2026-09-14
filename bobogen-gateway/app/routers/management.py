@@ -49,6 +49,8 @@ MODEL_CATALOG = [
                 "url": "https://www.modelscope.cn/models/iic/CosyVoice2-0.5B",
             }
         ],
+        "installation_environment": "services/cosyvoice-service/.venv/Scripts/python.exe",
+        "installation_marker": "runtime/model-install-state/cosyvoice2.json",
         "required_paths": [
             "models/cosyvoice/repo/pretrained_models/CosyVoice2-0.5B",
         ],
