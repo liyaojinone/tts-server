@@ -10,7 +10,9 @@ requires-python = ">=3.10"
 dependencies = [
   "fastapi",
   "httpx",
+  "huggingface_hub",
     "mcp<2",
+  "modelscope",
   "pydantic",
   "python-multipart",
   "pyyaml",
