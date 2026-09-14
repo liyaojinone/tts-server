@@ -88,6 +88,12 @@ def test_management_catalog_contains_all_configured_local_models_and_repository_
     assert qwen["required_paths"] == [
         "models/qwen3-asr/repo",
     ]
+    assert qwen["installation_environment"].endswith(
+        "services/qwen3-asr-service/.venv/Scripts/python.exe"
+    )
+    assert qwen["installation_marker"].endswith(
+        "runtime/model-install-state/qwen3_asr_0_6b.json"
+    )
 
     aligner = next(model for model in MODEL_CATALOG if model["id"] == "qwen3_forced_aligner_0_6b")
     assert aligner["resource_root"] == "models/qwen3-asr/repo"
@@ -95,6 +101,9 @@ def test_management_catalog_contains_all_configured_local_models_and_repository_
     assert aligner["required_paths"] == [
         "models/qwen3-asr/repo",
     ]
+    assert aligner["installation_environment"].endswith(
+        "services/qwen3-asr-service/.venv-aligner/Scripts/python.exe"
+    )
 
     f5 = next(model for model in MODEL_CATALOG if model["id"] == "f5_tts")
     assert f5["resource_root"] == "models/f5-tts/repo"
@@ -103,6 +112,40 @@ def test_management_catalog_contains_all_configured_local_models_and_repository_
         "models/f5-tts/repo",
     ]
 
+
+def test_qwen_shared_repository_does_not_mark_unselected_variants_as_installed(
+    monkeypatch, tmp_path
+):
+    import app.routers.management as management
+    from app.routers.management import _detect_model
+
+    monkeypatch.setattr(management, "REPO_ROOT", tmp_path)
+    installer_log = tmp_path / "model-installer.log"
+    installer_log.write_text(
+        "[2026-09-14T00:00:00+00:00] [qwen3_asr_0_6b] 模型资源已准备完成\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(management, "INSTALLER_LOG", installer_log)
+
+    (tmp_path / "models/qwen3-asr/repo").mkdir(parents=True)
+    (tmp_path / "models/qwen3-asr/repo/README.md").write_text("official source", encoding="utf-8")
+    small_python = tmp_path / "services/qwen3-asr-service/.venv/Scripts/python.exe"
+    small_python.parent.mkdir(parents=True)
+    small_python.write_bytes(b"python")
+
+    models = {model["id"]: model for model in management.MODEL_CATALOG}
+    small = _detect_model(models["qwen3_asr_0_6b"])
+    large = _detect_model(models["qwen3_asr_1_7b"])
+    aligner = _detect_model(models["qwen3_forced_aligner_0_6b"])
+
+    assert small["status"] == "ready"
+    assert large["status"] != "ready"
+    assert aligner["status"] != "ready"
+    assert any("model-install-state/qwen3_asr_1_7b.json" in path for path in large["missing_paths"])
+    assert any(
+        "qwen3-asr-service/.venv-aligner/Scripts/python.exe" in path
+        for path in aligner["missing_paths"]
+    )
 
 def test_model_source_config_route_defaults_to_off_and_updates_project_config(tmp_path):
     from app.main import create_app
@@ -216,6 +259,24 @@ def test_management_status_exposes_detection_and_console_data():
     logs_payload = logs_response.json()
     assert logs_payload["lines"] == 5
     assert isinstance(logs_payload["content"], str)
+
+
+def test_management_installation_logs_do_not_mix_gateway_request_logs(monkeypatch, tmp_path):
+    import app.routers.management as management
+    from app.main import create_app
+
+    installer_log = tmp_path / "model-installer.log"
+    gateway_log = tmp_path / "gateway.log"
+    installer_log.write_text("[model] downloading weights\n", encoding="utf-8")
+    gateway_log.write_text('INFO: GET /api/model-services/status 200 OK\n', encoding="utf-8")
+    monkeypatch.setattr(management, "INSTALLER_LOG", installer_log)
+    monkeypatch.setattr(management, "GATEWAY_LOG", gateway_log)
+    client = TestClient(create_app())
+
+    response = client.get("/api/model-services/logs?lines=5")
+
+    assert response.status_code == 200
+    assert response.json()["content"] == "[model] downloading weights"
 
 
 def test_management_model_download_is_an_idempotent_background_job():

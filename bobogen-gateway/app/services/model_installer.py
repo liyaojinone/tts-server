@@ -283,6 +283,7 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
             "cwd": "models/qwen3-asr/repo",
             "entrypoint": "services/qwen3-asr-service/start.ps1",
         },
+        "installation_marker": "runtime/model-install-state/qwen3_asr_0_6b.json",
         "resources": [],
     },
     "qwen3_asr_1_7b": {
@@ -291,12 +292,23 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
             "target": "models/qwen3-asr/repo",
             "revision": "7c6daf77a2421100f5fb066495372c00129d39ff",
         },
+        "environment": {
+            "venv_dir": "services/qwen3-asr-service/.venv",
+            "setup_commands": [
+                ["{python}", "-m", "pip", "install", "-U", "pip"],
+                ["{python}", "-m", "pip", "install", "torch", "torchvision", "torchaudio", "--index-url", "https://download.pytorch.org/whl/cu128"],
+                ["{python}", "-m", "pip", "install", "-e", "bobogen-protocol"],
+                ["{python}", "-m", "pip", "install", "-e", "models/qwen3-asr/repo"],
+                ["{python}", "-m", "pip", "install", "-e", "services/qwen3-asr-service"],
+            ],
+        },
         "runtime": {
             "model_id": "qwen3_asr_1_7b",
             "hf_repo_id": "Qwen/Qwen3-ASR-1.7B",
             "cwd": "models/qwen3-asr/repo",
             "entrypoint": "services/qwen3-asr-service/start.ps1",
         },
+        "installation_marker": "runtime/model-install-state/qwen3_asr_1_7b.json",
         "resources": [],
     },
     "qwen3_forced_aligner_0_6b": {
@@ -323,6 +335,7 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
             "cwd": "models/qwen3-asr/repo",
             "entrypoint": "services/qwen3-asr-service/start.ps1",
         },
+        "installation_marker": "runtime/model-install-state/qwen3_forced_aligner_0_6b.json",
         "resources": [],
     },
     "campplus_speaker_diarization": {
@@ -438,6 +451,7 @@ class ModelInstaller:
             if not is_resource_path_ready(self.repo_root, path)
         ]
         if not missing_paths and env_ready:
+            self._write_installation_marker(model_id, plan)
             progress(InstallProgress("verify", "资源已经完整，无需重复下载；固定版本保持不变"))
             return
 
@@ -463,7 +477,34 @@ class ModelInstaller:
             suffix = " …" if len(missing_paths) > 5 else ""
             raise ModelInstallError(f"安装完成后仍缺少: {formatted}{suffix}")
 
+        self._write_installation_marker(model_id, plan)
         progress(InstallProgress("done", "安装完成"))
+
+    def _write_installation_marker(self, model_id: str, plan: dict) -> None:
+        relative_path = plan.get("installation_marker")
+        if not relative_path:
+            return
+
+        marker = self._safe_path(relative_path)
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        source = plan.get("source") or {}
+        environment = plan.get("environment") or {}
+        payload = {
+            "model_id": model_id,
+            "source": {
+                "target": source.get("target"),
+                "revision": source.get("revision"),
+            },
+            "environment": {"venv_dir": environment.get("venv_dir")},
+            "installed_at": _utc_now(),
+        }
+        partial = marker.with_name(f".{marker.name}.part")
+        try:
+            partial.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            partial.replace(marker)
+        except OSError as exc:
+            partial.unlink(missing_ok=True)
+            raise ModelInstallError(f"无法写入模型安装记录: {marker}") from exc
 
     @staticmethod
     def _resolve_source_config(

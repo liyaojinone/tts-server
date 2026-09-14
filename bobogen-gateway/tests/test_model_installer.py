@@ -21,6 +21,11 @@ def test_qwen3_install_plan_has_no_weight_download_resources():
     assert plan["environment"]["venv_dir"] == "services/qwen3-asr-service/.venv"
     assert plan["runtime"]["hf_repo_id"] == "Qwen/Qwen3-ASR-0.6B"
 
+    large_plan = MODEL_INSTALL_PLANS["qwen3_asr_1_7b"]
+    assert large_plan["resources"] == []
+    assert large_plan["environment"]["venv_dir"] == "services/qwen3-asr-service/.venv"
+    assert large_plan["runtime"]["hf_repo_id"] == "Qwen/Qwen3-ASR-1.7B"
+
     aligner_plan = MODEL_INSTALL_PLANS["qwen3_forced_aligner_0_6b"]
     assert aligner_plan["source"]["url"] == "https://github.com/QwenLM/Qwen3-ASR.git"
     assert aligner_plan["resources"] == []
@@ -83,6 +88,9 @@ def test_install_request_operates_only_on_selected_model(tmp_path, monkeypatch):
     assert any(ev.step == "done" and ev.message == "安装完成" for ev in events)
     assert len(recorded_steps) == 1
     assert recorded_steps[0] == ("source", "https://github.com/QwenLM/Qwen3-ASR.git")
+    marker = tmp_path / "runtime/model-install-state/qwen3_asr_0_6b.json"
+    assert marker.is_file()
+    assert marker.read_text(encoding="utf-8").find('"model_id": "qwen3_asr_0_6b"') >= 0
 
 
 def test_mirror_setting_is_process_scoped_and_does_not_mutate_persistent_environment(

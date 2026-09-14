@@ -238,6 +238,8 @@ MODEL_CATALOG = [
         "disk_estimate": "官方仓库就绪；启动后由官方原生机制自动下载并缓存权重",
         "service_port": 5110,
         "resource_root": "models/qwen3-asr/repo",
+        "installation_environment": "services/qwen3-asr-service/.venv/Scripts/python.exe",
+        "installation_marker": "runtime/model-install-state/qwen3_asr_0_6b.json",
         "official_repo": "https://github.com/QwenLM/Qwen3-ASR",
         "official_revision": "7c6daf77a2421100f5fb066495372c00129d39ff",
         "runtime_weight_policy": "upstream_managed",
@@ -262,6 +264,8 @@ MODEL_CATALOG = [
         "disk_estimate": "官方仓库就绪；启动后由官方原生机制自动下载并缓存权重",
         "service_port": 5111,
         "resource_root": "models/qwen3-asr/repo",
+        "installation_environment": "services/qwen3-asr-service/.venv/Scripts/python.exe",
+        "installation_marker": "runtime/model-install-state/qwen3_asr_1_7b.json",
         "official_repo": "https://github.com/QwenLM/Qwen3-ASR",
         "official_revision": "7c6daf77a2421100f5fb066495372c00129d39ff",
         "runtime_weight_policy": "upstream_managed",
@@ -286,6 +290,8 @@ MODEL_CATALOG = [
         "disk_estimate": "官方仓库就绪；启动后由官方原生机制自动下载并缓存权重",
         "service_port": 5112,
         "resource_root": "models/qwen3-asr/repo",
+        "installation_environment": "services/qwen3-asr-service/.venv-aligner/Scripts/python.exe",
+        "installation_marker": "runtime/model-install-state/qwen3_forced_aligner_0_6b.json",
         "official_repo": "https://github.com/QwenLM/Qwen3-ASR",
         "official_revision": "7c6daf77a2421100f5fb066495372c00129d39ff",
         "runtime_weight_policy": "upstream_managed",
@@ -364,10 +370,15 @@ def _resolve_provider_id(process_manager, model_id: str):
 
 
 def _public_model(model: dict) -> dict:
+    internal_keys = {
+        "required_paths",
+        "installation_environment",
+        "installation_marker",
+    }
     public = {
         key: value
         for key, value in model.items()
-        if key != "required_paths"
+        if key not in internal_keys
     }
     profile = source_profile(model["id"])
     public.update(
@@ -381,16 +392,45 @@ def _public_model(model: dict) -> dict:
     return public
 
 
+def _legacy_installation_completed(model_id: str) -> bool:
+    """Recognize installs completed before per-model receipts were added."""
+    if not INSTALLER_LOG.is_file():
+        return False
+    completion = f"] [{model_id}] 模型资源已准备完成"
+    try:
+        return any(completion in line for line in INSTALLER_LOG.read_text(encoding="utf-8", errors="replace").splitlines())
+    except OSError:
+        return False
+
+
 def _detect_model(model: dict, process_manager=None) -> dict:
-    required_paths = model["required_paths"]
+    required_paths = list(model["required_paths"])
+    expected_paths = list(required_paths)
     missing_paths = [
         relative_path
         for relative_path in required_paths
         if not is_resource_path_ready(REPO_ROOT, relative_path)
     ]
+    installation_environment = model.get("installation_environment")
+    environment_ready = not installation_environment or is_resource_path_ready(
+        REPO_ROOT, installation_environment
+    )
+    if installation_environment:
+        expected_paths.append(installation_environment)
+        if not environment_ready:
+            missing_paths.append(installation_environment)
+
+    installation_marker = model.get("installation_marker")
+    if installation_marker:
+        expected_paths.append(installation_marker)
+        marker_ready = is_resource_path_ready(REPO_ROOT, installation_marker)
+        legacy_ready = environment_ready and _legacy_installation_completed(model["id"])
+        if not marker_ready and not legacy_ready:
+            missing_paths.append(installation_marker)
+
     if not missing_paths:
         status = "ready"
-    elif len(missing_paths) == len(required_paths):
+    elif len(missing_paths) == len(expected_paths):
         status = "missing"
     else:
         status = "partial"
@@ -467,31 +507,8 @@ LOGS_DIR = REPO_ROOT / "bobogen-gateway" / "logs"
 
 
 def _read_service_logs(lines: int) -> str:
-    targets: list[tuple[str, Path, float]] = []
-    if GATEWAY_LOG.exists() and GATEWAY_LOG.stat().st_size > 0:
-        targets.append(("Gateway", GATEWAY_LOG, GATEWAY_LOG.stat().st_mtime))
-    if INSTALLER_LOG.exists() and INSTALLER_LOG.stat().st_size > 0:
-        targets.append(("模型安装任务", INSTALLER_LOG, INSTALLER_LOG.stat().st_mtime))
-
-    if LOGS_DIR.is_dir():
-        for sub in sorted(LOGS_DIR.iterdir(), key=lambda p: p.name):
-            if sub.is_dir():
-                combined = sub / "combined.log"
-                if combined.is_file() and combined.stat().st_size > 0:
-                    targets.append((f"服务 {sub.name}", combined, combined.stat().st_mtime))
-
-    if not targets:
-        return "暂无 Gateway 控制台日志。"
-
-    targets.sort(key=lambda item: item[2])
-    merged: list[str] = []
-    for label, path, _ in targets:
-        file_lines = _read_log_file(path, lines)
-        if file_lines:
-            merged.append(f"=== [{label}] ===")
-            merged.extend(file_lines)
-
-    return "\n".join(merged[-lines:])
+    logs = _read_log_file(INSTALLER_LOG, lines)
+    return "\n".join(logs) if logs else "暂无模型安装日志。"
 
 
 @router.get("/", include_in_schema=False)

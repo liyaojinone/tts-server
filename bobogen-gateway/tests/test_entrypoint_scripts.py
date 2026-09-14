@@ -58,6 +58,9 @@ def test_windows_start_script_uses_single_gateway_log_file():
     assert "gateway.out.log" not in start_script
     assert "gateway.err.log" not in start_script
     assert "2>&1" in start_script
+    assert "Start-Process powershell.exe" in start_script
+    assert "-EncodedCommand" in start_script
+    assert "Start-Process cmd.exe" not in start_script
 
 
 def test_windows_start_script_help_does_not_start_gateway_or_change_caller_directory():
@@ -72,3 +75,9 @@ def test_windows_start_script_help_does_not_start_gateway_or_change_caller_direc
     assert start_script.count("Pop-Location") >= 2
     assert "Set-Location $root" not in start_script
     assert "Set-Location $gatewayDir" not in start_script
+
+
+def test_gateway_pins_mcp_to_the_supported_major_version():
+    pyproject = (ROOT / "bobogen-gateway" / "pyproject.toml").read_text(encoding="utf-8")
+
+    assert '"mcp<2"' in pyproject

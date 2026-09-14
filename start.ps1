@@ -104,8 +104,9 @@ function Invoke-NativeMode {
         if ($Daemon) {
             $logPath = Join-Path $gatewayDir "logs\gateway.log"
             New-Item -ItemType File -Force -Path $logPath | Out-Null
-            $command = "`"$gatewayPython`" -m uvicorn app.main:create_app --factory --host 0.0.0.0 --port $Port >> `"$logPath`" 2>&1"
-            Start-Process cmd.exe -ArgumentList @("/d", "/c", $command) -WorkingDirectory $gatewayDir -WindowStyle Hidden
+            $daemonScript = "& '$gatewayPython' -m uvicorn app.main:create_app --factory --host 0.0.0.0 --port $Port 2>&1 | Out-File -FilePath '$logPath' -Append -Encoding utf8"
+            $encodedDaemonScript = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($daemonScript))
+            Start-Process powershell.exe -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", $encodedDaemonScript) -WorkingDirectory $gatewayDir -WindowStyle Hidden
             Write-Host "Gateway 后台启动: http://127.0.0.1:$Port"
             Write-Host "日志: $logPath"
             return
