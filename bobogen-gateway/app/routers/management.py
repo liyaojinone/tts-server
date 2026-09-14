@@ -69,6 +69,8 @@ MODEL_CATALOG = [
         "official_repo": "https://github.com/SWivid/F5-TTS",
         "official_revision": "9c614e9657089213efc6a7421b30630be138a3f5",
         "runtime_weight_policy": "upstream_managed",
+        "installation_environment": "services/f5tts-service/.venv/Scripts/python.exe",
+        "installation_marker": "runtime/model-install-state/f5_tts.json",
         "other_links": [
             {
                 "label": "Hugging Face 模型",

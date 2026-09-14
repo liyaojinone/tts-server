@@ -124,6 +124,12 @@ def test_cosyvoice_catalog_requires_install_receipt():
         "runtime/model-install-state/cosyvoice2.json"
     )
 
+    f5 = next(model for model in MODEL_CATALOG if model["id"] == "f5_tts")
+    assert f5["installation_environment"].endswith(
+        "services/f5tts-service/.venv/Scripts/python.exe"
+    )
+    assert f5["installation_marker"].endswith("runtime/model-install-state/f5_tts.json")
+
 
 def test_qwen_shared_repository_does_not_mark_unselected_variants_as_installed(
     monkeypatch, tmp_path

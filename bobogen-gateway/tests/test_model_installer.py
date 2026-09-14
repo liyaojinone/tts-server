@@ -42,6 +42,21 @@ def test_qwen3_install_plan_has_no_weight_download_resources():
     assert f5_plan["runtime"]["hf_repo_id"] == "SWivid/F5-TTS"
 
 
+def test_f5tts_install_plan_avoids_heavy_training_packages():
+    plan = MODEL_INSTALL_PLANS["f5_tts"]
+    commands = plan["environment"]["setup_commands"]
+    joined = " ".join(" ".join(command) for command in commands)
+    # 本体用 --no-deps 安装，避免拉入 gradio/torchcodec/bitsandbytes 等训练/CLI 包
+    assert "models/f5-tts/repo" in joined and "--no-deps" in joined
+    assert "gradio" not in joined
+    assert "torchcodec" not in joined
+    assert "bitsandbytes" not in joined
+    # 运行期依赖要装上
+    for dependency in ("transformers", "vocos", "torchdiffeq", "x_transformers", "cached_path"):
+        assert dependency in joined
+    assert plan["installation_marker"].endswith("f5_tts.json")
+
+
 def test_service_packages_declare_explicit_discovery():
     service_pyprojects = sorted((REPO_ROOT / "services").glob("*/pyproject.toml"))
     assert service_pyprojects
