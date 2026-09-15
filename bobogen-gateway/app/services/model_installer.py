@@ -1138,6 +1138,22 @@ class ModelInstaller:
             kwargs["allow_patterns"] = list(resource["allow_patterns"])
         kwargs.update(self._hf_source_kwargs())
         snapshot_download(**kwargs)
+        self._write_hf_main_ref(cache_dir, resource["repo_id"], resource.get("revision"))
+
+    @staticmethod
+    def _write_hf_main_ref(cache_dir: Path, repo_id: str, revision: str | None) -> None:
+        """写入 refs/main，让运行期能离线解析默认分支。
+
+        清单锁定的是 commit，huggingface_hub 只会写 snapshots/<commit>、不写 ref；
+        而运行期（transformers/huggingface_hub）请求的是默认分支 main。缺少 ref
+        时会联网重新解析并下载新版本，所以这里补一个指向锁定版本的 refs/main。
+        """
+
+        if not revision or len(revision) != 40 or not all(c in "0123456789abcdef" for c in revision):
+            return
+        refs_dir = cache_dir / f"models--{repo_id.replace('/', '--')}" / "refs"
+        refs_dir.mkdir(parents=True, exist_ok=True)
+        (refs_dir / "main").write_text(revision, encoding="utf-8")
 
     def _download_hf_files(self, resource: dict, progress: ProgressCallback) -> None:
         hf_hub_download, _ = self._hf_module()

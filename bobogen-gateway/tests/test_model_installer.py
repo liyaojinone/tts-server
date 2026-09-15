@@ -275,6 +275,33 @@ def test_indextts_install_plan_provisions_environment_and_runtime_weights():
     assert all(isinstance(resource.get("revision"), str) for resource in cached.values())
 
 
+def test_hf_snapshot_cache_writes_main_ref_for_pinned_revision(tmp_path, monkeypatch):
+    installer = ModelInstaller(tmp_path)
+    monkeypatch.setattr(installer, "_hf_module", lambda: (None, lambda **kwargs: None))
+
+    revision = "da985ba0987f70aaeb84a80f2851cfac8c697a7b"
+    installer._download_hf_snapshot_cache(
+        {
+            "kind": "hf_snapshot_cache",
+            "repo_id": "facebook/w2v-bert-2.0",
+            "revision": revision,
+            "cache_dir": "models/index-tts/hf-home/hub",
+        },
+        lambda event: None,
+    )
+
+    ref = tmp_path / "models/index-tts/hf-home/hub/models--facebook--w2v-bert-2.0/refs/main"
+    assert ref.read_text(encoding="utf-8") == revision
+
+    # 非 commit 形式的 revision（如 tag）不写 main 引用，避免指向错误版本
+    installer._write_hf_main_ref(
+        tmp_path / "models/index-tts/hf-home/hub", "damo/speech_fsmn", "v2.0.2"
+    )
+    assert not (
+        tmp_path / "models/index-tts/hf-home/hub/models--damo--speech_fsmn/refs/main"
+    ).exists()
+
+
 def test_hf_snapshot_cache_forwards_allow_patterns(tmp_path, monkeypatch):
     installer = ModelInstaller(tmp_path)
     captured: dict[str, object] = {}

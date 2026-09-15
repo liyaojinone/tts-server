@@ -40,6 +40,8 @@ $env:HUGGINGFACE_HUB_CACHE = Join-Path $env:HF_HOME "hub"
 $env:MODELSCOPE_CACHE = Join-Path $cacheRoot "modelscope-cache"
 $env:MODELSCOPE_CACHE_HOME = $env:MODELSCOPE_CACHE
 $env:TORCH_HOME = Join-Path $cacheRoot "torch-cache"
+# 权重（含 w2v-bert/MaskGCT/campplus/bigvgan）已随目录内置，运行期不再访问 Hugging Face
+$env:HF_HUB_OFFLINE = if ($env:HF_HUB_OFFLINE) { $env:HF_HUB_OFFLINE } else { "1" }
 # HF xet 传输在部分网络下会卡死，默认走普通 HTTPS
 $env:HF_HUB_DISABLE_XET = if ($env:HF_HUB_DISABLE_XET) { $env:HF_HUB_DISABLE_XET } else { "1" }
 Remove-Item Env:TRANSFORMERS_CACHE -ErrorAction SilentlyContinue
