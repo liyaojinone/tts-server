@@ -99,6 +99,9 @@ function Invoke-NativeMode {
         if (-not (Test-Path $gatewayPython)) {
             throw "Gateway Python 环境不存在。请先运行 .\install.ps1 -GatewayOnly"
         }
+        # Gateway 进程负责下载模型权重：HF xet 传输在部分网络下会卡死，
+        # 默认关闭，改用普通 HTTPS（显式设为 0 可重新开启）
+        if (-not $env:HF_HUB_DISABLE_XET) { $env:HF_HUB_DISABLE_XET = "1" }
         New-Item -ItemType Directory -Force -Path (Join-Path $gatewayDir "logs") | Out-Null
 
         if ($Daemon) {

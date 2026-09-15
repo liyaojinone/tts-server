@@ -676,6 +676,11 @@ class ModelInstaller:
 
         self._source_config = self._resolve_source_config(mirror, source_config)
 
+        # Hugging Face 的 xet 传输在部分网络下会长时间卡住（并发被压到 1、
+        # 反复重试却不落盘）。默认关闭，改用普通 HTTPS 下载；如需启用可显式
+        # 设置 HF_HUB_DISABLE_XET=0。
+        os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
+
         model_id = model["id"]
         self._hf_token = hf_token if requires_huggingface_token(model_id) else None
         plan = MODEL_INSTALL_PLANS.get(model_id)

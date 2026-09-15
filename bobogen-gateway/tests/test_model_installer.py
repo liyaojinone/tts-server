@@ -108,6 +108,30 @@ def test_stable_audio_install_plans_provision_environment_and_receipts():
         assert "gradio" not in commands
 
 
+def test_install_disables_huggingface_xet_by_default(tmp_path, monkeypatch):
+    installer = ModelInstaller(tmp_path)
+    monkeypatch.setattr(installer, "_ensure_source", lambda source, progress: None)
+    monkeypatch.setattr(
+        installer, "_ensure_environment", lambda env_config, progress: tmp_path / "python.exe"
+    )
+    monkeypatch.setattr(installer, "_install_dependencies", lambda *args, **kwargs: None)
+    monkeypatch.setattr(installer, "_download_resource", lambda *args, **kwargs: None)
+    monkeypatch.setattr(installer, "_write_installation_marker", lambda *args, **kwargs: None)
+
+    monkeypatch.delenv("HF_HUB_DISABLE_XET", raising=False)
+    installer.run(
+        {"id": "stable_audio_3_small_sfx", "required_paths": []}, "download", lambda event: None
+    )
+    assert os.environ["HF_HUB_DISABLE_XET"] == "1"
+
+    # 显式设置时不被覆盖
+    monkeypatch.setenv("HF_HUB_DISABLE_XET", "0")
+    installer.run(
+        {"id": "stable_audio_3_small_sfx", "required_paths": []}, "download", lambda event: None
+    )
+    assert os.environ["HF_HUB_DISABLE_XET"] == "0"
+
+
 def test_gated_model_download_failure_mentions_license_and_token(tmp_path, monkeypatch):
     installer = ModelInstaller(tmp_path)
     monkeypatch.setattr(installer, "_ensure_source", lambda source, progress: None)
