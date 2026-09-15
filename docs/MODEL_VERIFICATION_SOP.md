@@ -99,6 +99,17 @@
 | f5_tts | 5102 | tts.speech | PASS 11.4s，24000Hz 6.43s | run-20260914-192137 |
 | voxcpm2 | 5105 | tts.speech | PASS 171.1s，48000Hz 4.64s | run-20260914-210200 |
 | gpt_sovits_v2pro | 5103 | tts.speech | PASS 95.6s，32000Hz 5.98s | run-20260914-214708 |
+| campplus_speaker_diarization | 5113 | audio.diarize | PASS 25.1s，2 说话人 5 片段 | run-20260915-082655 |
+
+### campplus_speaker_diarization — 说话人分离 · 从零验收通过（2026-09-15）
+
+- **安装**：客户端「下载/修复」完成：建立 `services/speaker-diarization-service/.venv` 并安装服务依赖（torch cu128 + `modelscope[audio-asr]`/`funasr`/`hdbscan`）→ 预置流水线引用的 4 个 ModelScope 包（分离主包 / 声纹 / 变化点检测 / VAD）→ 写入安装收据。
+- **修复项**：新版 ModelScope 使用 HF 风格缓存布局 `models/<owner>--<name>/snapshots/<revision>/`，`required_paths` 已按实际布局修正；安装器改为校验 `snapshot_download` 返回的快照目录，不再把某个版本的目录结构写死。
+- **启动**：客户端启动（端口 5113）后 `/v1/providers/status` 返回 `healthy`。
+- **真实请求**：`POST /v1/generate`，`task="audio.diarize"`，输入官方双说话人样例 `examples/2speakers_example.wav`（51.6s）。
+- **结果**：识别出 `SPEAKER_00` 与 `SPEAKER_01` 两个说话人，共 5 个片段，时间轴交替合理。
+- **结论**：通过。
+- **证据**：`verification/runs/run-20260915-082655/report.json`。
 
 ### gpt_sovits_v2pro — 语音合成/克隆 · 从零验收通过（2026-09-14）
 
