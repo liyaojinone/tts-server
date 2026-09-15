@@ -25,3 +25,31 @@ def test_configure_import_paths_uses_explicit_directories_without_processing_pth
 
     assert sys.path[:2] == [str(source.resolve()), str(packages.resolve())]
     assert str(stale_editable_source.resolve()) not in sys.path
+
+
+def test_launcher_runs_a_module_after_configuring_repository_local_imports(tmp_path, monkeypatch):
+    from portable_python_launcher import main
+
+    packages = tmp_path / "services" / "example-service" / ".venv" / "Lib" / "site-packages"
+    output_path = tmp_path / "module-ran.txt"
+    packages.mkdir(parents=True)
+    (packages / "portable_probe.py").write_text(
+        "from pathlib import Path\n"
+        "import os\n"
+        "Path(os.environ['PORTABLE_PROBE_OUTPUT']).write_text('ran', encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("PORTABLE_PROBE_OUTPUT", str(output_path))
+    monkeypatch.setattr(sys, "path", list(sys.path))
+
+    assert main(
+        [
+            "--repo-root",
+            str(tmp_path),
+            "--packages",
+            str(packages),
+            "--module",
+            "portable_probe",
+        ]
+    ) == 0
+    assert output_path.read_text(encoding="utf-8") == "ran"

@@ -13,7 +13,9 @@ $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $gatewayDir = Join-Path $root "bobogen-gateway"
-$gatewayPython = Join-Path $root "runtime\gateway\.venv\Scripts\python.exe"
+$gatewayPython = Join-Path $root "runtime\python\cp311\python.exe"
+$portableLauncher = Join-Path $root "runtime\portable_python_launcher.py"
+$gatewayPackages = Join-Path $root "runtime\gateway\.venv\Lib\site-packages"
 
 function Show-Usage {
     Write-Host ""
@@ -97,7 +99,13 @@ function Invoke-NativeMode {
         }
 
         if (-not (Test-Path $gatewayPython)) {
-            throw "Gateway Python 环境不存在。请先运行 .\install.ps1 -GatewayOnly"
+            throw "完整运行包的 Python 不存在：$gatewayPython。请运行 .\scripts\install-portable-python.ps1"
+        }
+        if (-not (Test-Path $portableLauncher)) {
+            throw "完整运行包的 Python 启动器不存在：$portableLauncher"
+        }
+        if (-not (Test-Path $gatewayPackages)) {
+            throw "Gateway 依赖目录不存在：$gatewayPackages。请使用完整运行包，或运行 .\install.ps1 -GatewayOnly 进行高级维护。"
         }
         # Gateway 进程负责下载模型权重：HF xet 传输在部分网络下会卡死，
         # 默认关闭，改用普通 HTTPS（显式设为 0 可重新开启）
@@ -107,7 +115,7 @@ function Invoke-NativeMode {
         if ($Daemon) {
             $logPath = Join-Path $gatewayDir "logs\gateway.log"
             New-Item -ItemType File -Force -Path $logPath | Out-Null
-            $daemonScript = "& '$gatewayPython' -m uvicorn app.main:create_app --factory --host 0.0.0.0 --port $Port 2>&1 | Out-File -FilePath '$logPath' -Append -Encoding utf8"
+            $daemonScript = "& '$gatewayPython' '$portableLauncher' --repo-root '$root' --packages '$gatewayPackages' --source '$gatewayDir' --module uvicorn -- app.main:create_app --factory --host 0.0.0.0 --port $Port 2>&1 | Out-File -FilePath '$logPath' -Append -Encoding utf8"
             $encodedDaemonScript = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($daemonScript))
             Start-Process powershell.exe -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-EncodedCommand", $encodedDaemonScript) -WorkingDirectory $gatewayDir -WindowStyle Hidden
             Write-Host "Gateway 后台启动: http://127.0.0.1:$Port"
@@ -115,7 +123,7 @@ function Invoke-NativeMode {
             return
         }
 
-        & $gatewayPython -m uvicorn app.main:create_app --factory --host 0.0.0.0 --port $Port
+        & $gatewayPython $portableLauncher --repo-root $root --packages $gatewayPackages --source $gatewayDir --module uvicorn -- app.main:create_app --factory --host 0.0.0.0 --port $Port
     } finally {
         Pop-Location
     }

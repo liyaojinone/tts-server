@@ -8,7 +8,9 @@ contain the absolute source paths of the machine that created a venv.
 from __future__ import annotations
 
 from collections.abc import Iterable
+import argparse
 from pathlib import Path
+import runpy
 import sys
 
 
@@ -37,3 +39,28 @@ def _repository_directory(repo_root: Path, directory: Path) -> Path:
     if not resolved.is_dir():
         raise ValueError(f"依赖目录不存在: {resolved}")
     return resolved
+
+
+def main(arguments: list[str] | None = None) -> int:
+    """Configure imports, then execute the requested Python module."""
+
+    parser = argparse.ArgumentParser(description="BoboGenServer portable Python launcher")
+    parser.add_argument("--repo-root", required=True)
+    parser.add_argument("--packages", action="append", default=[])
+    parser.add_argument("--source", action="append", default=[])
+    parser.add_argument("--module", required=True)
+    parser.add_argument("module_arguments", nargs=argparse.REMAINDER)
+    options = parser.parse_args(arguments)
+
+    configure_import_paths(
+        Path(options.repo_root),
+        package_directories=[Path(directory) for directory in options.packages],
+        source_directories=[Path(directory) for directory in options.source],
+    )
+    sys.argv = [options.module, *options.module_arguments]
+    runpy.run_module(options.module, run_name="__main__")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

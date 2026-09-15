@@ -77,6 +77,15 @@ def test_windows_start_script_help_does_not_start_gateway_or_change_caller_direc
     assert "Set-Location $gatewayDir" not in start_script
 
 
+def test_windows_start_script_launches_gateway_with_the_portable_python_runtime():
+    start_script = (ROOT / "start.ps1").read_text(encoding="utf-8")
+
+    assert 'runtime\\python\\cp311\\python.exe' in start_script
+    assert 'runtime\\portable_python_launcher.py' in start_script
+    assert 'runtime\\gateway\\.venv\\Lib\\site-packages' in start_script
+    assert 'runtime\\gateway\\.venv\\Scripts\\python.exe' not in start_script
+
+
 def test_gateway_pins_mcp_to_the_supported_major_version():
     pyproject = (ROOT / "bobogen-gateway" / "pyproject.toml").read_text(encoding="utf-8")
 
