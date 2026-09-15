@@ -116,6 +116,23 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
                     "--no-deps",
                 ],
                 ["{python}", "-m", "pip", "install", "-r", "models/cosyvoice/repo/requirements.txt"],
+                # CosyVoice upstream pins cu121 Torch 2.3.1.  The portable
+                # Windows bundle uses the repository-wide cu128 runtime; both
+                # binary packages must be replaced together to keep their ABI
+                # and CUDA runtime compatible.  Keep the rest of CosyVoice's
+                # pinned dependencies from requirements.txt unchanged.
+                [
+                    "{python}",
+                    "-m",
+                    "pip",
+                    "install",
+                    "--force-reinstall",
+                    "--no-deps",
+                    "torch==2.11.0+cu128",
+                    "torchaudio==2.11.0+cu128",
+                    "--index-url",
+                    "https://download.pytorch.org/whl/cu128",
+                ],
                 ["{python}", "-m", "pip", "install", "-e", "bobogen-protocol"],
                 ["{python}", "-m", "pip", "install", "-e", "bobogen-service-kit"],
                 ["{python}", "-m", "pip", "install", "-e", "services/cosyvoice-service"],

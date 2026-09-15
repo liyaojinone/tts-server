@@ -509,6 +509,18 @@ def test_cosyvoice_install_plan_provisions_service_environment():
     joined = " ".join(" ".join(command) for command in commands)
     assert "models/cosyvoice/repo/requirements.txt" in joined
     assert "services/cosyvoice-service" in joined
+    # CosyVoice upstream pins the older cu121 wheels; the portable Windows
+    # runtime must replace both binary packages with the matching cu128 pair.
+    assert any(
+        "torch==2.11.0+cu128" in " ".join(command)
+        and "torchaudio==2.11.0+cu128" in " ".join(command)
+        and "download.pytorch.org/whl/cu128" in " ".join(command)
+        for command in commands
+    )
+    assert any(
+        "--no-deps" in " ".join(command) and "torch==2.11.0+cu128" in " ".join(command)
+        for command in commands
+    )
     # openai-whisper 需在隔离环境外构建并跳过依赖，避免缺 pkg_resources
     assert any(
         "openai-whisper==20231117" in command and "--no-build-isolation" in command
