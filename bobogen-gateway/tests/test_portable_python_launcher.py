@@ -35,8 +35,10 @@ def test_launcher_runs_a_module_after_configuring_repository_local_imports(tmp_p
     packages.mkdir(parents=True)
     (packages / "portable_probe.py").write_text(
         "from pathlib import Path\n"
+        "import json\n"
         "import os\n"
-        "Path(os.environ['PORTABLE_PROBE_OUTPUT']).write_text('ran', encoding='utf-8')\n",
+        "import sys\n"
+        "Path(os.environ['PORTABLE_PROBE_OUTPUT']).write_text(json.dumps(sys.argv), encoding='utf-8')\n",
         encoding="utf-8",
     )
     monkeypatch.setenv("PORTABLE_PROBE_OUTPUT", str(output_path))
@@ -50,6 +52,9 @@ def test_launcher_runs_a_module_after_configuring_repository_local_imports(tmp_p
             str(packages),
             "--module",
             "portable_probe",
+            "--",
+            "first-argument",
+            "--option",
         ]
     ) == 0
-    assert output_path.read_text(encoding="utf-8") == "ran"
+    assert output_path.read_text(encoding="utf-8") == '["portable_probe", "first-argument", "--option"]'

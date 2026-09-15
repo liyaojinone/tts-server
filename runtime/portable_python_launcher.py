@@ -57,7 +57,10 @@ def main(arguments: list[str] | None = None) -> int:
         package_directories=[Path(directory) for directory in options.packages],
         source_directories=[Path(directory) for directory in options.source],
     )
-    sys.argv = [options.module, *options.module_arguments]
+    module_arguments = options.module_arguments
+    if module_arguments[:1] == ["--"]:
+        module_arguments = module_arguments[1:]
+    sys.argv = [options.module, *module_arguments]
     runpy.run_module(options.module, run_name="__main__")
     return 0
 
