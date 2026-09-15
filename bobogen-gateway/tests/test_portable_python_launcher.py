@@ -58,3 +58,23 @@ def test_launcher_runs_a_module_after_configuring_repository_local_imports(tmp_p
         ]
     ) == 0
     assert output_path.read_text(encoding="utf-8") == '["portable_probe", "first-argument", "--option"]'
+
+
+def test_configure_import_paths_adds_pywin32_runtime_directories_explicitly(tmp_path, monkeypatch):
+    from portable_python_launcher import configure_import_paths
+
+    packages = tmp_path / "runtime" / "gateway" / ".venv" / "Lib" / "site-packages"
+    packages.mkdir(parents=True)
+    for relative_path in ("win32", "win32/lib", "pythonwin", "pywin32_system32"):
+        (packages / relative_path).mkdir(parents=True)
+    monkeypatch.setattr(sys, "path", list(sys.path))
+
+    configure_import_paths(tmp_path, package_directories=[packages], source_directories=[])
+
+    assert sys.path[:5] == [
+        str(packages.resolve()),
+        str((packages / "win32").resolve()),
+        str((packages / "win32/lib").resolve()),
+        str((packages / "pythonwin").resolve()),
+        str((packages / "pywin32_system32").resolve()),
+    ]

@@ -14,6 +14,9 @@ import runpy
 import sys
 
 
+PYWIN32_RUNTIME_DIRECTORIES = ("win32", "win32/lib", "pythonwin", "pywin32_system32")
+
+
 def configure_import_paths(
     repo_root: Path,
     *,
@@ -23,11 +26,26 @@ def configure_import_paths(
     """Prepend explicit repository-local source and package directories."""
 
     root = repo_root.resolve()
-    directories = [*source_directories, *package_directories]
-    resolved_directories = [_repository_directory(root, directory) for directory in directories]
+    resolved_sources = [_repository_directory(root, directory) for directory in source_directories]
+    resolved_packages = [_repository_directory(root, directory) for directory in package_directories]
+    package_import_directories = [
+        directory
+        for package_directory in resolved_packages
+        for directory in _package_import_directories(package_directory)
+    ]
+    resolved_directories = [*resolved_sources, *package_import_directories]
 
     for directory in reversed(resolved_directories):
         sys.path.insert(0, str(directory))
+
+
+def _package_import_directories(package_directory: Path) -> list[Path]:
+    directories = [package_directory]
+    for relative_path in PYWIN32_RUNTIME_DIRECTORIES:
+        candidate = package_directory / relative_path
+        if candidate.is_dir():
+            directories.append(candidate)
+    return directories
 
 
 def _repository_directory(repo_root: Path, directory: Path) -> Path:

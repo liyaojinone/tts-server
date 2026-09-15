@@ -12,3 +12,7 @@
 
 `runtime/portable_python_launcher.py` 会显式加入所需依赖和仓库内源码路径，并跳过
 editable `.pth`；这样服务目录被复制或移动后，也不会读取原开发机的绝对路径。
+
+网关已验证依赖 `pywin32`。它的 Windows DLL 目录通常由 `pywin32.pth` 补入；完整包
+模式不读取该 `.pth`，而是显式加入同一包目录内的 `win32`、`win32/lib`、`pythonwin`
+和 `pywin32_system32`。这四个路径都由当前服务根推导，不含开发机绝对路径。
