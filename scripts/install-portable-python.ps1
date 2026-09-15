@@ -19,7 +19,10 @@ if (Test-Path -LiteralPath $pythonPath -PathType Leaf) {
 }
 
 if (Test-Path -LiteralPath $runtimeDir) {
-    throw "目录内 Python 目录不完整，拒绝覆盖：$runtimeDir"
+    $unexpectedEntries = Get-ChildItem -Force -LiteralPath $runtimeDir | Where-Object { $_.FullName -ne $manifestPath }
+    if ($unexpectedEntries) {
+        throw "目录内 Python 目录不完整，拒绝覆盖：$runtimeDir"
+    }
 }
 
 $archivePath = Join-Path ([System.IO.Path]::GetTempPath()) "bobogen-cp311-$($manifest.python_version).tar.gz"
@@ -33,7 +36,9 @@ try {
         throw "CPython 归档 SHA-256 校验失败"
     }
 
-    New-Item -ItemType Directory -Path $runtimeDir | Out-Null
+    if (-not (Test-Path -LiteralPath $runtimeDir)) {
+        New-Item -ItemType Directory -Path $runtimeDir | Out-Null
+    }
     & tar.exe -xzf $archivePath --strip-components=1 -C $runtimeDir
     if ($LASTEXITCODE -ne 0) {
         throw "解压目录内 CPython 失败（tar 退出码 $LASTEXITCODE）"

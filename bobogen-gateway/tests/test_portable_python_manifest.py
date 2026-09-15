@@ -25,3 +25,9 @@ def test_portable_python_installer_checks_the_pinned_manifest_before_extracting(
     assert "Get-FileHash" in installer
     assert "SHA256" in installer
     assert "tar.exe" in installer
+
+
+def test_portable_python_installer_allows_the_manifest_only_runtime_directory():
+    installer = (ROOT / "scripts" / "install-portable-python.ps1").read_text(encoding="utf-8")
+
+    assert 'Where-Object { $_.FullName -ne $manifestPath }' in installer
