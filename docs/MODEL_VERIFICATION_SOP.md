@@ -100,6 +100,7 @@
 | voxcpm2 | 5105 | tts.speech | PASS 171.1s，48000Hz 4.64s | run-20260914-210200 |
 | gpt_sovits_v2pro | 5103 | tts.speech | PASS 95.6s，32000Hz 5.98s | run-20260914-214708 |
 | campplus_speaker_diarization | 5113 | audio.diarize | PASS 25.1s，2 说话人 5 片段 | run-20260915-082655 |
+| tiger-dnr | 5114 | audio.separate | PASS 7.3s，2 产物（对白/背景） | run-20260915-083642 |
 
 ### campplus_speaker_diarization — 说话人分离 · 从零验收通过（2026-09-15）
 
@@ -110,6 +111,15 @@
 - **结果**：识别出 `SPEAKER_00` 与 `SPEAKER_01` 两个说话人，共 5 个片段，时间轴交替合理。
 - **结论**：通过。
 - **证据**：`verification/runs/run-20260915-082655/report.json`。
+
+### tiger-dnr — 对白/背景分离 · 从零验收通过（2026-09-15）
+
+- **安装**：客户端「下载/修复」完成：克隆官方仓库（固定 revision）→ 建立 `services/tiger-dnr-service/.venv` 并安装推理依赖（官方 `requirements.txt` 含 triton/wandb/speechbrain 等训练或 Windows 不可用包，按服务声明的推理最小集合安装）→ 下载 Hugging Face 权重快照 → **随目录自带 FFmpeg shared runtime**（`services/tiger-dnr-service/.venv/ffmpeg`，启动脚本设 `FFMPEG_BINARY` 指向它，确保整目录拷贝后仍可解码）→ 写入安装收据。
+- **启动**：客户端启动（端口 5114）后 `/v1/providers/status` 返回 `healthy`。
+- **真实请求**：`POST /v1/jobs`（异步任务），`task="audio.separate"`，输入官方混音样例 `assets/sample1/GroundTruth/mix.wav`（16kHz、6.00s）。
+- **结果**：产出 `dialogue.wav`（peak 0.489 / rms 0.0584）与 `background.wav`（peak 0.922 / rms 0.0703），两轨均非静音，时长与输入一致。
+- **结论**：通过。
+- **证据**：`verification/runs/run-20260915-083642/report.json`。
 
 ### gpt_sovits_v2pro — 语音合成/克隆 · 从零验收通过（2026-09-14）
 
