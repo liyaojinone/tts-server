@@ -268,8 +268,9 @@ def test_indextts_install_plan_provisions_environment_and_runtime_weights():
         "models/index-tts/hf-home/hub"
     }
     assert cached["amphion/MaskGCT"]["allow_patterns"] == ["semantic_codec/*"]
-    # w2v-bert 需要权重本体（语义模型 from_pretrained），不能只取 json
-    assert "allow_patterns" not in cached["facebook/w2v-bert-2.0"]
+    # w2v-bert 需要权重本体（语义模型 from_pretrained），不能只取 json；
+    # 但要排掉运行期用不到的 conformer_shaw.pt
+    assert cached["facebook/w2v-bert-2.0"]["allow_patterns"] == ["*.json", "model.safetensors"]
     # 附属权重同样锁定 revision，保证可重复安装
     assert all(isinstance(resource.get("revision"), str) for resource in cached.values())
 

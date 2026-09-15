@@ -140,6 +140,7 @@ MODEL_CATALOG = [
             "models/index-tts/checkpoints/feat2.pt",
             "models/index-tts/checkpoints/wav2vec2bert_stats.pt",
             "models/index-tts/checkpoints/qwen0.6bemo4-merge/model.safetensors",
+            "models/index-tts/hf-home/hub/models--facebook--w2v-bert-2.0/snapshots/da985ba0987f70aaeb84a80f2851cfac8c697a7b/model.safetensors",
         ],
     },
     {

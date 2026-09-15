@@ -320,12 +320,14 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
             # 保证整目录拷贝后无需联网、也不再写用户级缓存
             # 运行期 maskgct_utils.build_semantic_model() 会
             # Wav2Vec2BertModel.from_pretrained("facebook/w2v-bert-2.0")，
-            # 需要权重本体（约 2.3GB），不能只取配置 json
+            # 需要权重本体（model.safetensors 2.32GB）；仓库里另一个
+            # conformer_shaw.pt（2.33GB）运行期未使用，不必下载
             {
                 "kind": "hf_snapshot_cache",
                 "repo_id": "facebook/w2v-bert-2.0",
                 "revision": "da985ba0987f70aaeb84a80f2851cfac8c697a7b",
                 "cache_dir": "models/index-tts/hf-home/hub",
+                "allow_patterns": ["*.json", "model.safetensors"],
             },
             {
                 "kind": "hf_snapshot_cache",

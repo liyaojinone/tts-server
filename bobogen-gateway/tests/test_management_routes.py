@@ -171,6 +171,10 @@ def test_cosyvoice_catalog_requires_install_receipt():
         "models/index-tts/checkpoints/qwen0.6bemo4-merge/model.safetensors"
         in indextts["required_paths"]
     )
+    assert (
+        "models/index-tts/hf-home/hub/models--facebook--w2v-bert-2.0/snapshots/da985ba0987f70aaeb84a80f2851cfac8c697a7b/model.safetensors"
+        in indextts["required_paths"]
+    )
 
     campplus = next(model for model in MODEL_CATALOG if model["id"] == "campplus_speaker_diarization")
     assert campplus["weight_size"] == "约 400 MB"
@@ -374,9 +378,15 @@ def test_management_installation_logs_do_not_mix_gateway_request_logs(monkeypatc
     assert response.json()["content"] == "[model] downloading weights"
 
 
-def test_management_model_download_is_an_idempotent_background_job():
+def test_management_model_download_is_an_idempotent_background_job(monkeypatch):
     from app.config import REPO_ROOT
     from app.main import create_app
+    from app.routers import management
+    from app.services import model_installer
+
+    # 该用例只验证任务编排的幂等早退，不依赖真实权重是否落盘
+    monkeypatch.setattr(model_installer, "is_resource_path_ready", lambda root, path: True)
+    monkeypatch.setattr(management, "is_resource_path_ready", lambda root, path: True)
 
     # 幂等早退要求存在完成记录，避免把半成品环境当成就绪
     marker = REPO_ROOT / "runtime/model-install-state/index_tts_2.json"
