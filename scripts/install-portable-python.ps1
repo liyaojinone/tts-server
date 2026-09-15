@@ -2,6 +2,7 @@
 param()
 
 $ErrorActionPreference = "Stop"
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $root = Split-Path -Parent $PSScriptRoot
 $manifestPath = Join-Path $root "runtime\python\cp311\manifest.json"

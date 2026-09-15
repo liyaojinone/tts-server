@@ -25,6 +25,7 @@ def test_portable_python_installer_checks_the_pinned_manifest_before_extracting(
     assert "Get-FileHash" in installer
     assert "SHA256" in installer
     assert "tar.exe" in installer
+    assert "SecurityProtocolType]::Tls12" in installer
 
 
 def test_portable_python_installer_allows_the_manifest_only_runtime_directory():
