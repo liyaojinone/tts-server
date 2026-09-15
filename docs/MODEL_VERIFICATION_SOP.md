@@ -102,6 +102,9 @@
 | campplus_speaker_diarization | 5113 | audio.diarize | PASS 25.1s，2 说话人 5 片段 | run-20260915-082655 |
 | tiger-dnr | 5114 | audio.separate | PASS 7.3s，2 产物（对白/背景） | run-20260915-083642 |
 | index_tts_2 | 5104 | tts.speech | PASS 295.9s（含首次加载），22050Hz 7.14s | run-20260915-115925 |
+| stable_audio_3_small_sfx | 5106 | audio.generate | PASS 5.2s，44100Hz 5.00s | run-20260915-150603 |
+| stable_audio_3_small_music | 5108 | audio.generate | PASS 6.0s，44100Hz 5.00s | run-20260915-160503 |
+| stable_audio_3_medium | 5107 | audio.generate | PASS 85.0s（含首次加载），44100Hz 5.00s | run-20260915-174242 |
 
 ### campplus_speaker_diarization — 说话人分离 · 从零验收通过（2026-09-15）
 
@@ -122,6 +125,16 @@
 - **结果**：22050Hz 单声道 7.14s，`peak=0.761`。
 - **结论**：通过。
 - **证据**：`verification/runs/run-20260915-115925/report.json`。
+
+### stable_audio_3（Small-SFX / Small-Music / Medium）— 音效/音乐生成 · 从零验收通过（2026-09-15）
+
+- **安装**：三个变体共用一个官方仓库与受管 venv（`services/stable-audio3-service/.venv`，`torch==2.7.1` cu128 + 官方 pyproject 依赖）。权重为 **Hugging Face 受限（gated）仓库**，使用客户端「模型下载设置」里保存的 Access Token 下载：SFX 3331.7 MB、Small-Music 3331.7 MB、Medium 9961.4 MB，全部写入项目内 HF 缓存 `models/stable-audio-3/hf-home/hub`。
+- **授权链路**：客户端对受限模型先弹授权窗再下载；Token 由网关 DPAPI 加密保存，安装期用于下载、运行期以 `HF_TOKEN`/`HUGGINGFACE_HUB_TOKEN` 注入服务进程；未保存 Token 时下载接口直接返回 400 并提示。
+- **修复项**：安装器默认关闭 xet（大文件长连接易被掐断）、资源下载失败自动重试 3 次（Medium 首次即遇到 SSL EOF，重试后成功）、下载完成后补写 `refs/main` 使运行期离线命中锁定版本。
+- **启动**：客户端启动（5106 / 5108 / 5107）后 `/v1/providers/status` 均为 `healthy`。
+- **真实请求**：`audio.generate`，文生音效/音乐；产物均为 44100Hz 双声道 5.00s，`peak` 分别为 0.954 / 0.802 / 0.769（非静音）。
+- **结论**：三个变体均通过。
+- **证据**：`verification/runs/run-20260915-150603/`、`run-20260915-160503/`、`run-20260915-174242/`。
 
 ### tiger-dnr — 对白/背景分离 · 从零验收通过（2026-09-15）
 
