@@ -2,7 +2,6 @@
 param()
 
 $ErrorActionPreference = "Stop"
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $root = Split-Path -Parent $PSScriptRoot
 $manifestPath = Join-Path $root "runtime\python\cp311\manifest.json"
@@ -30,7 +29,13 @@ $archivePath = Join-Path ([System.IO.Path]::GetTempPath()) "bobogen-cp311-$($man
 
 try {
     Write-Output "下载目录内 CPython $($manifest.python_version)..."
-    Invoke-WebRequest -Uri $manifest.archive_url -OutFile $archivePath
+    if (-not (Get-Command curl.exe -ErrorAction SilentlyContinue)) {
+        throw "缺少 curl.exe，无法下载目录内 CPython"
+    }
+    & curl.exe --fail --location --retry 2 --retry-delay 2 --output $archivePath $manifest.archive_url
+    if ($LASTEXITCODE -ne 0) {
+        throw "下载目录内 CPython 失败（curl 退出码 $LASTEXITCODE）"
+    }
 
     $actualHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($actualHash -ne $manifest.archive_sha256) {
