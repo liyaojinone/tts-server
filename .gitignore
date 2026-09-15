@@ -36,6 +36,9 @@ hf_cache/
 # Runtime data
 outputs/
 runtime/
+!runtime/
+runtime/*
+!runtime/portable_python_launcher.py
 **/data/profiles/
 *.wav
 *.mp3

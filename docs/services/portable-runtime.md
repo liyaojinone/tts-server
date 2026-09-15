@@ -10,5 +10,5 @@
 `Scripts/python.exe`。Windows venv 启动器和 `pyvenv.cfg` 会记录创建该环境时的
 绝对 Python 路径，不能作为可搬运发布包的解释器。
 
-后续启动引导器将显式加入所需依赖和仓库内源码路径，并跳过 editable `.pth`；这样
-服务目录被复制或移动后，也不会读取原开发机的绝对路径。
+`runtime/portable_python_launcher.py` 会显式加入所需依赖和仓库内源码路径，并跳过
+editable `.pth`；这样服务目录被复制或移动后，也不会读取原开发机的绝对路径。
