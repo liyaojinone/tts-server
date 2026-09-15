@@ -14,7 +14,7 @@ runtime:
     - ${BOBOGEN_ROOT}\services\stable-audio3-service\start.ps1
   env:
     STABLE_AUDIO3_REPO_DIR: "${BOBOGEN_ROOT}\\models\\stable-audio-3\\repo"
-    STABLE_AUDIO3_PYTHON: "${BOBOGEN_ROOT}\\models\\stable-audio-3\\repo\\.venv\\Scripts\\python.exe"
+    STABLE_AUDIO3_PYTHON: "${BOBOGEN_ROOT}\\services\\stable-audio3-service\\.venv\\Scripts\\python.exe"
     STABLE_AUDIO3_MODEL_ID: stable_audio_3_small_music
     STABLE_AUDIO3_MODEL_NAME: small-music
     STABLE_AUDIO3_HF_REPO_ID: stabilityai/stable-audio-3-small-music

@@ -341,7 +341,8 @@ class StableAudio3Handler:
             from stable_audio_3.model import StableAudioModel
         except ImportError as exc:
             raise RuntimeError(
-                "stable_audio_3 dependencies are not installed. Run uv sync in models/stable-audio-3/repo first."
+                "stable_audio_3 dependencies are not installed. Reinstall the model from the client so the "
+                "managed virtual environment under services/stable-audio3-service/.venv is rebuilt."
             ) from exc
 
         device = self.device

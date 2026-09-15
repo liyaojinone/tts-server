@@ -84,7 +84,7 @@ def test_stable_audio3_provider_launches_repository_local_service():
     assert provider.runtime.command[2].endswith(r"services\stable-audio3-service\start.ps1")
     assert provider.runtime.env["STABLE_AUDIO3_REPO_DIR"].endswith(r"models\stable-audio-3\repo")
     assert provider.runtime.env["STABLE_AUDIO3_PYTHON"].endswith(
-        r"models\stable-audio-3\repo\.venv\Scripts\python.exe"
+        r"services\stable-audio3-service\.venv\Scripts\python.exe"
     )
     assert provider.network.healthcheck_path == "/v1/health"
     assert provider.capabilities.synthesize is False
@@ -104,9 +104,8 @@ def test_stable_audio3_medium_provider_launches_on_separate_port():
     assert provider.runtime.env["STABLE_AUDIO3_MODEL_ID"] == "stable_audio_3_medium"
     assert provider.runtime.env["STABLE_AUDIO3_MODEL_NAME"] == "medium"
     assert provider.runtime.env["STABLE_AUDIO3_HF_REPO_ID"] == "stabilityai/stable-audio-3-medium"
-    assert provider.runtime.env["STABLE_AUDIO3_MODEL_DIR"].endswith(
-        r"models\stable-audio-3\modelscope\stable-audio-3-medium"
-    )
+    # 权重统一走项目内 HF 缓存，不再使用旧的本地模型目录
+    assert "STABLE_AUDIO3_MODEL_DIR" not in provider.runtime.env
     assert provider.runtime.env["STABLE_AUDIO3_PORT"] == "5107"
     assert provider.network.port == 5107
     assert provider.network.base_url == "http://127.0.0.1:5107"

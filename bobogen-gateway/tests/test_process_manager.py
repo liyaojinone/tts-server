@@ -521,6 +521,8 @@ def test_launch_process_injects_huggingface_token_only_for_gated_model(monkeypat
     manager = ProcessManager({provider.provider_id: provider}, huggingface_token_store=TokenStore())
     assert asyncio.run(manager._launch_process(provider)) == 4321
     assert popen_args["env"]["HF_TOKEN"] == "hf_example_secret_1234"
+    # 旧版 huggingface_hub 只认 HUGGINGFACE_HUB_TOKEN
+    assert popen_args["env"]["HUGGINGFACE_HUB_TOKEN"] == "hf_example_secret_1234"
 
 
 def _make_idempotency_provider(provider_id: str, port: int = 5199):

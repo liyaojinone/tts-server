@@ -178,10 +178,12 @@ MODEL_CATALOG = [
         "parameter_size": "0.6B",
         "purpose": "根据文字描述生成短音效和声音素材",
         "weight_size": "约 2.3 GB",
-        "disk_estimate": "需检测 Hugging Face 缓存",
+        "disk_estimate": "约 2.3 GB（含 Hugging Face 缓存）",
         "service_port": 5106,
         "resource_root": "models/stable-audio-3/hf-home/hub/models--stabilityai--stable-audio-3-small-sfx",
         "official_repo": "https://github.com/Stability-AI/stable-audio-3",
+        "installation_environment": "services/stable-audio3-service/.venv/Scripts/python.exe",
+        "installation_marker": "runtime/model-install-state/stable_audio_3_small_sfx.json",
         "other_links": [
             {
                 "label": "Hugging Face 权重",
@@ -201,10 +203,12 @@ MODEL_CATALOG = [
         "parameter_size": "0.6B",
         "purpose": "根据文字描述生成短音乐片段和背景音乐素材",
         "weight_size": "约 2.3 GB",
-        "disk_estimate": "需检测 Hugging Face 缓存",
+        "disk_estimate": "约 2.3 GB（含 Hugging Face 缓存）",
         "service_port": 5108,
         "resource_root": "models/stable-audio-3/hf-home/hub/models--stabilityai--stable-audio-3-small-music",
         "official_repo": "https://github.com/Stability-AI/stable-audio-3",
+        "installation_environment": "services/stable-audio3-service/.venv/Scripts/python.exe",
+        "installation_marker": "runtime/model-install-state/stable_audio_3_small_music.json",
         "other_links": [
             {
                 "label": "Hugging Face 权重",
@@ -224,10 +228,12 @@ MODEL_CATALOG = [
         "parameter_size": "2B",
         "purpose": "根据文字描述生成更长、更复杂的音乐素材",
         "weight_size": "约 9.2 GB",
-        "disk_estimate": "需检测 Hugging Face 缓存",
+        "disk_estimate": "约 9.2 GB（含 Hugging Face 缓存）",
         "service_port": 5107,
         "resource_root": "models/stable-audio-3/hf-home/hub/models--stabilityai--stable-audio-3-medium",
         "official_repo": "https://github.com/Stability-AI/stable-audio-3",
+        "installation_environment": "services/stable-audio3-service/.venv/Scripts/python.exe",
+        "installation_marker": "runtime/model-install-state/stable_audio_3_medium.json",
         "other_links": [
             {
                 "label": "Hugging Face 权重",

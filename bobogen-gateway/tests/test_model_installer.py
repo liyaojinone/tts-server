@@ -9,6 +9,7 @@ from app.config import REPO_ROOT
 from app.routers.management import MODEL_CATALOG, _detect_model
 from app.services.model_installer import (
     MODEL_INSTALL_PLANS,
+    ModelInstallError,
     ModelInstaller,
     ModelInstallManager,
 )
@@ -70,6 +71,67 @@ def test_voxcpm_install_plan_avoids_heavy_packages():
     for dependency in ("transformers", "einops", "inflect", "wetext", "modelscope"):
         assert dependency in joined
     assert plan["installation_marker"].endswith("voxcpm2.json")
+
+
+def test_stable_audio_install_plans_provision_environment_and_receipts():
+    expected = {
+        "stable_audio_3_small_sfx": (
+            "stabilityai/stable-audio-3-small-sfx",
+            "ae12755283df9d62ca39a9b050a39a0b607b8c20",
+        ),
+        "stable_audio_3_small_music": (
+            "stabilityai/stable-audio-3-small-music",
+            "0fef1392cd842149a2b6d445e181c97608faac06",
+        ),
+        "stable_audio_3_medium": (
+            "stabilityai/stable-audio-3-medium",
+            "27b5a21b791b1b033d193a9e1e3ce78493f102f9",
+        ),
+    }
+    for model_id, (repo_id, revision) in expected.items():
+        plan = MODEL_INSTALL_PLANS[model_id]
+        assert plan["environment"]["venv_dir"] == "services/stable-audio3-service/.venv"
+        assert plan["installation_marker"] == f"runtime/model-install-state/{model_id}.json"
+
+        weights = [resource for resource in plan["resources"] if resource["kind"] == "hf_snapshot_cache"]
+        assert len(weights) == 1
+        assert weights[0]["repo_id"] == repo_id
+        assert weights[0]["revision"] == revision
+        assert weights[0]["cache_dir"] == "models/stable-audio-3/hf-home/hub"
+
+        commands = " ".join(" ".join(command) for command in plan["environment"]["setup_commands"])
+        assert "models/stable-audio-3/repo" in commands
+        assert "services/stable-audio3-service" in commands
+        assert "torch==2.7.1" in commands
+        assert "download.pytorch.org/whl/cu128" in commands
+        # ui/lora 是官方可选组（gradio/pytorch_lightning），不应进入安装清单
+        assert "gradio" not in commands
+
+
+def test_gated_model_download_failure_mentions_license_and_token(tmp_path, monkeypatch):
+    installer = ModelInstaller(tmp_path)
+    monkeypatch.setattr(installer, "_ensure_source", lambda source, progress: None)
+    monkeypatch.setattr(
+        installer, "_ensure_environment", lambda env_config, progress: tmp_path / "python.exe"
+    )
+    monkeypatch.setattr(installer, "_install_dependencies", lambda *args, **kwargs: None)
+    monkeypatch.setattr(installer, "_write_installation_marker", lambda *args, **kwargs: None)
+
+    def failing_download(resource, progress):
+        raise ModelInstallError("401 Client Error: Unauthorized")
+
+    monkeypatch.setattr(installer, "_download_resource", failing_download)
+
+    with pytest.raises(ModelInstallError) as excinfo:
+        installer.run(
+            {"id": "stable_audio_3_small_sfx", "required_paths": []},
+            "download",
+            lambda event: None,
+        )
+
+    message = str(excinfo.value)
+    assert "gated" in message
+    assert "Token" in message
 
 
 def test_indextts_install_plan_provisions_environment_and_runtime_weights():
@@ -559,6 +621,10 @@ def test_gated_stable_audio_download_passes_stored_token_to_huggingface(tmp_path
     installer = ModelInstaller(tmp_path)
     captured_kwargs = {}
     monkeypatch.setattr(installer, "_ensure_source", lambda source, progress: None)
+    monkeypatch.setattr(
+        installer, "_ensure_environment", lambda env_config, progress: tmp_path / "python.exe"
+    )
+    monkeypatch.setattr(installer, "_install_dependencies", lambda *args, **kwargs: None)
 
     def snapshot_download(**kwargs):
         captured_kwargs.update(kwargs)

@@ -261,7 +261,10 @@ class ProcessManager:
         if self.huggingface_token_store is not None and requires_huggingface_token(model_id):
             token = self.huggingface_token_store.get()
             if token:
+                # 受限（gated）模型在运行期访问权重仓库时需要凭据；
+                # HF_TOKEN 是新版 huggingface_hub 的变量名，旧版读 HUGGINGFACE_HUB_TOKEN
                 env["HF_TOKEN"] = token
+                env["HUGGINGFACE_HUB_TOKEN"] = token
         log_dir = LOG_DIR / provider.provider_id
         log_dir.mkdir(parents=True, exist_ok=True)
         combined_f = (log_dir / "combined.log").open("a", encoding="utf-8", errors="replace")

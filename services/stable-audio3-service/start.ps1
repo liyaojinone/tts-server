@@ -27,6 +27,8 @@ $env:PIP_CACHE_DIR = Join-Path $cacheRoot "pip-cache"
 $env:HF_HOME = Join-Path $cacheRoot "hf-home"
 $env:HUGGINGFACE_HUB_CACHE = Join-Path $env:HF_HOME "hub"
 $env:TORCH_HOME = Join-Path $cacheRoot "torch-cache"
+# gated 权重仓库在部分网络下 xet 传输会失败，默认关闭
+$env:HF_HUB_DISABLE_XET = if ($env:HF_HUB_DISABLE_XET) { $env:HF_HUB_DISABLE_XET } else { "1" }
 
 Write-Host "Using Python: $pythonExe"
 Write-Host "PYTHONPATH: $env:PYTHONPATH"

@@ -146,6 +146,20 @@ def test_cosyvoice_catalog_requires_install_receipt():
     )
     assert "services/gptsovits-service/.venv/ffmpeg" in gptsovits["required_paths"]
 
+    for model_id in (
+        "stable_audio_3_small_sfx",
+        "stable_audio_3_small_music",
+        "stable_audio_3_medium",
+    ):
+        stable_audio = next(model for model in MODEL_CATALOG if model["id"] == model_id)
+        assert stable_audio["installation_environment"].endswith(
+            "services/stable-audio3-service/.venv/Scripts/python.exe"
+        )
+        assert stable_audio["installation_marker"].endswith(
+            f"runtime/model-install-state/{model_id}.json"
+        )
+        assert "需检测 Hugging Face 缓存" not in stable_audio["disk_estimate"]
+
     indextts = next(model for model in MODEL_CATALOG if model["id"] == "index_tts_2")
     assert indextts["installation_environment"].endswith(
         "services/index-tts-service/.venv/Scripts/python.exe"

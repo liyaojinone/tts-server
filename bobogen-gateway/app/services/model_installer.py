@@ -53,6 +53,33 @@ class InstallProgress:
     message: str
 
 
+def _stable_audio3_environment() -> dict:
+    """Stable Audio 3 三个变体共用的官方仓库与服务环境。"""
+
+    return {
+        "venv_dir": "services/stable-audio3-service/.venv",
+        "setup_commands": [
+            ["{python}", "-m", "pip", "install", "-U", "pip"],
+            # 官方仓库固定 torch==2.7.1；这里装 cu128 版本（本地版本号不参与
+            # ==2.7.1 的匹配），避免在 Windows 上装到 CPU 版 torch
+            [
+                "{python}",
+                "-m",
+                "pip",
+                "install",
+                "torch==2.7.1",
+                "torchaudio==2.7.1",
+                "--index-url",
+                "https://download.pytorch.org/whl/cu128",
+            ],
+            # 官方仓库按 pyproject 声明运行期依赖（ui/lora 为可选组，不装）
+            ["{python}", "-m", "pip", "install", "-e", "models/stable-audio-3/repo"],
+            ["{python}", "-m", "pip", "install", "-e", "bobogen-protocol"],
+            ["{python}", "-m", "pip", "install", "-e", "services/stable-audio3-service"],
+        ],
+    }
+
+
 # Every upstream revision used by the installer is written in this manifest.
 # Existing repositories are never pulled or replaced by the page.  A future
 # service release changes this manifest explicitly.
@@ -366,6 +393,9 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
             "target": "models/stable-audio-3/repo",
             "revision": "bccf5b7b75734c95a3049bb43bdbc7b3070a31bc",
         },
+        # 权重仓库是 Hugging Face 受限（gated）模型，下载需要客户端保存的 Token
+        "environment": _stable_audio3_environment(),
+        "installation_marker": "runtime/model-install-state/stable_audio_3_small_sfx.json",
         "resources": [
             {
                 "kind": "hf_snapshot_cache",
@@ -381,6 +411,8 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
             "target": "models/stable-audio-3/repo",
             "revision": "bccf5b7b75734c95a3049bb43bdbc7b3070a31bc",
         },
+        "environment": _stable_audio3_environment(),
+        "installation_marker": "runtime/model-install-state/stable_audio_3_small_music.json",
         "resources": [
             {
                 "kind": "hf_snapshot_cache",
@@ -396,6 +428,8 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
             "target": "models/stable-audio-3/repo",
             "revision": "bccf5b7b75734c95a3049bb43bdbc7b3070a31bc",
         },
+        "environment": _stable_audio3_environment(),
+        "installation_marker": "runtime/model-install-state/stable_audio_3_medium.json",
         "resources": [
             {
                 "kind": "hf_snapshot_cache",
@@ -693,7 +727,15 @@ class ModelInstaller:
         resources = plan.get("resources", [])
         for index, resource in enumerate(resources, start=1):
             progress(InstallProgress("download", f"处理官方资源 {index}/{len(resources)}"))
-            self._download_resource(resource, progress)
+            try:
+                self._download_resource(resource, progress)
+            except Exception as exc:
+                if requires_huggingface_token(model_id):
+                    raise ModelInstallError(
+                        f"{exc}\n提示：{model_id} 的权重托管在 Hugging Face 且为受限（gated）模型，"
+                        "请先在模型页面同意许可协议，并在客户端保存有效的 Hugging Face Token 后重试。"
+                    ) from exc
+                raise
 
         missing_paths = [
             path
