@@ -101,6 +101,7 @@
 | gpt_sovits_v2pro | 5103 | tts.speech | PASS 95.6s，32000Hz 5.98s | run-20260914-214708 |
 | campplus_speaker_diarization | 5113 | audio.diarize | PASS 25.1s，2 说话人 5 片段 | run-20260915-082655 |
 | tiger-dnr | 5114 | audio.separate | PASS 7.3s，2 产物（对白/背景） | run-20260915-083642 |
+| index_tts_2 | 5104 | tts.speech | PASS 295.9s（含首次加载），22050Hz 7.14s | run-20260915-115925 |
 
 ### campplus_speaker_diarization — 说话人分离 · 从零验收通过（2026-09-15）
 
@@ -111,6 +112,16 @@
 - **结果**：识别出 `SPEAKER_00` 与 `SPEAKER_01` 两个说话人，共 5 个片段，时间轴交替合理。
 - **结论**：通过。
 - **证据**：`verification/runs/run-20260915-082655/report.json`。
+
+### index_tts_2 — 情感语音合成/克隆 · 从零验收通过（2026-09-15）
+
+- **安装**：客户端「下载/修复」完成：克隆官方仓库 → 建立 `services/index-tts-service/.venv` 并按官方 pyproject 安装依赖（cython、torch 2.8 cu128、-e models/index-tts/repo、protocol/service-kit）→ 主权重 5.6GB（gpt.pth/s2mel.pth/qwen 情感模型等）→ 附属权重（w2v-bert model.safetensors 2.32GB、MaskGCT semantic_codec、funasr/campplus、nvidia/bigvgan）写入项目内 HF 缓存。
+- **修复项**：① 运行期 `Wav2Vec2BertModel.from_pretrained` 需要 w2v-bert 权重本体（不能只取 json），已列入安装清单与必需文件；② 清单锁定 commit 时 huggingface_hub 不写 ref，运行期解析默认分支会联网重下新版本，安装器改为补写 `refs/main`；③ 服务运行期置 `HF_HUB_OFFLINE=1`，权重全部离线命中。
+- **启动**：客户端启动（端口 5104）后 `/v1/providers/status` 返回 `healthy`。
+- **真实请求**：`tts.speech`，参考音频克隆 + 中文文本。
+- **结果**：22050Hz 单声道 7.14s，`peak=0.761`。
+- **结论**：通过。
+- **证据**：`verification/runs/run-20260915-115925/report.json`。
 
 ### tiger-dnr — 对白/背景分离 · 从零验收通过（2026-09-15）
 
