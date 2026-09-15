@@ -21,6 +21,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import uuid
 import zipfile
 
@@ -51,6 +52,12 @@ class ModelInstallBusyError(RuntimeError):
 class InstallProgress:
     step: str
     message: str
+
+
+# 资源下载遇到网络抖动（SSL EOF、连接被重置等）时自动重试，
+# 避免一次瞬时抖动就让整次安装失败
+RESOURCE_DOWNLOAD_ATTEMPTS = 3
+RESOURCE_DOWNLOAD_RETRY_DELAY_SECONDS = 3
 
 
 def _stable_audio3_environment() -> dict:
@@ -311,12 +318,14 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
             # 官方运行时 infer_v2 会另外从 Hugging Face 取以下权重；
             # 全部预置到项目内缓存（HF_HOME=models/index-tts/hf-home），
             # 保证整目录拷贝后无需联网、也不再写用户级缓存
+            # 运行期 maskgct_utils.build_semantic_model() 会
+            # Wav2Vec2BertModel.from_pretrained("facebook/w2v-bert-2.0")，
+            # 需要权重本体（约 2.3GB），不能只取配置 json
             {
                 "kind": "hf_snapshot_cache",
                 "repo_id": "facebook/w2v-bert-2.0",
                 "revision": "da985ba0987f70aaeb84a80f2851cfac8c697a7b",
                 "cache_dir": "models/index-tts/hf-home/hub",
-                "allow_patterns": ["*.json"],
             },
             {
                 "kind": "hf_snapshot_cache",
@@ -732,15 +741,32 @@ class ModelInstaller:
         resources = plan.get("resources", [])
         for index, resource in enumerate(resources, start=1):
             progress(InstallProgress("download", f"处理官方资源 {index}/{len(resources)}"))
-            try:
-                self._download_resource(resource, progress)
-            except Exception as exc:
+            last_error: Exception | None = None
+            for attempt in range(1, RESOURCE_DOWNLOAD_ATTEMPTS + 1):
+                try:
+                    self._download_resource(resource, progress)
+                except Exception as exc:  # 网络类错误统一重试
+                    last_error = exc
+                    if attempt < RESOURCE_DOWNLOAD_ATTEMPTS:
+                        delay = RESOURCE_DOWNLOAD_RETRY_DELAY_SECONDS * attempt
+                        progress(
+                            InstallProgress(
+                                "download",
+                                f"资源 {index}/{len(resources)} 下载失败（第 {attempt} 次），"
+                                f"{delay} 秒后自动重试: {exc}",
+                            )
+                        )
+                        time.sleep(delay)
+                    continue
+                last_error = None
+                break
+            if last_error is not None:
                 if requires_huggingface_token(model_id):
                     raise ModelInstallError(
-                        f"{exc}\n提示：{model_id} 的权重托管在 Hugging Face 且为受限（gated）模型，"
+                        f"{last_error}\n提示：{model_id} 的权重托管在 Hugging Face 且为受限（gated）模型，"
                         "请先在模型页面同意许可协议，并在客户端保存有效的 Hugging Face Token 后重试。"
-                    ) from exc
-                raise
+                    ) from last_error
+                raise last_error
 
         missing_paths = [
             path

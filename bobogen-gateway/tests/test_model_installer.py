@@ -108,6 +108,79 @@ def test_stable_audio_install_plans_provision_environment_and_receipts():
         assert "gradio" not in commands
 
 
+def _register_single_resource_plan(monkeypatch, model_id: str) -> None:
+    """注册一个只含单个资源的临时安装计划，便于精确断言重试次数。"""
+
+    from app.services import model_installer as installer_module
+
+    monkeypatch.setitem(
+        installer_module.MODEL_INSTALL_PLANS,
+        model_id,
+        {
+            "environment": {"venv_dir": "services/retry-test/.venv", "setup_commands": []},
+            "installation_marker": f"runtime/model-install-state/{model_id}.json",
+            "resources": [{"kind": "hf_snapshot_cache", "repo_id": "example/repo"}],
+        },
+    )
+
+
+def test_resource_download_retries_transient_failures(tmp_path, monkeypatch):
+    from app.services import model_installer as installer_module
+
+    monkeypatch.setattr(installer_module, "RESOURCE_DOWNLOAD_RETRY_DELAY_SECONDS", 0)
+    _register_single_resource_plan(monkeypatch, "retry_success_model")
+
+    installer = ModelInstaller(tmp_path)
+    monkeypatch.setattr(
+        installer, "_ensure_environment", lambda env_config, progress: tmp_path / "python.exe"
+    )
+    monkeypatch.setattr(installer, "_install_dependencies", lambda *args, **kwargs: None)
+    monkeypatch.setattr(installer, "_write_installation_marker", lambda *args, **kwargs: None)
+
+    attempts = {"count": 0}
+
+    def flaky_download(resource, progress):
+        attempts["count"] += 1
+        if attempts["count"] < 3:
+            raise ModelInstallError("SSL: UNEXPECTED_EOF_WHILE_READING")
+
+    monkeypatch.setattr(installer, "_download_resource", flaky_download)
+
+    events = []
+    installer.run({"id": "retry_success_model", "required_paths": []}, "download", events.append)
+
+    assert attempts["count"] == 3
+    retry_messages = [event.message for event in events if "自动重试" in event.message]
+    assert len(retry_messages) == 2
+    assert any(event.step == "done" for event in events)
+
+
+def test_resource_download_stops_retrying_and_raises(tmp_path, monkeypatch):
+    from app.services import model_installer as installer_module
+
+    monkeypatch.setattr(installer_module, "RESOURCE_DOWNLOAD_RETRY_DELAY_SECONDS", 0)
+    _register_single_resource_plan(monkeypatch, "retry_failure_model")
+
+    installer = ModelInstaller(tmp_path)
+    monkeypatch.setattr(
+        installer, "_ensure_environment", lambda env_config, progress: tmp_path / "python.exe"
+    )
+    monkeypatch.setattr(installer, "_install_dependencies", lambda *args, **kwargs: None)
+
+    attempts = {"count": 0}
+
+    def always_failing(resource, progress):
+        attempts["count"] += 1
+        raise ModelInstallError("boom")
+
+    monkeypatch.setattr(installer, "_download_resource", always_failing)
+
+    with pytest.raises(ModelInstallError, match="boom"):
+        installer.run({"id": "retry_failure_model", "required_paths": []}, "download", lambda event: None)
+
+    assert attempts["count"] == installer_module.RESOURCE_DOWNLOAD_ATTEMPTS
+
+
 def test_install_disables_huggingface_xet_by_default(tmp_path, monkeypatch):
     installer = ModelInstaller(tmp_path)
     monkeypatch.setattr(installer, "_ensure_source", lambda source, progress: None)
@@ -195,6 +268,8 @@ def test_indextts_install_plan_provisions_environment_and_runtime_weights():
         "models/index-tts/hf-home/hub"
     }
     assert cached["amphion/MaskGCT"]["allow_patterns"] == ["semantic_codec/*"]
+    # w2v-bert 需要权重本体（语义模型 from_pretrained），不能只取 json
+    assert "allow_patterns" not in cached["facebook/w2v-bert-2.0"]
     # 附属权重同样锁定 revision，保证可重复安装
     assert all(isinstance(resource.get("revision"), str) for resource in cached.values())
 
