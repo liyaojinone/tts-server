@@ -39,6 +39,11 @@ runtime/
 !runtime/
 runtime/*
 !runtime/portable_python_launcher.py
+!runtime/python/
+runtime/python/*
+!runtime/python/cp311/
+runtime/python/cp311/*
+!runtime/python/cp311/manifest.json
 **/data/profiles/
 *.wav
 *.mp3

@@ -1,0 +1,7 @@
+{
+  "python_version": "3.11.16",
+  "target_triple": "x86_64-pc-windows-msvc",
+  "python_executable": "python.exe",
+  "archive_url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260901/cpython-3.11.16%2B20260901-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+  "archive_sha256": "06cbe479e039f5b9cb5640c286d790074d63f549f92a32d599a3748293bd4510"
+}
