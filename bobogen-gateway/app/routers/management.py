@@ -324,7 +324,7 @@ MODEL_CATALOG = [
         "weight_size": "约 400 MB",
         "disk_estimate": "约 400 MB（含 ModelScope 缓存）",
         "service_port": 5113,
-        "resource_root": "models/speaker-diarization/modelscope-cache/models/iic/speech_campplus_speaker-diarization_common",
+        "resource_root": "models/speaker-diarization/modelscope-cache/models/iic--speech_campplus_speaker-diarization_common/snapshots",
         "official_repo": "https://github.com/modelscope/3D-Speaker",
         "installation_environment": "services/speaker-diarization-service/.venv/Scripts/python.exe",
         "installation_marker": "runtime/model-install-state/campplus_speaker_diarization.json",
@@ -334,12 +334,13 @@ MODEL_CATALOG = [
                 "url": "https://modelscope.cn/models/iic/speech_campplus_speaker-diarization_common",
             }
         ],
+        # 新版 ModelScope 使用 HF 风格缓存布局：models/<owner>--<name>/snapshots/<revision>/
         "required_paths": [
-            "models/speaker-diarization/modelscope-cache/models/iic/speech_campplus_speaker-diarization_common/config.yaml",
-            "models/speaker-diarization/modelscope-cache/models/iic/speech_campplus_speaker-diarization_common/onnx",
-            "models/speaker-diarization/modelscope-cache/models/damo/speech_campplus_sv_zh-cn_16k-common/campplus_cn_common.bin",
-            "models/speaker-diarization/modelscope-cache/models/damo/speech_campplus-transformer_scl_zh-cn_16k-common/transformer_backend.pt",
-            "models/speaker-diarization/modelscope-cache/models/damo/speech_fsmn_vad_zh-cn-16k-common-pytorch/model.pb",
+            "models/speaker-diarization/modelscope-cache/models/iic--speech_campplus_speaker-diarization_common/snapshots/master/config.yaml",
+            "models/speaker-diarization/modelscope-cache/models/iic--speech_campplus_speaker-diarization_common/snapshots/master/onnx",
+            "models/speaker-diarization/modelscope-cache/models/damo--speech_campplus_sv_zh-cn_16k-common/snapshots/master/campplus_cn_common.bin",
+            "models/speaker-diarization/modelscope-cache/models/damo--speech_campplus-transformer_scl_zh-cn_16k-common/snapshots/master/transformer_backend.pt",
+            "models/speaker-diarization/modelscope-cache/models/damo--speech_fsmn_vad_zh-cn-16k-common-pytorch/snapshots/v2.0.2/model.pb",
         ],
     },
     {

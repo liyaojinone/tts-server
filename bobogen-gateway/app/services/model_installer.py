@@ -1061,14 +1061,19 @@ class ModelInstaller:
             previous_domain = os.environ.get("MODELSCOPE_DOMAIN")
             os.environ["MODELSCOPE_DOMAIN"] = self._source_config.modelscope_domain
             try:
-                snapshot_download(resource["model_id"], **kwargs)
+                local_path = Path(snapshot_download(resource["model_id"], **kwargs))
             finally:
                 if previous_domain is None:
                     os.environ.pop("MODELSCOPE_DOMAIN", None)
                 else:
                     os.environ["MODELSCOPE_DOMAIN"] = previous_domain
-            return
-        snapshot_download(resource["model_id"], **kwargs)
+        else:
+            local_path = Path(snapshot_download(resource["model_id"], **kwargs))
+        # 不同 ModelScope 版本的缓存布局不同（旧版 models/<owner>/<name>，
+        # 新版 models/<owner>--<name>/snapshots/<revision>），因此直接校验
+        # 下载返回的本地快照目录，避免把某个版本的布局写死在清单里
+        if not local_path.is_dir() or not any(local_path.iterdir()):
+            raise ModelInstallError(f"ModelScope 下载后目录为空: {resource['model_id']}")
 
     def _run_command(
         self,

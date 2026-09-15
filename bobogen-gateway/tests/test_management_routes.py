@@ -155,11 +155,11 @@ def test_cosyvoice_catalog_requires_install_receipt():
         "runtime/model-install-state/campplus_speaker_diarization.json"
     )
     assert (
-        "models/speaker-diarization/modelscope-cache/models/damo/speech_campplus_sv_zh-cn_16k-common/campplus_cn_common.bin"
+        "models/speaker-diarization/modelscope-cache/models/damo--speech_campplus_sv_zh-cn_16k-common/snapshots/master/campplus_cn_common.bin"
         in campplus["required_paths"]
     )
     assert (
-        "models/speaker-diarization/modelscope-cache/models/damo/speech_fsmn_vad_zh-cn-16k-common-pytorch/model.pb"
+        "models/speaker-diarization/modelscope-cache/models/damo--speech_fsmn_vad_zh-cn-16k-common-pytorch/snapshots/v2.0.2/model.pb"
         in campplus["required_paths"]
     )
 

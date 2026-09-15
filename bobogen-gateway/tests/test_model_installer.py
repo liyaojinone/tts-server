@@ -3,6 +3,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+import pytest
+
 from app.config import REPO_ROOT
 from app.routers.management import MODEL_CATALOG, _detect_model
 from app.services.model_installer import (
@@ -108,6 +110,69 @@ def test_tiger_install_plan_provisions_environment_and_inference_dependencies():
     ]
     assert len(ffmpeg_resources) == 1
     assert ffmpeg_resources[0]["target"] == "services/tiger-dnr-service/.venv/ffmpeg"
+
+
+def test_modelscope_cache_download_uses_returned_snapshot_directory(tmp_path, monkeypatch):
+    import sys
+    import types
+
+    from app.services.model_installer import ModelInstallError
+
+    snapshot_dir = (
+        tmp_path
+        / "models/speaker-diarization/modelscope-cache/models"
+        / "iic--speech_campplus_speaker-diarization_common"
+        / "snapshots"
+        / "master"
+    )
+    snapshot_dir.mkdir(parents=True)
+    (snapshot_dir / "config.yaml").write_text("model: CAMPPlus", encoding="utf-8")
+
+    recorded = {}
+
+    def snapshot_download(model_id, **kwargs):
+        recorded["model_id"] = model_id
+        recorded["kwargs"] = kwargs
+        return str(snapshot_dir)
+
+    monkeypatch.setitem(
+        sys.modules, "modelscope", types.SimpleNamespace(snapshot_download=snapshot_download)
+    )
+
+    installer = ModelInstaller(tmp_path)
+    installer._download_modelscope_cache(
+        {
+            "kind": "modelscope_cache",
+            "model_id": "iic/speech_campplus_speaker-diarization_common",
+            "revision": "master",
+            "cache_dir": "models/speaker-diarization/modelscope-cache",
+        },
+        lambda event: None,
+    )
+
+    assert recorded["model_id"] == "iic/speech_campplus_speaker-diarization_common"
+    assert recorded["kwargs"]["revision"] == "master"
+    assert recorded["kwargs"]["cache_dir"].endswith("models\\speaker-diarization\\modelscope-cache") or (
+        recorded["kwargs"]["cache_dir"].endswith("models/speaker-diarization/modelscope-cache")
+    )
+
+    empty_dir = tmp_path / "empty-snapshot"
+    empty_dir.mkdir()
+    monkeypatch.setitem(
+        sys.modules,
+        "modelscope",
+        types.SimpleNamespace(snapshot_download=lambda model_id, **kwargs: str(empty_dir)),
+    )
+    with pytest.raises(ModelInstallError):
+        installer._download_modelscope_cache(
+            {
+                "kind": "modelscope_cache",
+                "model_id": "iic/speech_campplus_speaker-diarization_common",
+                "revision": "master",
+                "cache_dir": "models/speaker-diarization/modelscope-cache",
+            },
+            lambda event: None,
+        )
 
 
 def test_url_zip_extract_redownloads_corrupt_cache(tmp_path, monkeypatch):
