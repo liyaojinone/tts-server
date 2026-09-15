@@ -119,10 +119,12 @@ MODEL_CATALOG = [
         "version": "IndexTTS2",
         "purpose": "参考音频驱动的语音合成和多维情绪表达",
         "weight_size": "约 5.9 GB",
-        "disk_estimate": "需检测本地权重",
+        "disk_estimate": "约 5.9 GB（含权重）",
         "service_port": 5104,
         "resource_root": "models/index-tts/checkpoints",
         "official_repo": "https://github.com/index-tts/index-tts",
+        "installation_environment": "services/index-tts-service/.venv/Scripts/python.exe",
+        "installation_marker": "runtime/model-install-state/index_tts_2.json",
         "other_links": [
             {
                 "label": "Hugging Face 权重",
@@ -137,6 +139,7 @@ MODEL_CATALOG = [
             "models/index-tts/checkpoints/feat1.pt",
             "models/index-tts/checkpoints/feat2.pt",
             "models/index-tts/checkpoints/wav2vec2bert_stats.pt",
+            "models/index-tts/checkpoints/qwen0.6bemo4-merge/model.safetensors",
         ],
     },
     {

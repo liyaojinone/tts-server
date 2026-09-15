@@ -146,6 +146,18 @@ def test_cosyvoice_catalog_requires_install_receipt():
     )
     assert "services/gptsovits-service/.venv/ffmpeg" in gptsovits["required_paths"]
 
+    indextts = next(model for model in MODEL_CATALOG if model["id"] == "index_tts_2")
+    assert indextts["installation_environment"].endswith(
+        "services/index-tts-service/.venv/Scripts/python.exe"
+    )
+    assert indextts["installation_marker"].endswith(
+        "runtime/model-install-state/index_tts_2.json"
+    )
+    assert (
+        "models/index-tts/checkpoints/qwen0.6bemo4-merge/model.safetensors"
+        in indextts["required_paths"]
+    )
+
     campplus = next(model for model in MODEL_CATALOG if model["id"] == "campplus_speaker_diarization")
     assert campplus["weight_size"] == "约 400 MB"
     assert campplus["installation_environment"].endswith(

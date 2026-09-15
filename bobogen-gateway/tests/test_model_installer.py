@@ -72,6 +72,73 @@ def test_voxcpm_install_plan_avoids_heavy_packages():
     assert plan["installation_marker"].endswith("voxcpm2.json")
 
 
+def test_indextts_install_plan_provisions_environment_and_runtime_weights():
+    plan = MODEL_INSTALL_PLANS["index_tts_2"]
+    assert plan["environment"]["venv_dir"] == "services/index-tts-service/.venv"
+    assert plan["installation_marker"].endswith("runtime/model-install-state/index_tts_2.json")
+
+    commands = " ".join(" ".join(command) for command in plan["environment"]["setup_commands"])
+    assert "models/index-tts/repo" in commands
+    assert "bobogen-protocol" in commands
+    assert "bobogen-service-kit" in commands
+    assert "services/index-tts-service" in commands
+    assert "download.pytorch.org/whl/cu128" in commands
+    assert "deepspeed" not in commands
+
+    main = next(
+        resource
+        for resource in plan["resources"]
+        if resource.get("repo_id") == "IndexTeam/IndexTTS-2"
+    )
+    assert main["kind"] == "hf_snapshot_local"
+    assert main["target"] == "models/index-tts/checkpoints"
+
+    # 官方运行时另外下载的附属权重必须预置到项目内缓存
+    cached = {
+        resource["repo_id"]: resource
+        for resource in plan["resources"]
+        if resource["kind"] == "hf_snapshot_cache"
+    }
+    assert set(cached) == {
+        "facebook/w2v-bert-2.0",
+        "amphion/MaskGCT",
+        "funasr/campplus",
+        "nvidia/bigvgan_v2_22khz_80band_256x",
+    }
+    assert {resource["cache_dir"] for resource in cached.values()} == {
+        "models/index-tts/hf-home/hub"
+    }
+    assert cached["amphion/MaskGCT"]["allow_patterns"] == ["semantic_codec/*"]
+    # 附属权重同样锁定 revision，保证可重复安装
+    assert all(isinstance(resource.get("revision"), str) for resource in cached.values())
+
+
+def test_hf_snapshot_cache_forwards_allow_patterns(tmp_path, monkeypatch):
+    installer = ModelInstaller(tmp_path)
+    captured: dict[str, object] = {}
+
+    def snapshot_download(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr(installer, "_hf_module", lambda: (None, snapshot_download))
+
+    installer._download_hf_snapshot_cache(
+        {
+            "kind": "hf_snapshot_cache",
+            "repo_id": "amphion/MaskGCT",
+            "cache_dir": "models/index-tts/hf-home/hub",
+            "allow_patterns": ["semantic_codec/*"],
+        },
+        lambda event: None,
+    )
+
+    assert captured["repo_id"] == "amphion/MaskGCT"
+    assert captured["allow_patterns"] == ["semantic_codec/*"]
+    assert str(captured["cache_dir"]).endswith("models\\index-tts\\hf-home\\hub") or str(
+        captured["cache_dir"]
+    ).endswith("models/index-tts/hf-home/hub")
+
+
 def test_campplus_install_plan_provisions_environment_and_pipeline_packages():
     plan = MODEL_INSTALL_PLANS["campplus_speaker_diarization"]
     assert plan["environment"]["venv_dir"] == "services/speaker-diarization-service/.venv"

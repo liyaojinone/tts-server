@@ -252,7 +252,25 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
         "environment": {
             "venv_dir": "services/index-tts-service/.venv",
             "setup_commands": [
-                ["uv", "pip", "install", "--python", "{python}", "python-multipart"],
+                ["{python}", "-m", "pip", "install", "-U", "pip", "setuptools", "wheel"],
+                # descript-audiotools 构建时需要 cython
+                ["{python}", "-m", "pip", "install", "cython==3.0.7"],
+                # 官方指定 cu128 上的 torch 2.8.*；先装好，后续 -e 安装不会改回 CPU 版
+                [
+                    "{python}",
+                    "-m",
+                    "pip",
+                    "install",
+                    "torch==2.8.*",
+                    "torchaudio==2.8.*",
+                    "--index-url",
+                    "https://download.pytorch.org/whl/cu128",
+                ],
+                # 官方仓库按 pyproject 声明全部运行期依赖（webui/deepspeed 是可选组，不装）
+                ["{python}", "-m", "pip", "install", "-e", "models/index-tts/repo"],
+                ["{python}", "-m", "pip", "install", "-e", "bobogen-protocol"],
+                ["{python}", "-m", "pip", "install", "-e", "bobogen-service-kit"],
+                ["{python}", "-m", "pip", "install", "-e", "services/index-tts-service"],
             ],
         },
         "installation_marker": "runtime/model-install-state/index_tts_2.json",
@@ -262,7 +280,36 @@ MODEL_INSTALL_PLANS: dict[str, dict] = {
                 "repo_id": "IndexTeam/IndexTTS-2",
                 "revision": "740dcaff396282ffb241903d150ac011cd4b1ede",
                 "target": "models/index-tts/checkpoints",
-            }
+            },
+            # 官方运行时 infer_v2 会另外从 Hugging Face 取以下权重；
+            # 全部预置到项目内缓存（HF_HOME=models/index-tts/hf-home），
+            # 保证整目录拷贝后无需联网、也不再写用户级缓存
+            {
+                "kind": "hf_snapshot_cache",
+                "repo_id": "facebook/w2v-bert-2.0",
+                "revision": "da985ba0987f70aaeb84a80f2851cfac8c697a7b",
+                "cache_dir": "models/index-tts/hf-home/hub",
+                "allow_patterns": ["*.json"],
+            },
+            {
+                "kind": "hf_snapshot_cache",
+                "repo_id": "amphion/MaskGCT",
+                "revision": "265c6cef07625665d0c28d2faafb1415562379dc",
+                "cache_dir": "models/index-tts/hf-home/hub",
+                "allow_patterns": ["semantic_codec/*"],
+            },
+            {
+                "kind": "hf_snapshot_cache",
+                "repo_id": "funasr/campplus",
+                "revision": "e4b6ede7ce16997aff4ae69fbca1f0175e2afede",
+                "cache_dir": "models/index-tts/hf-home/hub",
+            },
+            {
+                "kind": "hf_snapshot_cache",
+                "repo_id": "nvidia/bigvgan_v2_22khz_80band_256x",
+                "revision": "633ff708ed5b74903e86ff1298cf4a98e921c513",
+                "cache_dir": "models/index-tts/hf-home/hub",
+            },
         ],
     },
     "voxcpm2": {
@@ -1011,6 +1058,9 @@ class ModelInstaller:
         }
         if resource.get("revision"):
             kwargs["revision"] = resource["revision"]
+        if resource.get("allow_patterns"):
+            # 只取需要的文件，避免把整仓库（含训练权重）都拉下来
+            kwargs["allow_patterns"] = list(resource["allow_patterns"])
         kwargs.update(self._hf_source_kwargs())
         snapshot_download(**kwargs)
 
