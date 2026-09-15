@@ -4,7 +4,11 @@ $serviceRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $workspaceRoot = Split-Path -Parent (Split-Path -Parent $serviceRoot)
 $cacheRoot = Join-Path $workspaceRoot "models\qwen3-asr"
 $repoDir = Join-Path $cacheRoot "repo"
-$defaultPython = Join-Path $serviceRoot ".venv\Scripts\python.exe"
+$defaultPython = Join-Path $workspaceRoot "runtime\python\cp311\python.exe"
+$portableLauncher = Join-Path $workspaceRoot "runtime\portable_python_launcher.py"
+$defaultPackages = Join-Path $serviceRoot ".venv\Lib\site-packages"
+$servicePackages = if ($env:QWEN3_ASR_PACKAGES) { $env:QWEN3_ASR_PACKAGES } else { $defaultPackages }
+$usePortableRuntime = -not [bool]$env:QWEN3_ASR_PYTHON
 $pythonExe = if ($env:QWEN3_ASR_PYTHON) { $env:QWEN3_ASR_PYTHON } else { $defaultPython }
 $port = if ($env:QWEN3_ASR_PORT) { $env:QWEN3_ASR_PORT } else { "5110" }
 $sharedProtocolSrc = Join-Path $workspaceRoot "bobogen-protocol\src"
@@ -12,6 +16,8 @@ $sharedProtocolSrc = Join-Path $workspaceRoot "bobogen-protocol\src"
 if (-not (Test-Path $pythonExe)) {
     throw "Python executable not found: $pythonExe. Create the provider-specific service environment first."
 }
+if ($usePortableRuntime -and (-not (Test-Path $portableLauncher))) { throw "Portable Python launcher not found: $portableLauncher" }
+if ($usePortableRuntime -and (-not (Test-Path $servicePackages))) { throw "Service packages not found: $servicePackages" }
 
 Set-Location $repoDir
 # 权重缓存显式指向 BoboGenServer 内的受管目录，避免受用户 HF_* / TRANSFORMERS_CACHE 影响
@@ -42,4 +48,8 @@ Write-Host "Qwen3-ASR device: $env:QWEN3_ASR_DEVICE"
 Write-Host "Qwen3-ASR test mode: $env:QWEN3_ASR_TEST_MODE"
 Write-Host "Starting qwen3-asr-service on http://127.0.0.1:$port"
 
-& $pythonExe -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port $port
+if ($usePortableRuntime) {
+    & $pythonExe $portableLauncher --repo-root $workspaceRoot --packages $servicePackages --module uvicorn -- app.main:create_app --factory --host 127.0.0.1 --port $port
+} else {
+    & $pythonExe -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port $port
+}

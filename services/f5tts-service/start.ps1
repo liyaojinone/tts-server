@@ -4,7 +4,11 @@ $serviceRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $workspaceRoot = Split-Path -Parent (Split-Path -Parent $serviceRoot)
 $modelId = if ($env:F5TTS_MODEL_ID) { $env:F5TTS_MODEL_ID } else { "f5_tts" }
 $modelName = if ($env:F5_MODEL) { $env:F5_MODEL } else { "F5TTS_v1_Base" }
-$pythonExe = if ($env:F5TTS_PYTHON) { $env:F5TTS_PYTHON } else { Join-Path $serviceRoot ".venv\Scripts\python.exe" }
+$defaultPython = Join-Path $workspaceRoot "runtime\python\cp311\python.exe"
+$portableLauncher = Join-Path $workspaceRoot "runtime\portable_python_launcher.py"
+$servicePackages = Join-Path $serviceRoot ".venv\Lib\site-packages"
+$usePortableRuntime = -not [bool]$env:F5TTS_PYTHON
+$pythonExe = if ($env:F5TTS_PYTHON) { $env:F5TTS_PYTHON } else { $defaultPython }
 $repoDir = if ($env:F5TTS_REPO_DIR) { $env:F5TTS_REPO_DIR } else { Join-Path $workspaceRoot "models\f5-tts\repo" }
 $profileDir = if ($env:F5TTS_PROFILE_DIR) { $env:F5TTS_PROFILE_DIR } else { Join-Path $serviceRoot "data\profiles\$modelId" }
 $port = if ($env:F5TTS_PORT) { [int]$env:F5TTS_PORT } else { 5102 }
@@ -18,6 +22,8 @@ $repoSrc = Join-Path $repoDir "src"
 if (-not (Test-Path $pythonExe)) {
     throw "Python executable not found: $pythonExe"
 }
+if ($usePortableRuntime -and (-not (Test-Path $portableLauncher))) { throw "Portable Python launcher not found: $portableLauncher" }
+if ($usePortableRuntime -and (-not (Test-Path $servicePackages))) { throw "Service packages not found: $servicePackages" }
 
 if (-not (Test-Path $repoDir)) {
     throw "F5-TTS repo not found: $repoDir"
@@ -51,4 +57,8 @@ Write-Host "REPO: $env:F5TTS_REPO_DIR"
 Write-Host "PYTHONPATH: $env:PYTHONPATH"
 Write-Host "Starting f5tts-service on http://127.0.0.1:$port"
 
-& $pythonExe -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port $port
+if ($usePortableRuntime) {
+    & $pythonExe $portableLauncher --repo-root $workspaceRoot --packages $servicePackages --module uvicorn -- app.main:create_app --factory --host 127.0.0.1 --port $port
+} else {
+    & $pythonExe -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port $port
+}

@@ -7,15 +7,9 @@ runtime:
   root_dir: ${BOBOGEN_ROOT}\services\index-tts-service
   cwd: ${BOBOGEN_ROOT}\services\index-tts-service
   command:
-    - ${BOBOGEN_ROOT}\services\index-tts-service\.venv\Scripts\python.exe
-    - -m
-    - uvicorn
-    - app.main:create_app
-    - --factory
-    - --host
-    - 127.0.0.1
-    - --port
-    - "5104"
+    - powershell
+    - -File
+    - ${BOBOGEN_ROOT}\services\index-tts-service\start.ps1
   env:
     PYTHONPATH: ${BOBOGEN_ROOT}\services\index-tts-service;${BOBOGEN_ROOT}\bobogen-protocol\src;${BOBOGEN_ROOT}\bobogen-service-kit\src;${BOBOGEN_ROOT}\models\index-tts\repo
     INDEXTTS_REPO_DIR: ${BOBOGEN_ROOT}\models\index-tts\repo

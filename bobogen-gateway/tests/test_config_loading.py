@@ -83,9 +83,7 @@ def test_stable_audio3_provider_launches_repository_local_service():
     assert provider.runtime.command[:2] == ["powershell", "-File"]
     assert provider.runtime.command[2].endswith(r"services\stable-audio3-service\start.ps1")
     assert provider.runtime.env["STABLE_AUDIO3_REPO_DIR"].endswith(r"models\stable-audio-3\repo")
-    assert provider.runtime.env["STABLE_AUDIO3_PYTHON"].endswith(
-        r"services\stable-audio3-service\.venv\Scripts\python.exe"
-    )
+    assert "STABLE_AUDIO3_PYTHON" not in provider.runtime.env
     assert provider.network.healthcheck_path == "/v1/health"
     assert provider.capabilities.synthesize is False
 
@@ -169,8 +167,8 @@ def test_qwen3_asr_providers_launch_gpu_service_on_separate_ports():
         aligner.runtime.env["QWEN3_ASR_HF_REPO_ID"]
         == "Qwen/Qwen3-ForcedAligner-0.6B-hf"
     )
-    assert aligner.runtime.env["QWEN3_ASR_PYTHON"].endswith(
-        r"services\qwen3-asr-service\.venv-aligner\Scripts\python.exe"
+    assert aligner.runtime.env["QWEN3_ASR_PACKAGES"].endswith(
+        r"services\qwen3-asr-service\.venv-aligner\Lib\site-packages"
     )
     assert aligner.runtime.env["QWEN3_ASR_DEVICE"] == "cuda:0"
     assert aligner.runtime.env["QWEN3_ASR_PORT"] == "5112"

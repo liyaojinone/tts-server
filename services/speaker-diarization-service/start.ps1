@@ -3,7 +3,10 @@ $ErrorActionPreference = "Stop"
 $serviceRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $workspaceRoot = Split-Path -Parent (Split-Path -Parent $serviceRoot)
 $cacheRoot = Join-Path $workspaceRoot "models\speaker-diarization"
-$defaultPython = Join-Path $serviceRoot ".venv\Scripts\python.exe"
+$defaultPython = Join-Path $workspaceRoot "runtime\python\cp311\python.exe"
+$portableLauncher = Join-Path $workspaceRoot "runtime\portable_python_launcher.py"
+$servicePackages = Join-Path $serviceRoot ".venv\Lib\site-packages"
+$usePortableRuntime = -not [bool]$env:SPEAKER_DIARIZATION_PYTHON
 $pythonExe = if ($env:SPEAKER_DIARIZATION_PYTHON) { $env:SPEAKER_DIARIZATION_PYTHON } else { $defaultPython }
 $port = if ($env:SPEAKER_DIARIZATION_PORT) { $env:SPEAKER_DIARIZATION_PORT } else { "5113" }
 $sharedProtocolSrc = Join-Path $workspaceRoot "bobogen-protocol\src"
@@ -11,6 +14,8 @@ $sharedProtocolSrc = Join-Path $workspaceRoot "bobogen-protocol\src"
 if (-not (Test-Path $pythonExe)) {
     throw "Python executable not found: $pythonExe. Create the service venv and install ModelScope audio dependencies first."
 }
+if ($usePortableRuntime -and (-not (Test-Path $portableLauncher))) { throw "Portable Python launcher not found: $portableLauncher" }
+if ($usePortableRuntime -and (-not (Test-Path $servicePackages))) { throw "Service packages not found: $servicePackages" }
 
 Set-Location $serviceRoot
 $env:PYTHONPATH = "$serviceRoot;$sharedProtocolSrc"
@@ -34,4 +39,8 @@ Write-Host "Speaker diarization device: $env:SPEAKER_DIARIZATION_DEVICE"
 Write-Host "Speaker diarization test mode: $env:SPEAKER_DIARIZATION_TEST_MODE"
 Write-Host "Starting speaker-diarization-service on http://127.0.0.1:$port"
 
-& $pythonExe -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port $port
+if ($usePortableRuntime) {
+    & $pythonExe $portableLauncher --repo-root $workspaceRoot --packages $servicePackages --module uvicorn -- app.main:create_app --factory --host 127.0.0.1 --port $port
+} else {
+    & $pythonExe -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port $port
+}

@@ -3,7 +3,11 @@ $ErrorActionPreference = "Stop"
 $serviceRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $workspaceRoot = Split-Path -Parent (Split-Path -Parent $serviceRoot)
 $modelId = if ($env:VOXCPM_MODEL_ID) { $env:VOXCPM_MODEL_ID } else { "voxcpm2" }
-$pythonExe = if ($env:VOXCPM_PYTHON) { $env:VOXCPM_PYTHON } else { Join-Path $serviceRoot ".venv\Scripts\python.exe" }
+$defaultPython = Join-Path $workspaceRoot "runtime\python\cp311\python.exe"
+$portableLauncher = Join-Path $workspaceRoot "runtime\portable_python_launcher.py"
+$servicePackages = Join-Path $serviceRoot ".venv\Lib\site-packages"
+$usePortableRuntime = -not [bool]$env:VOXCPM_PYTHON
+$pythonExe = if ($env:VOXCPM_PYTHON) { $env:VOXCPM_PYTHON } else { $defaultPython }
 $repoDir = if ($env:VOXCPM_REPO_DIR) { $env:VOXCPM_REPO_DIR } else { Join-Path $workspaceRoot "models\voxcpm\repo" }
 $modelDir = if ($env:VOXCPM_MODEL_DIR) { $env:VOXCPM_MODEL_DIR } else { Join-Path $workspaceRoot "models\voxcpm\checkpoints" }
 $configPath = if ($env:VOXCPM_CONFIG_PATH) { $env:VOXCPM_CONFIG_PATH } else { Join-Path $modelDir "config.json" }
@@ -22,6 +26,8 @@ $repoSrc = Join-Path $repoDir "src"
 if (-not (Test-Path $pythonExe)) {
     throw "Python executable not found: $pythonExe"
 }
+if ($usePortableRuntime -and (-not (Test-Path $portableLauncher))) { throw "Portable Python launcher not found: $portableLauncher" }
+if ($usePortableRuntime -and (-not (Test-Path $servicePackages))) { throw "Service packages not found: $servicePackages" }
 
 if (-not (Test-Path $repoDir)) {
     throw "VoxCPM repo not found: $repoDir"
@@ -64,4 +70,8 @@ Write-Host "Architecture: $env:VOXCPM_EXPECTED_ARCHITECTURE"
 Write-Host "PYTHONPATH: $env:PYTHONPATH"
 Write-Host "Starting voxcpm-service on http://${bindHost}:$port"
 
-& $pythonExe -m uvicorn app.main:create_app --factory --host $bindHost --port $port
+if ($usePortableRuntime) {
+    & $pythonExe $portableLauncher --repo-root $workspaceRoot --packages $servicePackages --module uvicorn -- app.main:create_app --factory --host $bindHost --port $port
+} else {
+    & $pythonExe -m uvicorn app.main:create_app --factory --host $bindHost --port $port
+}

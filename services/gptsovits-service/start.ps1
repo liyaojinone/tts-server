@@ -3,7 +3,11 @@ $ErrorActionPreference = "Stop"
 $serviceRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $workspaceRoot = Split-Path -Parent (Split-Path -Parent $serviceRoot)
 $modelId = if ($env:GPTSOVITS_MODEL_ID) { $env:GPTSOVITS_MODEL_ID } else { "gpt_sovits_v2pro" }
-$pythonExe = if ($env:GPTSOVITS_PYTHON) { $env:GPTSOVITS_PYTHON } else { Join-Path $serviceRoot ".venv\Scripts\python.exe" }
+$defaultPython = Join-Path $workspaceRoot "runtime\python\cp311\python.exe"
+$portableLauncher = Join-Path $workspaceRoot "runtime\portable_python_launcher.py"
+$servicePackages = Join-Path $serviceRoot ".venv\Lib\site-packages"
+$usePortableRuntime = -not [bool]$env:GPTSOVITS_PYTHON
+$pythonExe = if ($env:GPTSOVITS_PYTHON) { $env:GPTSOVITS_PYTHON } else { $defaultPython }
 $repoDir = if ($env:GPTSOVITS_REPO_DIR) { $env:GPTSOVITS_REPO_DIR } else { Join-Path $workspaceRoot "models\gpt-sovits\repo" }
 $modelDir = if ($env:GPTSOVITS_MODEL_DIR) { $env:GPTSOVITS_MODEL_DIR } else { Join-Path $workspaceRoot "models\gpt-sovits\checkpoints\$modelId" }
 $gptWeightsPath = if ($env:GPTSOVITS_GPT_WEIGHTS_PATH) { $env:GPTSOVITS_GPT_WEIGHTS_PATH } else { Join-Path $modelDir "s1v3.ckpt" }
@@ -28,6 +32,8 @@ $torchcodecFfmpegDir = Join-Path (Split-Path -Parent (Split-Path -Parent $python
 if (-not (Test-Path $pythonExe)) {
     throw "Python executable not found: $pythonExe"
 }
+if ($usePortableRuntime -and (-not (Test-Path $portableLauncher))) { throw "Portable Python launcher not found: $portableLauncher" }
+if ($usePortableRuntime -and (-not (Test-Path $servicePackages))) { throw "Service packages not found: $servicePackages" }
 
 if (-not (Test-Path $repoDir)) {
     throw "GPT-SoVITS repo not found: $repoDir"
@@ -71,4 +77,8 @@ Write-Host "Preloading: $env:GPTSOVITS_PRELOAD_ON_STARTUP"
 Write-Host "PYTHONPATH: $env:PYTHONPATH"
 Write-Host "Starting gptsovits-service on http://${bindHost}:$port"
 
-& $pythonExe -m uvicorn app.main:create_app --factory --host $bindHost --port $port
+if ($usePortableRuntime) {
+    & $pythonExe $portableLauncher --repo-root $workspaceRoot --packages $servicePackages --module uvicorn -- app.main:create_app --factory --host $bindHost --port $port
+} else {
+    & $pythonExe -m uvicorn app.main:create_app --factory --host $bindHost --port $port
+}

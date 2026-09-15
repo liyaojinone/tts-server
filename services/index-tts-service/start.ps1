@@ -2,7 +2,11 @@ $ErrorActionPreference = "Stop"
 
 $serviceRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $workspaceRoot = Split-Path -Parent (Split-Path -Parent $serviceRoot)
-$pythonExe = if ($env:INDEXTTS_PYTHON) { $env:INDEXTTS_PYTHON } else { Join-Path $serviceRoot ".venv\Scripts\python.exe" }
+$defaultPython = Join-Path $workspaceRoot "runtime\python\cp311\python.exe"
+$portableLauncher = Join-Path $workspaceRoot "runtime\portable_python_launcher.py"
+$servicePackages = Join-Path $serviceRoot ".venv\Lib\site-packages"
+$usePortableRuntime = -not [bool]$env:INDEXTTS_PYTHON
+$pythonExe = if ($env:INDEXTTS_PYTHON) { $env:INDEXTTS_PYTHON } else { $defaultPython }
 $repoDir = Join-Path $workspaceRoot "models\index-tts\repo"
 $modelDir = Join-Path $workspaceRoot "models\index-tts\checkpoints"
 $profileDir = Join-Path $serviceRoot "data\profiles"
@@ -13,6 +17,8 @@ $sharedKitSrc = Join-Path $workspaceRoot "bobogen-service-kit\src"
 if (-not (Test-Path $pythonExe)) {
     throw "Python executable not found: $pythonExe"
 }
+if ($usePortableRuntime -and (-not (Test-Path $portableLauncher))) { throw "Portable Python launcher not found: $portableLauncher" }
+if ($usePortableRuntime -and (-not (Test-Path $servicePackages))) { throw "Service packages not found: $servicePackages" }
 
 if (-not (Test-Path $repoDir)) {
     throw "IndexTTS repo not found: $repoDir"
@@ -59,4 +65,8 @@ Write-Host "PYTHONPATH: $env:PYTHONPATH"
 Write-Host "Preloading IndexTTS2 on startup: $env:INDEXTTS_PRELOAD_ON_STARTUP"
 Write-Host "Starting index-tts-service on http://127.0.0.1:5104"
 
-& $pythonExe -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port 5104
+if ($usePortableRuntime) {
+    & $pythonExe $portableLauncher --repo-root $workspaceRoot --packages $servicePackages --module uvicorn -- app.main:create_app --factory --host 127.0.0.1 --port 5104
+} else {
+    & $pythonExe -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port 5104
+}

@@ -15,7 +15,7 @@ runtime:
   env:
     QWEN3_ASR_MODEL_ID: qwen3_forced_aligner_0_6b
     QWEN3_ASR_HF_REPO_ID: Qwen/Qwen3-ForcedAligner-0.6B-hf
-    QWEN3_ASR_PYTHON: "${BOBOGEN_ROOT}\\services\\qwen3-asr-service\\.venv-aligner\\Scripts\\python.exe"
+    QWEN3_ASR_PACKAGES: "${BOBOGEN_ROOT}\\services\\qwen3-asr-service\\.venv-aligner\\Lib\\site-packages"
     HF_HUB_DISABLE_XET: "1"
     QWEN3_ASR_PORT: "5112"
     QWEN3_ASR_DEVICE: cuda:0

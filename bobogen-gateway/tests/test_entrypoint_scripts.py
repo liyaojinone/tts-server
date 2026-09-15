@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -84,6 +86,46 @@ def test_windows_start_script_launches_gateway_with_the_portable_python_runtime(
     assert 'runtime\\portable_python_launcher.py' in start_script
     assert 'runtime\\gateway\\.venv\\Lib\\site-packages' in start_script
     assert 'runtime\\gateway\\.venv\\Scripts\\python.exe' not in start_script
+
+
+@pytest.mark.parametrize(
+    "service_name",
+    [
+        "cosyvoice-service",
+        "f5tts-service",
+        "gptsovits-service",
+        "index-tts-service",
+        "qwen3-asr-service",
+        "speaker-diarization-service",
+        "stable-audio3-service",
+        "tiger-dnr-service",
+        "voxcpm-service",
+    ],
+)
+def test_windows_service_scripts_default_to_the_shared_portable_python_runtime(service_name: str):
+    script = (ROOT / "services" / service_name / "start.ps1").read_text(encoding="utf-8")
+
+    assert 'runtime\\python\\cp311\\python.exe' in script
+    assert 'runtime\\portable_python_launcher.py' in script
+    assert '.venv\\Lib\\site-packages' in script
+    assert '--packages' in script
+
+
+def test_windows_provider_configs_do_not_override_the_portable_python_runtime():
+    config_dir = ROOT / "bobogen-gateway" / "configs" / "providers"
+    windows_configs = list(config_dir.glob("*-windows.yaml"))
+
+    for config_path in windows_configs:
+        config = config_path.read_text(encoding="utf-8")
+        assert "_PYTHON:" not in config
+
+    index_tts = (config_dir / "indextts-windows.yaml").read_text(encoding="utf-8")
+    assert "index-tts-service\\start.ps1" in index_tts
+    assert ".venv\\Scripts\\python.exe" not in index_tts
+
+    qwen_aligner = (config_dir / "qwen3-forced-aligner-0_6b-windows.yaml").read_text(encoding="utf-8")
+    assert "QWEN3_ASR_PACKAGES" in qwen_aligner
+    assert r".venv-aligner\\Lib\\site-packages" in qwen_aligner
 
 
 def test_gateway_pins_mcp_to_the_supported_major_version():

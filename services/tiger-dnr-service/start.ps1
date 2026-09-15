@@ -5,7 +5,10 @@ $workspaceRoot = Split-Path -Parent (Split-Path -Parent $serviceRoot)
 $modelRoot = Join-Path $workspaceRoot "models\tiger"
 $repoDir = Join-Path $workspaceRoot "models\tiger\repo"
 $modelDir = Join-Path $workspaceRoot "models\tiger\TIGER-DnR"
-$defaultPython = Join-Path $serviceRoot ".venv\Scripts\python.exe"
+$defaultPython = Join-Path $workspaceRoot "runtime\python\cp311\python.exe"
+$portableLauncher = Join-Path $workspaceRoot "runtime\portable_python_launcher.py"
+$servicePackages = Join-Path $serviceRoot ".venv\Lib\site-packages"
+$usePortableRuntime = -not [bool]$env:TIGER_DNR_PYTHON
 $pythonExe = if ($env:TIGER_DNR_PYTHON) { $env:TIGER_DNR_PYTHON } else { $defaultPython }
 $port = if ($env:TIGER_DNR_PORT) { $env:TIGER_DNR_PORT } else { "5114" }
 $sharedProtocolSrc = Join-Path $workspaceRoot "bobogen-protocol\src"
@@ -13,6 +16,8 @@ $sharedProtocolSrc = Join-Path $workspaceRoot "bobogen-protocol\src"
 if (-not (Test-Path $pythonExe)) {
     throw "Python executable not found: $pythonExe. Create the TIGER-DnR service environment first."
 }
+if ($usePortableRuntime -and (-not (Test-Path $portableLauncher))) { throw "Portable Python launcher not found: $portableLauncher" }
+if ($usePortableRuntime -and (-not (Test-Path $servicePackages))) { throw "Service packages not found: $servicePackages" }
 if (-not (Test-Path $repoDir)) {
     throw "TIGER source repository not found: $repoDir"
 }
@@ -43,4 +48,8 @@ Write-Host "TIGER model cache: $env:TIGER_DNR_MODEL_DIR"
 Write-Host "TIGER device: $env:TIGER_DNR_DEVICE"
 Write-Host "Starting tiger-dnr-service on http://127.0.0.1:$port"
 
-& $pythonExe -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port $port
+if ($usePortableRuntime) {
+    & $pythonExe $portableLauncher --repo-root $workspaceRoot --packages $servicePackages --module uvicorn -- app.main:create_app --factory --host 127.0.0.1 --port $port
+} else {
+    & $pythonExe -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port $port
+}

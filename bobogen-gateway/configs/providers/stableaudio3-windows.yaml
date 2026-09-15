@@ -14,7 +14,6 @@ runtime:
     - ${BOBOGEN_ROOT}\services\stable-audio3-service\start.ps1
   env:
     STABLE_AUDIO3_REPO_DIR: "${BOBOGEN_ROOT}\\models\\stable-audio-3\\repo"
-    STABLE_AUDIO3_PYTHON: "${BOBOGEN_ROOT}\\services\\stable-audio3-service\\.venv\\Scripts\\python.exe"
     STABLE_AUDIO3_MODEL_NAME: small-sfx
   startup_timeout_ms: 120000
   request_timeout_ms: 180000
